@@ -5,9 +5,10 @@ import { AuditDetail } from '@/components/AuditDetail';
 import { PatternAnalysis } from '@/components/PatternAnalysis';
 import { AuditPostureToggle } from '@/components/AuditPostureToggle';
 import { SOUPYConfigDialog } from '@/components/SOUPYConfigDialog';
+import { ComparisonView } from '@/components/ComparisonView';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
-import { Scale, Brain } from 'lucide-react';
+import { Scale, Brain, GitCompare } from 'lucide-react';
 
 const Index = () => {
   const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
@@ -100,6 +101,10 @@ const Index = () => {
             <TabsList className="mb-6">
               <TabsTrigger value="queue">Case Queue</TabsTrigger>
               <TabsTrigger value="patterns">Pattern Analysis</TabsTrigger>
+              <TabsTrigger value="comparison" className="gap-1.5">
+                <GitCompare className="h-3.5 w-3.5" />
+                Value Demo
+              </TabsTrigger>
               <TabsTrigger value="history">Case History</TabsTrigger>
             </TabsList>
 
@@ -113,6 +118,10 @@ const Index = () => {
 
             <TabsContent value="patterns">
               <PatternAnalysis patterns={mockPatterns} onSelectCase={handleSelectCase} />
+            </TabsContent>
+
+            <TabsContent value="comparison">
+              <ComparisonView />
             </TabsContent>
 
             <TabsContent value="history">

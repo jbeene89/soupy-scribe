@@ -1,0 +1,313 @@
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { AIRoleCard } from './AIRoleCard';
+import { ConsensusMeter } from './ConsensusMeter';
+import { RiskIndicator } from './RiskIndicator';
+import { CPTCodeBadge } from './CPTCodeBadge';
+import { CodeCombinationAnalysisCard } from './spark/CodeCombinationAnalysisCard';
+import { EnhancedAppealSummary } from './spark/EnhancedAppealSummary';
+import { mockCases, mockCodeCombinations } from '@/lib/mockData';
+import type { AuditCase } from '@/lib/types';
+import {
+  Brain,
+  Monitor,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  ArrowRight,
+  Lightbulb,
+  Eye,
+  Layers,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+// Use the first case with full SOUPY analysis
+const demoCase = mockCases.find(c => c.analyses.length > 0)!;
+
+// Simulate a single-model output — just uses the builder analysis alone
+function SingleModelPanel({ auditCase }: { auditCase: AuditCase }) {
+  const singleAnalysis = auditCase.analyses[0]; // Only builder perspective
+  if (!singleAnalysis) return null;
+
+  const allViolations = singleAnalysis.violations;
+  const hasViolations = allViolations.length > 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Simple verdict */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Monitor className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-base">AI Assessment</CardTitle>
+          </div>
+          <CardDescription>Single-model analysis using {singleAnalysis.model}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-muted-foreground">Confidence</span>
+            <span className="font-mono text-lg font-semibold">{singleAnalysis.confidence}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-secondary overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${singleAnalysis.confidence}%` }}
+            />
+          </div>
+
+          <div className="p-3 rounded-md bg-muted/50 border">
+            <p className="text-sm italic text-muted-foreground">"{singleAnalysis.perspectiveStatement}"</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Key Findings</p>
+            <ul className="space-y-1.5">
+              {singleAnalysis.keyInsights.map((insight, i) => (
+                <li key={i} className="flex gap-2 text-sm">
+                  <span className="text-primary mt-0.5 shrink-0">→</span>
+                  <span>{insight}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {hasViolations && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                Violations ({allViolations.length})
+              </p>
+              <div className="space-y-2">
+                {allViolations.map(v => (
+                  <div key={v.id} className="flex items-center gap-2 p-2 rounded-md border bg-card">
+                    {v.severity === 'critical' ? (
+                      <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-disagreement shrink-0" />
+                    )}
+                    <CPTCodeBadge code={v.code} />
+                    <span className="text-xs text-muted-foreground truncate">{v.description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Separator />
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Overall</p>
+            <p className="text-sm">{singleAnalysis.overallAssessment}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* What's missing callout */}
+      <Card className="border-dashed border-2 border-muted-foreground/20">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Eye className="h-4 w-4" />
+            <span className="text-xs font-semibold uppercase tracking-wider">Blind Spots</span>
+          </div>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="flex gap-2">
+              <span className="text-destructive shrink-0">✗</span>
+              <span>No adversarial challenge to assumptions</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-destructive shrink-0">✗</span>
+              <span>No regulatory framework cross-check</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-destructive shrink-0">✗</span>
+              <span>Missing systemic pattern analysis</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-destructive shrink-0">✗</span>
+              <span>No consensus divergence measurement</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-destructive shrink-0">✗</span>
+              <span>Single perspective = single point of failure</span>
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function SOUPYPanel({ auditCase }: { auditCase: AuditCase }) {
+  const matchingCombos = mockCodeCombinations.filter(cc =>
+    cc.codes.every(c => auditCase.cptCodes.includes(c))
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Risk + Consensus */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <RiskIndicator riskScore={auditCase.riskScore} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex flex-col justify-center">
+            <ConsensusMeter score={auditCase.consensusScore} />
+            {auditCase.consensusScore < 80 && (
+              <div className="mt-2 rounded-md border border-disagreement/30 bg-disagreement/5 p-2">
+                <p className="text-[10px] font-medium text-disagreement">
+                  ⚠ Models diverge — multiple perspectives surfaced
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Code Combination Analysis */}
+      {matchingCombos.map((combo, i) => (
+        <CodeCombinationAnalysisCard key={i} analysis={combo} />
+      ))}
+
+      {/* SOUPY Role Cards */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Layers className="h-4 w-4 text-accent" />
+          <h3 className="text-sm font-semibold">4-Model Adversarial Analysis</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {auditCase.analyses.map((analysis, i) => (
+            <AIRoleCard key={analysis.role} analysis={analysis} staggerIndex={i} />
+          ))}
+        </div>
+      </div>
+
+      {/* Enhanced Appeal Summary */}
+      <EnhancedAppealSummary auditCase={auditCase} />
+    </div>
+  );
+}
+
+export function ComparisonView() {
+  const auditCase = demoCase;
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-accent/10 text-accent">
+          <Lightbulb className="h-4 w-4" />
+          <span className="text-xs font-semibold uppercase tracking-wider">Value Demonstration</span>
+        </div>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Single Model vs. SOUPY ThinkTank
+        </h2>
+        <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+          See how forced epistemic diversity catches critical audit risks that traditional
+          single-model AI overlooks. Same case, same data — dramatically different depth.
+        </p>
+      </div>
+
+      {/* Case context bar */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <span className="font-semibold text-sm">{auditCase.caseNumber}</span>
+              <Badge variant="outline" className="font-mono text-xs">{auditCase.physicianId}</Badge>
+              <span className="text-sm text-muted-foreground">{auditCase.physicianName}</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span>DOS: {auditCase.dateOfService}</span>
+              <span className="font-mono font-semibold text-foreground">
+                ${auditCase.claimAmount.toLocaleString()}
+              </span>
+              <div className="flex gap-1">
+                {auditCase.cptCodes.map(c => <CPTCodeBadge key={c} code={c} />)}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Side-by-side comparison */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
+        {/* Left: Single Model */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-muted">
+              <Monitor className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Standard Single-Model AI
+            </h3>
+          </div>
+          <SingleModelPanel auditCase={auditCase} />
+        </div>
+
+        {/* Center divider with arrow */}
+        <div className="hidden lg:flex absolute left-1/2 top-12 bottom-0 -translate-x-1/2 flex-col items-center z-10">
+          <div className="w-px flex-1 bg-border" />
+          <div className="my-2 p-2 rounded-full border bg-card shadow-sm">
+            <ArrowRight className="h-4 w-4 text-accent" />
+          </div>
+          <div className="w-px flex-1 bg-border" />
+        </div>
+
+        {/* Right: SOUPY */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-accent/10">
+              <Brain className="h-4 w-4 text-accent" />
+            </div>
+            <h3 className="text-sm font-semibold text-accent uppercase tracking-wider">
+              SOUPY ThinkTank (4-Model)
+            </h3>
+          </div>
+          <SOUPYPanel auditCase={auditCase} />
+        </div>
+      </div>
+
+      {/* Value gap summary */}
+      <Card className="border-2 border-accent bg-accent/5">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <div className="p-2 rounded-lg bg-accent/10 shrink-0">
+              <Brain className="h-6 w-6 text-accent" />
+            </div>
+            <div className="space-y-3 flex-1">
+              <h3 className="font-semibold">The Value Gap</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="rounded-md border bg-card p-3 text-center">
+                  <p className="text-2xl font-semibold text-accent">
+                    {auditCase.analyses.length}x
+                  </p>
+                  <p className="text-xs text-muted-foreground">More Perspectives</p>
+                </div>
+                <div className="rounded-md border bg-card p-3 text-center">
+                  <p className="text-2xl font-semibold text-destructive">
+                    {auditCase.analyses.flatMap(a => a.violations).length - (auditCase.analyses[0]?.violations.length || 0)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Additional Violations Found</p>
+                </div>
+                <div className="rounded-md border bg-card p-3 text-center">
+                  <p className="text-2xl font-semibold text-consensus">
+                    {auditCase.consensusScore}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">Consensus Measured</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Single-model AI found {auditCase.analyses[0]?.violations.length || 0} violation(s) with {auditCase.analyses[0]?.confidence}% confidence.
+                SOUPY's adversarial protocol uncovered {auditCase.analyses.flatMap(a => a.violations).length} total violations across {auditCase.analyses.length} independent perspectives,
+                with a {auditCase.consensusScore}% consensus score that flags areas of genuine analytical uncertainty.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
