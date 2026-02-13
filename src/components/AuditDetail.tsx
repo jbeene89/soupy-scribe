@@ -28,8 +28,8 @@ export function AuditDetail({ auditCase, onBack, posture }: AuditDetailProps) {
   const allViolations = auditCase.analyses.flatMap(a => a.violations);
   const hasAnalyses = auditCase.analyses.length > 0;
 
-  const approveLabel = posture === 'payment-integrity' ? 'Approve Payment' : 'Compliant';
-  const rejectLabel = posture === 'payment-integrity' ? 'Deny Payment' : 'Coding Risk Identified';
+  const approveLabel = posture === 'payment-integrity' ? 'Approve Payment' : 'Documentation Sufficient';
+  const rejectLabel = posture === 'payment-integrity' ? 'Deny Payment' : 'Documentation Deficiency Identified';
 
   return (
     <div className="space-y-6 animate-fade-in">

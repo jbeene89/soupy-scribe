@@ -29,7 +29,7 @@ export function AuditPostureToggle({ posture, onChange }: AuditPostureToggleProp
             : 'text-muted-foreground hover:text-foreground'
         )}
       >
-        Compliance Coaching
+        Claim Accuracy Program
       </button>
     </div>
   );

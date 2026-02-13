@@ -51,7 +51,48 @@ const Index = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-8 py-6">
+      <main className="container mx-auto px-8 py-6 space-y-6">
+        {/* Claim Accuracy Program value banner */}
+        {posture === 'compliance-coaching' && !selectedCase && (
+          <div className="rounded-lg border bg-card p-5 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="p-2 rounded-lg bg-consensus/10 shrink-0">
+                <Scale className="h-5 w-5 text-consensus" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-sm font-semibold mb-1">Claim Accuracy Program — Payer Value Proposition</h2>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                  Proactive documentation guidance reduces downstream audit friction. When providers submit 
+                  complete, evidence-backed claims, the result is fewer flags, fewer appeals, and dramatically 
+                  reduced administrative burden — saving payer resources at every stage of the payment integrity lifecycle.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="rounded-md border bg-background p-3 text-center">
+                    <p className="text-lg font-semibold text-consensus">68%</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Projected Appeal Reduction</p>
+                  </div>
+                  <div className="rounded-md border bg-background p-3 text-center">
+                    <p className="text-lg font-semibold text-accent">4.2hrs</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Avg. Time Saved Per Case</p>
+                  </div>
+                  <div className="rounded-md border bg-background p-3 text-center">
+                    <p className="text-lg font-semibold text-foreground">$1.2M</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Est. Annual Admin Savings</p>
+                  </div>
+                  <div className="rounded-md border bg-background p-3 text-center">
+                    <p className="text-lg font-semibold text-info-blue">91%</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Clean Claim Rate Target</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-3 italic">
+                  Providers who receive structured documentation guidance submit claims with sufficient evidence 
+                  upfront — eliminating the need for costly post-payment recovery and reducing litigation exposure. 
+                  Integrates with Lyric 42 for automated pre-submission validation.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {selectedCase && activeTab === 'audit' ? (
           <AuditDetail auditCase={selectedCase} onBack={handleBack} posture={posture} />
         ) : (
