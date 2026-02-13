@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { AIRoleCard } from './AIRoleCard';
 import { ConsensusMeter } from './ConsensusMeter';
@@ -24,12 +23,27 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Use the first case with full SOUPY analysis
 const demoCase = mockCases.find(c => c.analyses.length > 0)!;
 
-// Simulate a single-model output — just uses the builder analysis alone
+/** Reusable stagger wrapper */
+function StaggerItem({ index, baseDelay = 0, children, className }: {
+  index: number;
+  baseDelay?: number;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn('opacity-0 animate-slide-up', className)}
+      style={{ animationDelay: `${baseDelay + index * 100}ms`, animationFillMode: 'forwards' }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function SingleModelPanel({ auditCase }: { auditCase: AuditCase }) {
-  const singleAnalysis = auditCase.analyses[0]; // Only builder perspective
+  const singleAnalysis = auditCase.analyses[0];
   if (!singleAnalysis) return null;
 
   const allViolations = singleAnalysis.violations;
@@ -37,103 +51,110 @@ function SingleModelPanel({ auditCase }: { auditCase: AuditCase }) {
 
   return (
     <div className="space-y-4">
-      {/* Simple verdict */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Monitor className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-base">AI Assessment</CardTitle>
-          </div>
-          <CardDescription>Single-model analysis using {singleAnalysis.model}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Confidence</span>
-            <span className="font-mono text-lg font-semibold">{singleAnalysis.confidence}%</span>
-          </div>
-          <div className="h-2 rounded-full bg-secondary overflow-hidden">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${singleAnalysis.confidence}%` }}
-            />
-          </div>
+      <StaggerItem index={0} baseDelay={200}>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Monitor className="h-5 w-5 text-muted-foreground" />
+              <CardTitle className="text-base">AI Assessment</CardTitle>
+            </div>
+            <CardDescription>Single-model analysis using {singleAnalysis.model}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Confidence</span>
+              <span className="font-mono text-lg font-semibold">{singleAnalysis.confidence}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-secondary overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-1000 ease-out"
+                style={{ width: `${singleAnalysis.confidence}%`, transitionDelay: '600ms' }}
+              />
+            </div>
 
-          <div className="p-3 rounded-md bg-muted/50 border">
-            <p className="text-sm italic text-muted-foreground">"{singleAnalysis.perspectiveStatement}"</p>
-          </div>
+            <div className="p-3 rounded-md bg-muted/50 border">
+              <p className="text-sm italic text-muted-foreground">"{singleAnalysis.perspectiveStatement}"</p>
+            </div>
 
-          <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Key Findings</p>
-            <ul className="space-y-1.5">
-              {singleAnalysis.keyInsights.map((insight, i) => (
-                <li key={i} className="flex gap-2 text-sm">
-                  <span className="text-primary mt-0.5 shrink-0">→</span>
-                  <span>{insight}</span>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Key Findings</p>
+              <ul className="space-y-1.5">
+                {singleAnalysis.keyInsights.map((insight, i) => (
+                  <li
+                    key={i}
+                    className="flex gap-2 text-sm opacity-0 animate-slide-up"
+                    style={{ animationDelay: `${800 + i * 120}ms`, animationFillMode: 'forwards' }}
+                  >
+                    <span className="text-primary mt-0.5 shrink-0">→</span>
+                    <span>{insight}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {hasViolations && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                  Violations ({allViolations.length})
+                </p>
+                <div className="space-y-2">
+                  {allViolations.map((v, i) => (
+                    <div
+                      key={v.id}
+                      className="flex items-center gap-2 p-2 rounded-md border bg-card opacity-0 animate-slide-up"
+                      style={{ animationDelay: `${1200 + i * 150}ms`, animationFillMode: 'forwards' }}
+                    >
+                      {v.severity === 'critical' ? (
+                        <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 text-disagreement shrink-0" />
+                      )}
+                      <CPTCodeBadge code={v.code} />
+                      <span className="text-xs text-muted-foreground truncate">{v.description}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Separator />
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Overall</p>
+              <p className="text-sm">{singleAnalysis.overallAssessment}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </StaggerItem>
+
+      {/* Blind spots — animate after single model finishes */}
+      <StaggerItem index={0} baseDelay={1600}>
+        <Card className="border-dashed border-2 border-muted-foreground/20">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Eye className="h-4 w-4" />
+              <span className="text-xs font-semibold uppercase tracking-wider">Blind Spots</span>
+            </div>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              {[
+                'No adversarial challenge to assumptions',
+                'No regulatory framework cross-check',
+                'Missing systemic pattern analysis',
+                'No consensus divergence measurement',
+                'Single perspective = single point of failure',
+              ].map((spot, i) => (
+                <li
+                  key={i}
+                  className="flex gap-2 opacity-0 animate-slide-up"
+                  style={{ animationDelay: `${1800 + i * 100}ms`, animationFillMode: 'forwards' }}
+                >
+                  <span className="text-destructive shrink-0">✗</span>
+                  <span>{spot}</span>
                 </li>
               ))}
             </ul>
-          </div>
-
-          {hasViolations && (
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                Violations ({allViolations.length})
-              </p>
-              <div className="space-y-2">
-                {allViolations.map(v => (
-                  <div key={v.id} className="flex items-center gap-2 p-2 rounded-md border bg-card">
-                    {v.severity === 'critical' ? (
-                      <XCircle className="h-4 w-4 text-destructive shrink-0" />
-                    ) : (
-                      <AlertTriangle className="h-4 w-4 text-disagreement shrink-0" />
-                    )}
-                    <CPTCodeBadge code={v.code} />
-                    <span className="text-xs text-muted-foreground truncate">{v.description}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <Separator />
-          <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Overall</p>
-            <p className="text-sm">{singleAnalysis.overallAssessment}</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* What's missing callout */}
-      <Card className="border-dashed border-2 border-muted-foreground/20">
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Eye className="h-4 w-4" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Blind Spots</span>
-          </div>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex gap-2">
-              <span className="text-destructive shrink-0">✗</span>
-              <span>No adversarial challenge to assumptions</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-destructive shrink-0">✗</span>
-              <span>No regulatory framework cross-check</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-destructive shrink-0">✗</span>
-              <span>Missing systemic pattern analysis</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-destructive shrink-0">✗</span>
-              <span>No consensus divergence measurement</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-destructive shrink-0">✗</span>
-              <span>Single perspective = single point of failure</span>
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </StaggerItem>
     </div>
   );
 }
@@ -143,49 +164,62 @@ function SOUPYPanel({ auditCase }: { auditCase: AuditCase }) {
     cc.codes.every(c => auditCase.cptCodes.includes(c))
   );
 
+  // SOUPY side starts later to create dramatic contrast
+  const soupyBase = 800;
+
   return (
     <div className="space-y-4">
       {/* Risk + Consensus */}
       <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <RiskIndicator riskScore={auditCase.riskScore} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex flex-col justify-center">
-            <ConsensusMeter score={auditCase.consensusScore} />
-            {auditCase.consensusScore < 80 && (
-              <div className="mt-2 rounded-md border border-disagreement/30 bg-disagreement/5 p-2">
-                <p className="text-[10px] font-medium text-disagreement">
-                  ⚠ Models diverge — multiple perspectives surfaced
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <StaggerItem index={0} baseDelay={soupyBase}>
+          <Card>
+            <CardContent className="p-4">
+              <RiskIndicator riskScore={auditCase.riskScore} />
+            </CardContent>
+          </Card>
+        </StaggerItem>
+        <StaggerItem index={1} baseDelay={soupyBase}>
+          <Card>
+            <CardContent className="p-4 flex flex-col justify-center">
+              <ConsensusMeter score={auditCase.consensusScore} />
+              {auditCase.consensusScore < 80 && (
+                <div className="mt-2 rounded-md border border-disagreement/30 bg-disagreement/5 p-2">
+                  <p className="text-[10px] font-medium text-disagreement">
+                    ⚠ Models diverge — multiple perspectives surfaced
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </StaggerItem>
       </div>
 
       {/* Code Combination Analysis */}
       {matchingCombos.map((combo, i) => (
-        <CodeCombinationAnalysisCard key={i} analysis={combo} />
+        <StaggerItem key={i} index={i} baseDelay={soupyBase + 300}>
+          <CodeCombinationAnalysisCard analysis={combo} />
+        </StaggerItem>
       ))}
 
       {/* SOUPY Role Cards */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Layers className="h-4 w-4 text-accent" />
-          <h3 className="text-sm font-semibold">4-Model Adversarial Analysis</h3>
+      <StaggerItem index={0} baseDelay={soupyBase + 500}>
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Layers className="h-4 w-4 text-accent" />
+            <h3 className="text-sm font-semibold">4-Model Adversarial Analysis</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {auditCase.analyses.map((analysis, i) => (
+              <AIRoleCard key={analysis.role} analysis={analysis} staggerIndex={i} />
+            ))}
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          {auditCase.analyses.map((analysis, i) => (
-            <AIRoleCard key={analysis.role} analysis={analysis} staggerIndex={i} />
-          ))}
-        </div>
-      </div>
+      </StaggerItem>
 
       {/* Enhanced Appeal Summary */}
-      <EnhancedAppealSummary auditCase={auditCase} />
+      <StaggerItem index={0} baseDelay={soupyBase + 1000}>
+        <EnhancedAppealSummary auditCase={auditCase} />
+      </StaggerItem>
     </div>
   );
 }
@@ -211,7 +245,7 @@ export function ComparisonView() {
       </div>
 
       {/* Case context bar */}
-      <Card>
+      <Card className="opacity-0 animate-slide-up" style={{ animationDelay: '100ms', animationFillMode: 'forwards' }}>
         <CardContent className="p-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
@@ -234,8 +268,8 @@ export function ComparisonView() {
 
       {/* Side-by-side comparison */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
-        {/* Left: Single Model */}
-        <div className="space-y-3">
+        {/* Left: Single Model — slides in from left */}
+        <div className="space-y-3 opacity-0 animate-slide-in-left" style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}>
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-md bg-muted">
               <Monitor className="h-4 w-4 text-muted-foreground" />
@@ -250,14 +284,14 @@ export function ComparisonView() {
         {/* Center divider with arrow */}
         <div className="hidden lg:flex absolute left-1/2 top-12 bottom-0 -translate-x-1/2 flex-col items-center z-10">
           <div className="w-px flex-1 bg-border" />
-          <div className="my-2 p-2 rounded-full border bg-card shadow-sm">
+          <div className="my-2 p-2 rounded-full border bg-card shadow-sm opacity-0 animate-count-up" style={{ animationDelay: '500ms', animationFillMode: 'forwards' }}>
             <ArrowRight className="h-4 w-4 text-accent" />
           </div>
           <div className="w-px flex-1 bg-border" />
         </div>
 
-        {/* Right: SOUPY */}
-        <div className="space-y-3">
+        {/* Right: SOUPY — slides in from right */}
+        <div className="space-y-3 opacity-0 animate-slide-in-right" style={{ animationDelay: '400ms', animationFillMode: 'forwards' }}>
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-md bg-accent/10">
               <Brain className="h-4 w-4 text-accent" />
@@ -270,8 +304,11 @@ export function ComparisonView() {
         </div>
       </div>
 
-      {/* Value gap summary */}
-      <Card className="border-2 border-accent bg-accent/5">
+      {/* Value gap summary — appears last with pop effect */}
+      <Card
+        className="border-2 border-accent bg-accent/5 opacity-0 animate-slide-up"
+        style={{ animationDelay: '2200ms', animationFillMode: 'forwards' }}
+      >
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
             <div className="p-2 rounded-lg bg-accent/10 shrink-0">
@@ -280,24 +317,21 @@ export function ComparisonView() {
             <div className="space-y-3 flex-1">
               <h3 className="font-semibold">The Value Gap</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="rounded-md border bg-card p-3 text-center">
-                  <p className="text-2xl font-semibold text-accent">
-                    {auditCase.analyses.length}x
-                  </p>
-                  <p className="text-xs text-muted-foreground">More Perspectives</p>
-                </div>
-                <div className="rounded-md border bg-card p-3 text-center">
-                  <p className="text-2xl font-semibold text-destructive">
-                    {auditCase.analyses.flatMap(a => a.violations).length - (auditCase.analyses[0]?.violations.length || 0)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Additional Violations Found</p>
-                </div>
-                <div className="rounded-md border bg-card p-3 text-center">
-                  <p className="text-2xl font-semibold text-consensus">
-                    {auditCase.consensusScore}%
-                  </p>
-                  <p className="text-xs text-muted-foreground">Consensus Measured</p>
-                </div>
+                {[
+                  { value: `${auditCase.analyses.length}x`, label: 'More Perspectives', colorClass: 'text-accent' },
+                  { value: `${auditCase.analyses.flatMap(a => a.violations).length - (auditCase.analyses[0]?.violations.length || 0)}`, label: 'Additional Violations Found', colorClass: 'text-destructive' },
+                  { value: `${auditCase.consensusScore}%`, label: 'Consensus Measured', colorClass: 'text-consensus' },
+                ].map((stat, i) => (
+                  <div key={i} className="rounded-md border bg-card p-3 text-center">
+                    <p
+                      className={cn('text-2xl font-semibold opacity-0 animate-count-up', stat.colorClass)}
+                      style={{ animationDelay: `${2400 + i * 200}ms`, animationFillMode: 'forwards' }}
+                    >
+                      {stat.value}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  </div>
+                ))}
               </div>
               <p className="text-sm text-muted-foreground">
                 Single-model AI found {auditCase.analyses[0]?.violations.length || 0} violation(s) with {auditCase.analyses[0]?.confidence}% confidence.
