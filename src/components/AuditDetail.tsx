@@ -3,18 +3,24 @@ import { AIRoleCard } from './AIRoleCard';
 import { ConsensusMeter } from './ConsensusMeter';
 import { RiskIndicator } from './RiskIndicator';
 import { EvidenceChecklist } from './EvidenceChecklist';
-import { AppealSummary } from './AppealSummary';
 import { CPTCodeBadge } from './CPTCodeBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockEvidenceChecklist, mockCodeCombinations } from '@/lib/mockData';
-import { ArrowLeft, CheckCircle, XCircle, HelpCircle, Download } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+// Spark integrations
+import { DecisionPanel } from './spark/DecisionPanel';
+import { EnhancedAppealSummary } from './spark/EnhancedAppealSummary';
+import { CodeCombinationAnalysisCard } from './spark/CodeCombinationAnalysisCard';
+import { PayerExportDialog } from './spark/PayerExportDialog';
+import { PayerTemplateInfo } from './spark/PayerTemplateInfo';
+import { AIAnalysisLoadingState } from './spark/LoadingState';
 
 interface AuditDetailProps {
   auditCase: AuditCase;
@@ -23,13 +29,17 @@ interface AuditDetailProps {
 }
 
 export function AuditDetail({ auditCase, onBack, posture }: AuditDetailProps) {
-  const [decisionNotes, setDecisionNotes] = useState('');
-
-  const allViolations = auditCase.analyses.flatMap(a => a.violations);
   const hasAnalyses = auditCase.analyses.length > 0;
+  const isAnalyzing = auditCase.analyses.some(a => a.status === 'analyzing');
 
-  const approveLabel = posture === 'payment-integrity' ? 'Approve Payment' : 'Documentation Sufficient';
-  const rejectLabel = posture === 'payment-integrity' ? 'Deny Payment' : 'Documentation Deficiency Identified';
+  const handleDecision = (outcome: 'approved' | 'rejected' | 'info-requested', reasoning: string) => {
+    toast.success(`Case ${outcome === 'info-requested' ? 'info requested' : outcome}`);
+  };
+
+  // Find matching code combinations for this case
+  const matchingCombinations = mockCodeCombinations.filter(cc =>
+    cc.codes.every(c => auditCase.cptCodes.includes(c))
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -66,10 +76,12 @@ export function AuditDetail({ auditCase, onBack, posture }: AuditDetailProps) {
           <TabsList>
             <TabsTrigger value="analysis">AI Analysis</TabsTrigger>
             <TabsTrigger value="evidence">Evidence</TabsTrigger>
-            <TabsTrigger value="appeals">Appeals</TabsTrigger>
+            <TabsTrigger value="appeals">Appeals & Export</TabsTrigger>
           </TabsList>
 
           <TabsContent value="analysis" className="space-y-6">
+            {isAnalyzing && <AIAnalysisLoadingState />}
+
             {/* Risk + Consensus */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="rounded-lg border bg-card p-4 shadow-sm">
@@ -86,31 +98,9 @@ export function AuditDetail({ auditCase, onBack, posture }: AuditDetailProps) {
               </div>
             </div>
 
-            {/* Code Combinations */}
-            {mockCodeCombinations.filter(cc => cc.codes.every(c => auditCase.cptCodes.includes(c))).map((combo, i) => (
-              <div key={i} className="rounded-lg border bg-card p-4 shadow-sm space-y-3">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold">Code Combination Analysis</p>
-                  <div className="flex gap-1">
-                    {combo.codes.map(c => <CPTCodeBadge key={c} code={c} />)}
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground">{combo.flagReason}</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-consensus">✓ Common Legitimate Explanations</p>
-                    {combo.legitimateExplanations.map((e, j) => (
-                      <p key={j} className="text-xs text-muted-foreground pl-3 border-l-2 border-consensus/30">{e}</p>
-                    ))}
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-violation">✗ Common Noncompliant Explanations</p>
-                    {combo.noncompliantExplanations.map((e, j) => (
-                      <p key={j} className="text-xs text-muted-foreground pl-3 border-l-2 border-violation/30">{e}</p>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            {/* Code Combination Analysis - using Spark component */}
+            {matchingCombinations.map((combo, i) => (
+              <CodeCombinationAnalysisCard key={i} analysis={combo} />
             ))}
 
             {/* AI Role Cards */}
@@ -130,8 +120,17 @@ export function AuditDetail({ auditCase, onBack, posture }: AuditDetailProps) {
             </div>
           </TabsContent>
 
-          <TabsContent value="appeals">
-            <AppealSummary violations={allViolations} caseNumber={auditCase.caseNumber} />
+          <TabsContent value="appeals" className="space-y-6">
+            {/* Enhanced Appeal Summary with dual-voice analysis */}
+            <EnhancedAppealSummary auditCase={auditCase} />
+
+            {/* Payer template overview */}
+            <PayerTemplateInfo />
+
+            {/* Payer-specific export */}
+            <div className="flex justify-center">
+              <PayerExportDialog auditCase={auditCase} />
+            </div>
           </TabsContent>
         </Tabs>
       ) : (
@@ -141,35 +140,9 @@ export function AuditDetail({ auditCase, onBack, posture }: AuditDetailProps) {
         </div>
       )}
 
-      {/* Decision Panel */}
+      {/* Decision Panel - using Spark component with confirmation dialog */}
       {!auditCase.decision && hasAnalyses && (
-        <div className="sticky bottom-0 bg-background border-t p-4 -mx-8 px-8 shadow-[0_-4px_12px_hsl(var(--border)/0.5)]">
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-1.5 block">Decision Notes</label>
-              <Textarea
-                placeholder="Document your reasoning..."
-                value={decisionNotes}
-                onChange={e => setDecisionNotes(e.target.value)}
-                className="h-20 resize-none"
-              />
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <Button variant="outline" className="gap-1.5" onClick={() => toast.info('Request sent')}>
-                <HelpCircle className="h-4 w-4" />
-                Request Info
-              </Button>
-              <Button variant="destructive" className="gap-1.5" onClick={() => toast.success('Case rejected')}>
-                <XCircle className="h-4 w-4" />
-                {rejectLabel}
-              </Button>
-              <Button className="gap-1.5 bg-consensus hover:bg-consensus/90 text-consensus-foreground" onClick={() => toast.success('Case approved')}>
-                <CheckCircle className="h-4 w-4" />
-                {approveLabel}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DecisionPanel auditCase={auditCase} onDecision={handleDecision} />
       )}
 
       {auditCase.decision && (
