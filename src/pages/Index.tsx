@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { CaseQueue } from '@/components/CaseQueue';
 import { AuditDetail } from '@/components/AuditDetail';
 import { PatternAnalysis } from '@/components/PatternAnalysis';
@@ -7,15 +8,17 @@ import { AuditPostureToggle } from '@/components/AuditPostureToggle';
 import { SOUPYConfigDialog } from '@/components/SOUPYConfigDialog';
 import { ComparisonView } from '@/components/ComparisonView';
 import { PlatformValueCard } from '@/components/PlatformValueCard';
+import { PresentationMode } from '@/components/PresentationMode';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
-import { Scale, Brain, GitCompare, BarChart3 } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation } from 'lucide-react';
 
 const Index = () => {
   const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
   const [posture, setPosture] = useState<AuditPosture>('payment-integrity');
   const [soupyConfig, setSoupyConfig] = useState<SOUPYConfig>(defaultSOUPYConfig);
   const [activeTab, setActiveTab] = useState('queue');
+  const [presentationMode, setPresentationMode] = useState(false);
 
   const handleSelectCase = (c: AuditCase) => {
     setSelectedCase(c);
@@ -26,6 +29,10 @@ const Index = () => {
     setSelectedCase(null);
     setActiveTab('queue');
   };
+
+  if (presentationMode) {
+    return <PresentationMode onExit={() => setPresentationMode(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -46,6 +53,15 @@ const Index = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs border-accent/40 text-accent hover:bg-accent/10"
+              onClick={() => setPresentationMode(true)}
+            >
+              <Presentation className="h-3.5 w-3.5" />
+              Present
+            </Button>
             <AuditPostureToggle posture={posture} onChange={setPosture} />
             <SOUPYConfigDialog config={soupyConfig} onSave={setSoupyConfig} />
           </div>
