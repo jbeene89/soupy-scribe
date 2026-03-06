@@ -8,6 +8,7 @@ import { AuditPostureToggle } from '@/components/AuditPostureToggle';
 import { SOUPYConfigDialog } from '@/components/SOUPYConfigDialog';
 import { ComparisonView } from '@/components/ComparisonView';
 import { PlatformValueCard } from '@/components/PlatformValueCard';
+import { IntegrationArchitecture } from '@/components/IntegrationArchitecture';
 import { PresentationMode } from '@/components/PresentationMode';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
@@ -146,7 +147,10 @@ const Index = () => {
             </TabsContent>
 
             <TabsContent value="platform">
-              <PlatformValueCard />
+              <div className="space-y-6">
+                <PlatformValueCard />
+                <IntegrationArchitecture />
+              </div>
             </TabsContent>
 
             <TabsContent value="history">
