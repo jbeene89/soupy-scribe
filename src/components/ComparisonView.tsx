@@ -20,6 +20,10 @@ import {
   Lightbulb,
   Eye,
   Layers,
+  TrendingUp,
+  Shield,
+  Stethoscope,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
