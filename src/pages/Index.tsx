@@ -6,9 +6,10 @@ import { PatternAnalysis } from '@/components/PatternAnalysis';
 import { AuditPostureToggle } from '@/components/AuditPostureToggle';
 import { SOUPYConfigDialog } from '@/components/SOUPYConfigDialog';
 import { ComparisonView } from '@/components/ComparisonView';
+import { PlatformValueCard } from '@/components/PlatformValueCard';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
-import { Scale, Brain, GitCompare } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3 } from 'lucide-react';
 
 const Index = () => {
   const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
@@ -105,6 +106,10 @@ const Index = () => {
                 <GitCompare className="h-3.5 w-3.5" />
                 Value Demo
               </TabsTrigger>
+              <TabsTrigger value="platform" className="gap-1.5">
+                <BarChart3 className="h-3.5 w-3.5" />
+                Platform Value
+              </TabsTrigger>
               <TabsTrigger value="history">Case History</TabsTrigger>
             </TabsList>
 
@@ -122,6 +127,10 @@ const Index = () => {
 
             <TabsContent value="comparison">
               <ComparisonView />
+            </TabsContent>
+
+            <TabsContent value="platform">
+              <PlatformValueCard />
             </TabsContent>
 
             <TabsContent value="history">
