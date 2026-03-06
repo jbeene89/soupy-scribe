@@ -73,7 +73,7 @@ export function DecisionPanel({ auditCase, onDecision }: DecisionPanelProps) {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             <Button
               onClick={() => handleDecisionClick('approved')}
-              disabled={!hasAnalyses}
+              disabled={!hasCompleteAnalyses}
               className="flex-1 bg-consensus hover:bg-consensus/90 text-consensus-foreground"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
@@ -82,7 +82,7 @@ export function DecisionPanel({ auditCase, onDecision }: DecisionPanelProps) {
 
             <Button
               onClick={() => handleDecisionClick('info-requested')}
-              disabled={!hasAnalyses}
+              disabled={!hasCompleteAnalyses}
               variant="outline"
               className="flex-1"
             >
@@ -92,7 +92,7 @@ export function DecisionPanel({ auditCase, onDecision }: DecisionPanelProps) {
 
             <Button
               onClick={() => handleDecisionClick('rejected')}
-              disabled={!hasAnalyses}
+              disabled={!hasCompleteAnalyses}
               variant="destructive"
               className="flex-1"
             >
@@ -101,11 +101,11 @@ export function DecisionPanel({ auditCase, onDecision }: DecisionPanelProps) {
             </Button>
           </div>
 
-          {!hasAnalyses && (
+          {!hasCompleteAnalyses && (
             <p className="text-xs text-muted-foreground mt-3 text-center">
-              {hasCompleteAnalyses
+              {hasAnalyses
                 ? 'Some AI analyses are still running...'
-                : 'Waiting for all AI analyses to complete...'}
+                : 'Waiting for AI analyses to begin...'}
             </p>
           )}
         </div>

@@ -13,6 +13,13 @@ const roleIcons: Record<SOUPYRole, React.ElementType> = {
   breaker: Sparkles,
 };
 
+const roleIconBg: Record<SOUPYRole, string> = {
+  builder: 'bg-role-builder/10',
+  redteam: 'bg-role-redteam/10',
+  analyst: 'bg-role-analyst/10',
+  breaker: 'bg-role-breaker/10',
+};
+
 const roleCardClass: Record<SOUPYRole, string> = {
   builder: 'card-role-builder',
   redteam: 'card-role-redteam',
@@ -47,7 +54,7 @@ export function AIRoleCard({ analysis, staggerIndex }: AIRoleCardProps) {
       {/* Header */}
       <div className="p-4 pb-3 border-b">
         <div className="flex items-center gap-3">
-          <div className={cn('p-2 rounded-md', `bg-${meta.color}/10`)}>
+          <div className={cn('p-2 rounded-md', roleIconBg[analysis.role])}>
             <Icon className="h-5 w-5" style={{ color: `hsl(var(--${meta.color}))` }} />
           </div>
           <div className="flex-1 min-w-0">
