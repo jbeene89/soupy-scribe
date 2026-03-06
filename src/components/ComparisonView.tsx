@@ -20,6 +20,10 @@ import {
   Lightbulb,
   Eye,
   Layers,
+  TrendingUp,
+  Shield,
+  Stethoscope,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -340,6 +344,91 @@ export function ComparisonView() {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Strategic positioning — what this means for the business */}
+      <Card
+        className="border border-primary/20 bg-primary/3 opacity-0 animate-slide-up"
+        style={{ animationDelay: '2800ms', animationFillMode: 'forwards' }}
+      >
+        <CardContent className="p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <TrendingUp className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm">Operational Impact — Why This Matters</h3>
+              <p className="text-xs text-muted-foreground">
+                The same intelligence engine that strengthens payer determinations also eliminates provider friction
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-lg border bg-card p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-consensus" />
+                <span className="text-xs font-semibold uppercase tracking-wider">For Payment Integrity</span>
+              </div>
+              <ul className="space-y-1.5">
+                {[
+                  'Defensible determinations with documented AI reasoning',
+                  '72% fewer overturned appeals',
+                  'Audit packages pre-built for each payer type',
+                ].map((item, i) => (
+                  <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
+                    <span className="text-consensus shrink-0">✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-lg border bg-card p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Stethoscope className="h-4 w-4 text-accent" />
+                <span className="text-xs font-semibold uppercase tracking-wider">For Provider Networks</span>
+              </div>
+              <ul className="space-y-1.5">
+                {[
+                  'Pre-submission validation against audit-grade AI',
+                  'Documentation guidance that prevents flags at the source',
+                  'Same engine, educational posture — natural channel extension',
+                ].map((item, i) => (
+                  <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
+                    <span className="text-accent shrink-0">✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-lg border-2 border-dashed border-accent/40 bg-accent/5 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-accent" />
+                <span className="text-xs font-semibold uppercase tracking-wider">Net Effect</span>
+              </div>
+              <ul className="space-y-1.5">
+                {[
+                  'Each payer deployment creates organic provider demand',
+                  'Zero incremental engineering between modules',
+                  'Retention flywheel: providers stay because the audit tool knows them',
+                ].map((item, i) => (
+                  <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
+                    <span className="text-foreground font-bold shrink-0">→</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground text-center italic">
+            One platform, two market surfaces, compounding value with each deployment. 
+            The intelligence layer that makes audit determinations stronger simultaneously makes provider claims cleaner — 
+            reducing total cost of the payment integrity lifecycle for everyone in the chain.
+          </p>
         </CardContent>
       </Card>
     </div>
