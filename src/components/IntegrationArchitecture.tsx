@@ -12,8 +12,11 @@ import {
   Building2,
   Stethoscope,
   CheckCircle2,
-  Circle,
   Layers,
+  Search,
+  BarChart3,
+  Zap,
+  BookOpen,
 } from 'lucide-react';
 
 interface IntegrationNodeProps {
@@ -22,9 +25,10 @@ interface IntegrationNodeProps {
   sub: string;
   status: 'live' | 'ready' | 'planned';
   color: string;
+  isLyric?: boolean;
 }
 
-function IntegrationNode({ icon, label, sub, status, color }: IntegrationNodeProps) {
+function IntegrationNode({ icon, label, sub, status, color, isLyric }: IntegrationNodeProps) {
   const statusMap = {
     live: { label: 'Live', class: 'bg-consensus/10 text-consensus border-consensus/30' },
     ready: { label: 'Ready', class: 'bg-primary/10 text-primary border-primary/30' },
@@ -41,9 +45,16 @@ function IntegrationNode({ icon, label, sub, status, color }: IntegrationNodePro
           <p className="text-[10px] text-muted-foreground leading-tight">{sub}</p>
         </div>
       </div>
-      <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${s.class}`}>
-        {s.label}
-      </Badge>
+      <div className="flex items-center gap-1.5">
+        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${s.class}`}>
+          {s.label}
+        </Badge>
+        {isLyric && (
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-primary/5 text-primary border-primary/20">
+            Lyric Product
+          </Badge>
+        )}
+      </div>
     </div>
   );
 }
@@ -76,36 +87,129 @@ export function IntegrationArchitecture() {
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Integration Architecture</h2>
             <p className="text-xs text-muted-foreground">
-              Plugs into existing infrastructure — no rip-and-replace required
+              SOUPY enhances every Lyric product — replaces none of them
             </p>
           </div>
-          <Badge variant="outline" className="ml-auto text-[10px]">Enterprise Ready</Badge>
+          <Badge variant="outline" className="ml-auto text-[10px]">Additive Layer</Badge>
         </div>
 
-        {/* Data Sources → SOUPY Engine → Outputs */}
         <div className="space-y-6">
-          {/* Row 1: Data Ingestion */}
+          {/* Row 1: Existing Lyric Products SOUPY enhances */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <Database className="h-3.5 w-3.5 text-muted-foreground" />
+              <Layers className="h-3.5 w-3.5 text-primary" />
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Data Ingestion Layer
+                Existing Lyric Products (Enhanced by SOUPY)
               </span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <IntegrationNode
-                icon={<FileText className="h-3.5 w-3.5 text-primary" />}
-                label="835/837 Claims Feeds"
-                sub="Real-time claim ingestion"
+                icon={<Shield className="h-3.5 w-3.5 text-primary" />}
+                label="ClaimsXten"
+                sub="SOUPY adds adversarial depth to edits"
                 status="ready"
                 color="bg-primary/10"
+                isLyric
               />
               <IntegrationNode
-                icon={<Server className="h-3.5 w-3.5 text-primary" />}
-                label="HL7 FHIR / EHR"
-                sub="Epic, Cerner, athenahealth"
-                status="planned"
+                icon={<Search className="h-3.5 w-3.5 text-primary" />}
+                label="Replay"
+                sub="SOUPY adds multi-perspective reasoning"
+                status="ready"
                 color="bg-primary/10"
+                isLyric
+              />
+              <IntegrationNode
+                icon={<BarChart3 className="h-3.5 w-3.5 text-primary" />}
+                label="Virtuoso"
+                sub="SOUPY feeds appeal-resilience metrics"
+                status="ready"
+                color="bg-primary/10"
+                isLyric
+              />
+              <IntegrationNode
+                icon={<Database className="h-3.5 w-3.5 text-primary" />}
+                label="ClaimShark"
+                sub="SOUPY adds transparent reasoning trails"
+                status="ready"
+                color="bg-primary/10"
+                isLyric
+              />
+            </div>
+          </div>
+
+          <FlowArrow direction="down" label="SOUPY enhances output from each product" />
+
+          {/* Row 2: SOUPY Intelligence Layer */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Brain className="h-3.5 w-3.5 text-accent" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                SOUPY Intelligence Layer (What's New)
+              </span>
+            </div>
+            <div className="rounded-xl border-2 border-accent/30 bg-gradient-to-r from-accent/5 via-card to-primary/5 p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="rounded-lg border bg-card p-3 text-center space-y-1">
+                  <Brain className="h-5 w-5 text-accent mx-auto" />
+                  <p className="text-xs font-semibold">Adversarial AI Reasoning</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    4 models debate every determination — surfaces weaknesses before providers do
+                  </p>
+                  <Badge variant="outline" className="text-[9px] bg-accent/10 text-accent border-accent/30">
+                    Nobody Has This
+                  </Badge>
+                </div>
+                <div className="rounded-lg border bg-card p-3 text-center space-y-1">
+                  <FileText className="h-5 w-5 text-consensus mx-auto" />
+                  <p className="text-xs font-semibold">Pre-Built Appeal Defense</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Both sides argued at determination — appeal response ready before it's filed
+                  </p>
+                  <Badge variant="outline" className="text-[9px] bg-consensus/10 text-consensus border-consensus/30">
+                    Nobody Has This
+                  </Badge>
+                </div>
+                <div className="rounded-lg border bg-card p-3 text-center space-y-1">
+                  <Stethoscope className="h-5 w-5 text-primary mx-auto" />
+                  <p className="text-xs font-semibold">Provider Compliance Module</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Same engine, compliance posture — providers pre-validate against audit-grade AI
+                  </p>
+                  <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/30">
+                    New Revenue
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <FlowArrow direction="down" label="Also consumes data from Lyric content libraries" />
+
+          {/* Row 3: Data Sources + Content */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Database className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Data Sources & Content Libraries
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <IntegrationNode
+                icon={<BookOpen className="h-3.5 w-3.5 text-primary" />}
+                label="KnowledgePacks"
+                sub="Clinical content feeds SOUPY context"
+                status="ready"
+                color="bg-primary/10"
+                isLyric
+              />
+              <IntegrationNode
+                icon={<FileText className="h-3.5 w-3.5 text-primary" />}
+                label="Concept Libraries"
+                sub="Policy content for reasoning"
+                status="ready"
+                color="bg-primary/10"
+                isLyric
               />
               <IntegrationNode
                 icon={<Database className="h-3.5 w-3.5 text-accent" />}
@@ -115,100 +219,10 @@ export function IntegrationArchitecture() {
                 color="bg-accent/10"
               />
               <IntegrationNode
-                icon={<Building2 className="h-3.5 w-3.5 text-accent" />}
-                label="Payer Policy Libraries"
-                sub="Internal medical policies"
-                status="planned"
-                color="bg-accent/10"
-              />
-            </div>
-          </div>
-
-          {/* Arrow down */}
-          <FlowArrow direction="down" label="Normalized claim + clinical data" />
-
-          {/* Row 2: Core Engine */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Brain className="h-3.5 w-3.5 text-primary" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                SOUPY Intelligence Engine
-              </span>
-            </div>
-            <div className="rounded-xl border-2 border-primary/20 bg-gradient-to-r from-primary/5 via-card to-accent/5 p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="rounded-lg border bg-card p-3 text-center space-y-1">
-                  <Shield className="h-5 w-5 text-primary mx-auto" />
-                  <p className="text-xs font-semibold">ClaimsXten Enhancement</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    AI reasoning on top of existing rules engine — catches what deterministic logic misses
-                  </p>
-                  <Badge variant="outline" className="text-[9px] bg-consensus/10 text-consensus border-consensus/30">
-                    Direct Integration
-                  </Badge>
-                </div>
-                <div className="rounded-lg border bg-card p-3 text-center space-y-1">
-                  <Layers className="h-5 w-5 text-accent mx-auto" />
-                  <p className="text-xs font-semibold">Lyric 42 Pipeline</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Pre-submission validation — flag issues before they become audit targets
-                  </p>
-                  <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/30">
-                    API Ready
-                  </Badge>
-                </div>
-                <div className="rounded-lg border bg-card p-3 text-center space-y-1">
-                  <Brain className="h-5 w-5 text-foreground mx-auto" />
-                  <p className="text-xs font-semibold">Multi-Agent Debate</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    4 adversarial AI roles stress-test every decision for defensibility
-                  </p>
-                  <Badge variant="outline" className="text-[9px] bg-consensus/10 text-consensus border-consensus/30">
-                    Live
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Arrow down */}
-          <FlowArrow direction="down" label="Audit decisions + appeal packages + compliance signals" />
-
-          {/* Row 3: Output Destinations */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle2 className="h-3.5 w-3.5 text-consensus" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Output Destinations
-              </span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <IntegrationNode
-                icon={<Building2 className="h-3.5 w-3.5 text-primary" />}
-                label="Payer Case Management"
-                sub="Audit decisions + evidence"
+                icon={<Server className="h-3.5 w-3.5 text-muted-foreground" />}
+                label="835/837 & HL7 FHIR"
+                sub="Existing claim feeds"
                 status="ready"
-                color="bg-primary/10"
-              />
-              <IntegrationNode
-                icon={<FileText className="h-3.5 w-3.5 text-accent" />}
-                label="Appeal Portal Export"
-                sub="Pre-built defense packages"
-                status="ready"
-                color="bg-accent/10"
-              />
-              <IntegrationNode
-                icon={<Stethoscope className="h-3.5 w-3.5 text-consensus" />}
-                label="Provider Dashboard"
-                sub="Compliance coaching feed"
-                status="live"
-                color="bg-consensus/10"
-              />
-              <IntegrationNode
-                icon={<Database className="h-3.5 w-3.5 text-muted-foreground" />}
-                label="Data Warehouse / BI"
-                sub="Pattern analytics export"
-                status="planned"
                 color="bg-muted"
               />
             </div>
@@ -216,11 +230,12 @@ export function IntegrationArchitecture() {
         </div>
 
         {/* Bottom note */}
-        <div className="mt-5 rounded-md border-2 border-dashed border-primary/20 bg-primary/5 p-3">
+        <div className="mt-5 rounded-md border-2 border-dashed border-accent/20 bg-accent/5 p-3">
           <p className="text-[11px] text-foreground font-medium">
-            Zero infrastructure disruption.
+            Additive, not disruptive.
             <span className="text-muted-foreground font-normal ml-1">
-              SOUPY sits alongside existing systems as an intelligence layer — API-first architecture means integration in weeks, not quarters.
+              SOUPY consumes output from your existing products and adds adversarial intelligence,
+              appeal defense, and provider revenue — capabilities that don't exist in the current portfolio.
             </span>
           </p>
         </div>

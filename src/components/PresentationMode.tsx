@@ -6,7 +6,6 @@ import { Separator } from '@/components/ui/separator';
 import { ConsensusMeter } from './ConsensusMeter';
 import { RiskIndicator } from './RiskIndicator';
 import { CPTCodeBadge } from './CPTCodeBadge';
-import { PlatformValueCard } from './PlatformValueCard';
 import { mockCases, mockCodeCombinations } from '@/lib/mockData';
 import { cn } from '@/lib/utils';
 import {
@@ -28,6 +27,10 @@ import {
   Eye,
   Layers,
   Monitor,
+  Sparkles,
+  Lock,
+  Users,
+  GitCompare,
 } from 'lucide-react';
 
 const demoCase = mockCases.find(c => c.analyses.length > 0)!;
@@ -50,30 +53,13 @@ function Slide({ children, className }: SlideProps) {
 }
 
 const SLIDES = [
-  {
-    id: 'problem',
-    label: 'The Problem',
-  },
-  {
-    id: 'live-case',
-    label: 'Live Case',
-  },
-  {
-    id: 'single-vs-soupy',
-    label: 'Single AI vs SOUPY',
-  },
-  {
-    id: 'dual-market',
-    label: 'Two Markets',
-  },
-  {
-    id: 'flywheel',
-    label: 'The Flywheel',
-  },
-  {
-    id: 'numbers',
-    label: 'The Numbers',
-  },
+  { id: 'gap', label: 'The Gap' },
+  { id: 'live-case', label: 'Live Case' },
+  { id: 'single-vs-soupy', label: 'The Blindspot' },
+  { id: 'appeal-defense', label: 'Appeal Defense' },
+  { id: 'provider-revenue', label: 'New Revenue' },
+  { id: 'flywheel', label: 'The Flywheel' },
+  { id: 'exclusivity', label: 'The Offer' },
 ];
 
 export function PresentationMode({ onExit }: PresentationModeProps) {
@@ -82,7 +68,6 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
   const next = () => setCurrentSlide(s => Math.min(s + 1, SLIDES.length - 1));
   const prev = () => setCurrentSlide(s => Math.max(s - 1, 0));
 
-  // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
@@ -93,7 +78,6 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [onExit]);
 
-  // Swipe support for phone
   useEffect(() => {
     let startX = 0;
     const touchStart = (e: TouchEvent) => { startX = e.touches[0].clientX; };
@@ -127,7 +111,6 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           <Badge variant="outline" className="text-[10px] ml-2">Executive Preview</Badge>
         </div>
         <div className="flex items-center gap-2">
-          {/* Progress dots */}
           <div className="hidden sm:flex items-center gap-1.5 mr-3">
             {SLIDES.map((s, i) => (
               <button
@@ -151,38 +134,66 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
 
       {/* Slide content */}
       <div className="container mx-auto px-6 sm:px-10 py-8 max-w-5xl">
-        {/* SLIDE 1: The Problem */}
+
+        {/* SLIDE 1: The Gap — what Lyric doesn't have */}
         {currentSlide === 0 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8">
               <div className="space-y-4">
-                <Badge variant="outline" className="text-xs">The Problem</Badge>
+                <Badge variant="outline" className="text-xs">The Capability Gap</Badge>
                 <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
-                  Payment integrity runs on
-                  <span className="text-destructive"> single-perspective AI</span>
-                  <span className="text-muted-foreground">.</span>
+                  ClaimsXten finds violations.
+                  <br />
+                  <span className="text-muted-foreground">It can't </span>
+                  <span className="text-destructive">defend them.</span>
                 </h2>
                 <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
-                  One model. One viewpoint. One chance to get it right.
-                  When that model has blind spots, you don't find out until the appeal lands on your desk.
+                  Replay audits. Virtuoso orchestrates. ClaimsXten edits.
+                  But when a provider appeals, the determination stands on a single AI perspective
+                  with no adversarial stress-testing and no pre-built defense.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
-                  { stat: '$4.7B', label: 'Annual appeal costs industry-wide', icon: DollarSign },
-                  { stat: '38%', label: 'Of denials overturned on appeal', icon: TrendingDown },
-                  { stat: '4.2 hrs', label: 'Average auditor time per contested case', icon: AlertTriangle },
+                  {
+                    stat: '38%',
+                    label: 'Of denials overturned on appeal',
+                    sub: 'Because determinations weren\'t built to withstand challenge',
+                    icon: TrendingDown,
+                    color: 'text-destructive',
+                  },
+                  {
+                    stat: '1',
+                    label: 'AI perspective per determination',
+                    sub: 'Single model = single point of failure',
+                    icon: Monitor,
+                    color: 'text-muted-foreground',
+                  },
+                  {
+                    stat: '$0',
+                    label: 'Revenue from provider side',
+                    sub: 'Providers are audited — not served',
+                    icon: Stethoscope,
+                    color: 'text-accent',
+                  },
                 ].map((item, i) => (
                   <Card key={i}>
                     <CardContent className="p-5 text-center space-y-2">
                       <item.icon className="h-6 w-6 mx-auto text-muted-foreground" />
-                      <p className="text-2xl font-bold font-mono text-destructive">{item.stat}</p>
-                      <p className="text-xs text-muted-foreground">{item.label}</p>
+                      <p className={cn('text-2xl font-bold font-mono', item.color)}>{item.stat}</p>
+                      <p className="text-xs font-medium">{item.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{item.sub}</p>
                     </CardContent>
                   </Card>
                 ))}
               </div>
+
+              <p className="text-sm text-muted-foreground italic max-w-2xl">
+                This isn't about replacing what works. It's about adding the layer that's missing —
+                the adversarial intelligence that makes every determination appeal-proof and opens
+                an entirely new revenue channel.
+              </p>
             </div>
           </Slide>
         )}
@@ -194,10 +205,11 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
               <div className="space-y-2">
                 <Badge variant="outline" className="text-xs">Live Case</Badge>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  Real audit case. Real complexity.
+                  What ClaimsXten flags. What SOUPY <span className="text-accent">reveals.</span>
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  High-value ED + Critical Care combination — one of the most contested billing patterns in medicine.
+                  High-value ED + Critical Care combination — ClaimsXten catches the edit.
+                  SOUPY stress-tests whether it holds up under appeal.
                 </p>
               </div>
 
@@ -224,7 +236,8 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                     <div>
                       <ConsensusMeter score={demoCase.consensusScore} />
                       <p className="text-xs text-muted-foreground mt-2">
-                        4 AI models analyzed this case independently and reached {demoCase.consensusScore}% consensus.
+                        4 AI models analyzed this case independently and reached {demoCase.consensusScore}% consensus —
+                        disagreement zones are where appeals succeed.
                       </p>
                     </div>
                   </div>
@@ -234,24 +247,29 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 3: Single vs SOUPY */}
+        {/* SLIDE 3: The Blindspot — single AI vs adversarial */}
         {currentSlide === 2 && (
           <Slide>
             <div className="space-y-6">
               <div className="space-y-2">
-                <Badge variant="outline" className="text-xs">The Difference</Badge>
+                <Badge variant="outline" className="text-xs">The Blindspot</Badge>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  Same case. <span className="text-accent">Dramatically different depth.</span>
+                  Your AI agrees with itself.
+                  <span className="text-accent"> That's the problem.</span>
                 </h2>
+                <p className="text-sm text-muted-foreground max-w-2xl">
+                  Current AI gives one answer with high confidence. SOUPY forces 4 independent
+                  perspectives to disagree — surfacing the exact weaknesses a provider attorney will exploit.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Single model */}
+                {/* Current state */}
                 <Card className="border-muted-foreground/20">
                   <CardContent className="p-5 space-y-4">
                     <div className="flex items-center gap-2">
                       <Monitor className="h-5 w-5 text-muted-foreground" />
-                      <span className="font-semibold text-sm">Standard AI</span>
+                      <span className="font-semibold text-sm">Current: Single-Model AI</span>
                     </div>
                     <div className="text-center py-4">
                       <p className="text-4xl font-bold font-mono">{singleViolations.length}</p>
@@ -259,11 +277,16 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                     </div>
                     <div className="text-center py-2">
                       <p className="text-3xl font-bold font-mono">{demoCase.analyses[0]?.confidence}%</p>
-                      <p className="text-sm text-muted-foreground">confidence (single perspective)</p>
+                      <p className="text-sm text-muted-foreground">confidence (untested)</p>
                     </div>
                     <Separator />
                     <div className="space-y-1.5">
-                      {['No adversarial challenge', 'No regulatory cross-check', 'No consensus measurement', 'Single point of failure'].map((item, i) => (
+                      {[
+                        'No adversarial challenge to its own assumptions',
+                        'Can\'t predict which findings survive appeal',
+                        'No divergence measurement between perspectives',
+                        'Provider attorney finds the weakness first',
+                      ].map((item, i) => (
                         <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
                           <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
                           <span>{item}</span>
@@ -278,19 +301,24 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   <CardContent className="p-5 space-y-4">
                     <div className="flex items-center gap-2">
                       <Brain className="h-5 w-5 text-accent" />
-                      <span className="font-semibold text-sm text-accent">SOUPY ThinkTank</span>
+                      <span className="font-semibold text-sm text-accent">+ SOUPY Layer</span>
                     </div>
                     <div className="text-center py-4">
                       <p className="text-4xl font-bold font-mono text-accent">{allViolations.length}</p>
-                      <p className="text-sm text-muted-foreground">violations found</p>
+                      <p className="text-sm text-muted-foreground">violations stress-tested</p>
                     </div>
                     <div className="text-center py-2">
                       <p className="text-3xl font-bold font-mono text-accent">{demoCase.analyses.length}</p>
-                      <p className="text-sm text-muted-foreground">independent perspectives</p>
+                      <p className="text-sm text-muted-foreground">adversarial perspectives</p>
                     </div>
                     <Separator />
                     <div className="space-y-1.5">
-                      {['Builder + Red Team + Analyst + Breaker', 'Regulatory framework validation', 'Consensus divergence mapped', 'Pre-built appeal defense'].map((item, i) => (
+                      {[
+                        'Builder defends, Red Team attacks, Analyst maps regs',
+                        'Consensus divergence shows appeal vulnerability',
+                        'Every determination pre-tested against challenge',
+                        'Appeal defense auto-generated with evidence trail',
+                      ].map((item, i) => (
                         <div key={i} className="flex items-center gap-2 text-sm">
                           <CheckCircle className="h-3.5 w-3.5 text-consensus shrink-0" />
                           <span>{item}</span>
@@ -303,26 +331,107 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
 
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">
-                  SOUPY found <span className="font-semibold text-accent">{allViolations.length - singleViolations.length} additional violations</span> that standard AI missed entirely.
-                  Each one is a potential overturned appeal — or a missed recovery.
+                  SOUPY found <span className="font-semibold text-accent">{allViolations.length - singleViolations.length} additional risk vectors</span> and
+                  identified exactly which findings would survive appeal — and which wouldn't.
+                  <span className="font-medium text-foreground"> That's the layer ClaimsXten doesn't have.</span>
                 </p>
               </div>
             </div>
           </Slide>
         )}
 
-        {/* SLIDE 4: Two Markets */}
+        {/* SLIDE 4: Appeal Defense — nobody does this */}
         {currentSlide === 3 && (
+          <Slide>
+            <div className="flex-1 flex flex-col justify-center space-y-8">
+              <div className="space-y-4">
+                <Badge variant="outline" className="text-xs">New Capability</Badge>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
+                  The first AI that builds
+                  <span className="text-accent"> the defense</span> before
+                  <span className="text-muted-foreground"> the appeal arrives.</span>
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
+                  Today, when a provider appeals, your team starts from scratch — pulling documentation,
+                  building arguments, researching regulations. SOUPY generates the defense package
+                  at the moment of determination.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <Card>
+                  <CardContent className="p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                      <span className="font-semibold text-sm">Current Appeal Response</span>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { step: 'Appeal arrives', time: 'Day 0' },
+                        { step: 'Pull original claim + notes', time: '2-4 hrs' },
+                        { step: 'Research regulatory basis', time: '1-2 hrs' },
+                        { step: 'Draft response', time: '2-3 hrs' },
+                        { step: 'Legal review', time: '1-2 days' },
+                        { step: 'Send response', time: 'Day 3-5' },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm border-b border-border/50 pb-1.5">
+                          <span className="text-muted-foreground">{item.step}</span>
+                          <span className="font-mono text-xs text-destructive">{item.time}</span>
+                        </div>
+                      ))}
+                      <p className="text-xs font-semibold text-destructive pt-1">Total: 3-5 business days per appeal</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 border-accent">
+                  <CardContent className="p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-5 w-5 text-accent" />
+                      <span className="font-semibold text-sm text-accent">SOUPY Appeal Defense</span>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { step: 'Defense generated at determination', time: 'Instant' },
+                        { step: 'Both sides pre-argued (payer + provider)', time: 'Included' },
+                        { step: 'Regulatory citations auto-attached', time: 'Included' },
+                        { step: 'Evidence checklist with gap analysis', time: 'Included' },
+                        { step: 'Payer-specific format (UHC, Aetna, etc.)', time: 'Included' },
+                        { step: 'Export-ready when appeal arrives', time: 'Day 0' },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm border-b border-border/50 pb-1.5">
+                          <span>{item.step}</span>
+                          <span className="font-mono text-xs text-consensus">{item.time}</span>
+                        </div>
+                      ))}
+                      <p className="text-xs font-semibold text-consensus pt-1">Appeal response ready before the appeal is filed</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <p className="text-sm text-muted-foreground italic text-center">
+                No product in your portfolio generates the defense. SOUPY is the only system that argues both sides
+                at the point of determination — making every audit decision pre-tested against challenge.
+              </p>
+            </div>
+          </Slide>
+        )}
+
+        {/* SLIDE 5: Provider Revenue — entirely new market */}
+        {currentSlide === 4 && (
           <Slide>
             <div className="space-y-6">
               <div className="space-y-2">
-                <Badge variant="outline" className="text-xs">Market Architecture</Badge>
+                <Badge variant="outline" className="text-xs">New Revenue Stream</Badge>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  One engine. <span className="text-primary">Two revenue surfaces.</span>
+                  Every provider you audit is a
+                  <span className="text-accent"> customer you're not selling to.</span>
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-2xl">
-                  The same intelligence that strengthens payer determinations also eliminates provider friction — 
-                  and providers will pay for that.
+                  Lyric audits providers. But providers would pay to validate their claims
+                  against the same AI before submission — eliminating flags at the source.
+                  That's a new revenue surface from every existing payer relationship.
                 </p>
               </div>
 
@@ -334,16 +443,16 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                         <Building2 className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <p className="font-semibold">Payer Module</p>
-                        <p className="text-xs text-muted-foreground">Sell to payment integrity teams</p>
+                        <p className="font-semibold">Existing: Payer Module</p>
+                        <p className="text-xs text-muted-foreground">What Lyric does today</p>
                       </div>
                     </div>
                     <ul className="space-y-2">
                       {[
-                        'Adversarial AI audit intelligence',
-                        '3.2x faster determinations',
-                        '72% fewer overturned appeals',
-                        'Payer-specific export packages',
+                        'SOUPY enhances ClaimsXten determinations',
+                        'Adversarial stress-testing on every flag',
+                        'Pre-built appeal defense packages',
+                        'Transparent reasoning trails for compliance',
                       ].map((item, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm">
                           <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -354,23 +463,26 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   </CardContent>
                 </Card>
 
-                <Card className="border-accent/30">
+                <Card className="border-2 border-accent relative overflow-hidden">
+                  <div className="absolute top-0 right-0 px-2 py-1 bg-accent text-accent-foreground text-[10px] font-semibold rounded-bl-lg">
+                    NEW MARKET
+                  </div>
                   <CardContent className="p-6 space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-lg bg-accent/10">
                         <Stethoscope className="h-6 w-6 text-accent" />
                       </div>
                       <div>
-                        <p className="font-semibold">Provider Module</p>
-                        <p className="text-xs text-muted-foreground">Payer sells to their provider network</p>
+                        <p className="font-semibold">New: Provider Module</p>
+                        <p className="text-xs text-muted-foreground">Same engine — compliance posture</p>
                       </div>
                     </div>
                     <ul className="space-y-2">
                       {[
-                        'Pre-submission documentation validation',
-                        '91% clean claim rate',
-                        'Same AI — educational posture',
-                        '$1.2M annual admin savings per facility',
+                        'Pre-submission validation against audit-grade AI',
+                        'Documentation guidance that prevents flags at source',
+                        '"Audit insurance" — providers pay to avoid surprises',
+                        'Sold through existing payer channel relationships',
                       ].map((item, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm">
                           <CheckCircle className="h-4 w-4 text-accent mt-0.5 shrink-0" />
@@ -384,18 +496,34 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
 
               <div className="flex items-center justify-center gap-3 py-2">
                 <div className="h-px flex-1 bg-border" />
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full border bg-accent/5">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-dashed border-accent/30 bg-accent/5">
                   <Zap className="h-4 w-4 text-accent" />
-                  <span className="text-xs font-semibold text-accent">Zero incremental engineering between modules</span>
+                  <span className="text-xs font-semibold text-accent">Zero incremental engineering — same AI, different posture</span>
                 </div>
                 <div className="h-px flex-1 bg-border" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { value: '2x', label: 'Revenue per payer deal', sub: 'Payer + their provider network', color: 'text-primary' },
+                  { value: '$0', label: 'Added engineering cost', sub: 'One engine, two products', color: 'text-consensus' },
+                  { value: '$1.2M', label: 'Provider savings per facility/yr', sub: 'They\'ll pay for that', color: 'text-accent' },
+                ].map((stat, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-4 text-center space-y-1">
+                      <p className={cn('text-2xl font-bold font-mono', stat.color)}>{stat.value}</p>
+                      <p className="text-xs font-semibold">{stat.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{stat.sub}</p>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </div>
           </Slide>
         )}
 
-        {/* SLIDE 5: Flywheel */}
-        {currentSlide === 4 && (
+        {/* SLIDE 6: Flywheel */}
+        {currentSlide === 5 && (
           <Slide>
             <div className="space-y-6">
               <div className="space-y-2">
@@ -403,36 +531,40 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
                   Each payer deployment <span className="text-accent">creates provider demand.</span>
                 </h2>
+                <p className="text-sm text-muted-foreground max-w-2xl">
+                  Providers who get audited by SOUPY-enhanced determinations see the reasoning transparency
+                  and want the same AI validating their claims before submission.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   {
                     step: '01',
-                    icon: Building2,
-                    title: 'Payer Adopts',
-                    body: 'AI audit intelligence replaces rules-only approach. Fewer false flags, faster decisions.',
+                    icon: Layers,
+                    title: 'SOUPY Enhances Stack',
+                    body: 'Sits on top of ClaimsXten + Replay + Virtuoso. Adds adversarial depth — no rip and replace.',
                     color: 'text-primary',
                   },
                   {
                     step: '02',
-                    icon: Stethoscope,
-                    title: 'Providers Want In',
-                    body: 'Same engine offered as compliance tool. Natural channel partner upsell from every payer relationship.',
-                    color: 'text-accent',
+                    icon: Shield,
+                    title: 'Appeals Drop',
+                    body: 'Determinations are pre-tested against challenge. Providers see transparent reasoning. Fewer fights.',
+                    color: 'text-consensus',
                   },
                   {
                     step: '03',
-                    icon: TrendingDown,
-                    title: 'Claims Improve',
-                    body: 'Upstream documentation accuracy reduces payer audit volume by 40-60%. Less work for everyone.',
-                    color: 'text-consensus',
+                    icon: Stethoscope,
+                    title: 'Providers Want In',
+                    body: 'Same engine, compliance mode. Pre-submission validation as "audit insurance." New revenue from existing relationships.',
+                    color: 'text-accent',
                   },
                   {
                     step: '04',
                     icon: DollarSign,
                     title: 'Value Compounds',
-                    body: 'Lower audit costs + provider retention + new revenue stream. Per payer. Recurring.',
+                    body: 'Cleaner claims → fewer audits → lower cost. Plus provider revenue. Per payer. Recurring.',
                     color: 'text-disagreement',
                   },
                 ].map((item, i) => (
@@ -452,7 +584,6 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                 ))}
               </div>
 
-              {/* Loop arrow */}
               <div className="flex items-center justify-center">
                 <div className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-dashed border-accent/30 bg-accent/5">
                   <ArrowRight className="h-4 w-4 text-accent rotate-[225deg]" />
@@ -464,29 +595,43 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 6: The Numbers */}
-        {currentSlide === 5 && (
+        {/* SLIDE 7: The Offer — exclusivity */}
+        {currentSlide === 6 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8">
               <div className="space-y-2 text-center">
-                <Badge variant="outline" className="text-xs">Bottom Line</Badge>
+                <Badge variant="outline" className="text-xs">The Offer</Badge>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  Ready to deploy. Ready to sell.
+                  Three things no one else can offer you.
                 </h2>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
-                  { value: '2x', label: 'Revenue per deal', sub: 'Payer + Provider', color: 'text-primary' },
-                  { value: '$0', label: 'Added eng. cost', sub: 'Same engine', color: 'text-consensus' },
-                  { value: '4', label: 'AI perspectives', sub: 'Per case', color: 'text-accent' },
-                  { value: '72%', label: 'Fewer overturns', sub: 'Defensible by design', color: 'text-consensus' },
-                ].map((stat, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-5 text-center space-y-1">
-                      <p className={cn('text-3xl sm:text-4xl font-bold font-mono', stat.color)}>{stat.value}</p>
-                      <p className="text-sm font-semibold">{stat.label}</p>
-                      <p className="text-xs text-muted-foreground">{stat.sub}</p>
+                  {
+                    icon: Brain,
+                    title: 'Adversarial AI Layer',
+                    body: 'Multi-model debate that stress-tests every determination before it ships. Not a replacement — an enhancement to your entire stack.',
+                    color: 'text-accent',
+                  },
+                  {
+                    icon: Users,
+                    title: 'Provider Revenue Channel',
+                    body: 'Turn every provider you audit into a paying customer. Same engine, compliance posture. Zero incremental build.',
+                    color: 'text-primary',
+                  },
+                  {
+                    icon: Lock,
+                    title: 'Market Exclusivity',
+                    body: 'Full non-compete in health insurance payment integrity. No competitor gets this technology. Lyric only.',
+                    color: 'text-consensus',
+                  },
+                ].map((item, i) => (
+                  <Card key={i} className="border-2">
+                    <CardContent className="p-6 space-y-3 text-center">
+                      <item.icon className={cn('h-8 w-8 mx-auto', item.color)} />
+                      <p className="font-semibold text-lg">{item.title}</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>
                     </CardContent>
                   </Card>
                 ))}
@@ -494,14 +639,15 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
 
               <Card className="border-2 border-accent bg-accent/5">
                 <CardContent className="p-6 text-center space-y-3">
-                  <Brain className="h-8 w-8 text-accent mx-auto" />
+                  <Sparkles className="h-8 w-8 text-accent mx-auto" />
                   <p className="text-lg font-semibold">
-                    An intelligence layer that makes Lyric's audit determinations stronger
-                    <span className="text-muted-foreground font-normal"> — while simultaneously making provider claims cleaner.</span>
+                    This isn't a feature request.
+                    <span className="text-muted-foreground font-normal"> It's a capability that doesn't exist in your portfolio —</span>
                   </p>
                   <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-                    Every case processed improves the system. Every payer deployed creates a new provider market. 
-                    The platform pays for itself before the first appeal is filed.
+                    adversarial AI reasoning, pre-built appeal defense, and a provider revenue channel.
+                    Three things ClaimsXten, Replay, Virtuoso, and ClaimShark weren't designed to do.
+                    Built to sit on top of all of them.
                   </p>
                 </CardContent>
               </Card>
