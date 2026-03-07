@@ -193,9 +193,22 @@ function EnhancementAnimation({ product, isActive }: { product: ProductData; isA
   );
 }
 
+function useIsTouchDevice() {
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
+  return isTouch;
+}
+
 function ProductRow({ product, index }: { product: ProductData; index: number }) {
-  const [isHovered, setIsHovered] = useState(false);
+  const [isActive, setIsActive] = useState(false);
+  const isTouch = useIsTouchDevice();
   const Icon = product.icon;
+
+  const handleTap = useCallback(() => {
+    if (isTouch) setIsActive(prev => !prev);
+  }, [isTouch]);
 
   return (
     <div
@@ -204,11 +217,12 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
     >
       <Card
         className={cn(
-          'transition-all duration-300 overflow-hidden',
-          isHovered ? 'border-accent/40 shadow-md' : ''
+          'transition-all duration-300 overflow-hidden cursor-pointer',
+          isActive ? 'border-accent/40 shadow-md' : ''
         )}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={() => !isTouch && setIsActive(true)}
+        onMouseLeave={() => !isTouch && setIsActive(false)}
+        onClick={handleTap}
       >
         <CardContent className="p-0">
           {/* Product header */}
