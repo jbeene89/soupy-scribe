@@ -14,7 +14,257 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_cases: {
+        Row: {
+          assigned_to: string | null
+          case_number: string
+          claim_amount: number
+          consensus_score: number | null
+          cpt_codes: string[]
+          created_at: string
+          date_of_service: string
+          date_submitted: string
+          decision: Json | null
+          icd_codes: string[]
+          id: string
+          metadata: Json | null
+          patient_id: string
+          physician_id: string
+          physician_name: string
+          risk_score: Json | null
+          source_text: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          case_number: string
+          claim_amount?: number
+          consensus_score?: number | null
+          cpt_codes?: string[]
+          created_at?: string
+          date_of_service: string
+          date_submitted?: string
+          decision?: Json | null
+          icd_codes?: string[]
+          id?: string
+          metadata?: Json | null
+          patient_id: string
+          physician_id: string
+          physician_name: string
+          risk_score?: Json | null
+          source_text?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          case_number?: string
+          claim_amount?: number
+          consensus_score?: number | null
+          cpt_codes?: string[]
+          created_at?: string
+          date_of_service?: string
+          date_submitted?: string
+          decision?: Json | null
+          icd_codes?: string[]
+          id?: string
+          metadata?: Json | null
+          patient_id?: string
+          physician_id?: string
+          physician_name?: string
+          risk_score?: Json | null
+          source_text?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      case_analyses: {
+        Row: {
+          assumptions: string[] | null
+          case_id: string
+          confidence: number | null
+          created_at: string
+          id: string
+          key_insights: string[] | null
+          model: string
+          overall_assessment: string | null
+          perspective_statement: string | null
+          role: string
+          status: string
+          updated_at: string
+          violations: Json | null
+        }
+        Insert: {
+          assumptions?: string[] | null
+          case_id: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          key_insights?: string[] | null
+          model: string
+          overall_assessment?: string | null
+          perspective_statement?: string | null
+          role: string
+          status?: string
+          updated_at?: string
+          violations?: Json | null
+        }
+        Update: {
+          assumptions?: string[] | null
+          case_id?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          key_insights?: string[] | null
+          model?: string
+          overall_assessment?: string | null
+          perspective_statement?: string | null
+          role?: string
+          status?: string
+          updated_at?: string
+          violations?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_analyses_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_files: {
+        Row: {
+          case_id: string | null
+          created_at: string
+          extracted_text: string | null
+          extraction_status: string
+          file_name: string
+          file_size: number | null
+          file_type: string
+          id: string
+          storage_path: string | null
+        }
+        Insert: {
+          case_id?: string | null
+          created_at?: string
+          extracted_text?: string | null
+          extraction_status?: string
+          file_name: string
+          file_size?: number | null
+          file_type: string
+          id?: string
+          storage_path?: string | null
+        }
+        Update: {
+          case_id?: string | null
+          created_at?: string
+          extracted_text?: string | null
+          extraction_status?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_files_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      code_combinations: {
+        Row: {
+          case_id: string | null
+          codes: string[]
+          created_at: string
+          flag_reason: string
+          id: string
+          legitimate_explanations: string[] | null
+          noncompliant_explanations: string[] | null
+          required_documentation: string[] | null
+        }
+        Insert: {
+          case_id?: string | null
+          codes: string[]
+          created_at?: string
+          flag_reason: string
+          id?: string
+          legitimate_explanations?: string[] | null
+          noncompliant_explanations?: string[] | null
+          required_documentation?: string[] | null
+        }
+        Update: {
+          case_id?: string | null
+          codes?: string[]
+          created_at?: string
+          flag_reason?: string
+          id?: string
+          legitimate_explanations?: string[] | null
+          noncompliant_explanations?: string[] | null
+          required_documentation?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_combinations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      processing_queue: {
+        Row: {
+          case_id: string
+          completed_at: string | null
+          created_at: string
+          current_step: string | null
+          error_message: string | null
+          id: string
+          progress: number | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          case_id: string
+          completed_at?: string | null
+          created_at?: string
+          current_step?: string | null
+          error_message?: string | null
+          id?: string
+          progress?: number | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          case_id?: string
+          completed_at?: string | null
+          created_at?: string
+          current_step?: string | null
+          error_message?: string | null
+          id?: string
+          progress?: number | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processing_queue_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
