@@ -136,22 +136,23 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
       {/* Slide content */}
       <div className="container mx-auto px-6 sm:px-10 py-8 max-w-5xl">
 
-        {/* SLIDE 1: The Gap — what Lyric doesn't have */}
+        {/* SLIDE 1: The Opportunity — what SOUPY adds */}
         {currentSlide === 0 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8">
               <div className="space-y-4">
-                <Badge variant="outline" className="text-xs">The Capability Gap</Badge>
+                <Badge variant="outline" className="text-xs">The Opportunity</Badge>
                 <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
-                  ClaimsXten finds violations.
+                  Your stack finds the violations.
                   <br />
-                  <span className="text-muted-foreground">It can't </span>
-                  <span className="text-destructive">defend them.</span>
+                  <span className="text-muted-foreground">Now they can </span>
+                  <span className="text-accent">defend themselves.</span>
                 </h2>
                 <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
                   Replay audits. Virtuoso orchestrates. ClaimsXten edits.
-                  But when a provider appeals, the determination stands on a single AI perspective
-                  with no adversarial stress-testing and no pre-built defense.
+                  You've built the strongest payment integrity platform in the market.
+                  SOUPY adds the adversarial layer that makes every determination appeal-ready
+                  and opens an entirely new revenue channel.
                 </p>
               </div>
 
@@ -168,14 +169,14 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   {
                     stat: '1',
                     label: 'AI perspective per determination',
-                    sub: 'Single model = single point of failure',
+                    sub: 'Industry standard — room to expand',
                     icon: Monitor,
                     color: 'text-muted-foreground',
                   },
                   {
                     stat: '$0',
-                    label: 'Revenue from provider side',
-                    sub: 'Providers are audited — not served',
+                    label: 'Provider-side revenue today',
+                    sub: 'Untapped provider demand',
                     icon: Stethoscope,
                     color: 'text-accent',
                   },
@@ -195,9 +196,9 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
               </div>
 
               <p className="text-sm text-muted-foreground italic max-w-2xl">
-                This isn't about replacing what works. It's about adding the layer that's missing —
-                the adversarial intelligence that makes every determination appeal-proof and opens
-                an entirely new revenue channel.
+                This isn't about replacing what you've built. It's about amplifying it —
+                adding adversarial intelligence that makes every determination appeal-proof
+                and unlocks an entirely new revenue channel from your existing relationships.
               </p>
             </div>
           </Slide>
@@ -252,19 +253,20 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 3: The Blindspot — single AI vs adversarial */}
+        {/* SLIDE 3: The Next Layer — single AI vs adversarial */}
         {currentSlide === 2 && (
           <Slide>
             <div className="space-y-6">
               <div className="space-y-2">
-                <Badge variant="outline" className="text-xs">The Blindspot</Badge>
+                <Badge variant="outline" className="text-xs">The Next Layer</Badge>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  Your AI agrees with itself.
-                  <span className="text-accent"> That's the problem.</span>
+                  What if your AI could
+                  <span className="text-accent"> challenge itself?</span>
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-2xl">
-                  Current AI gives one answer with high confidence. SOUPY forces 4 independent
-                  perspectives to disagree — surfacing the exact weaknesses a provider attorney will exploit.
+                  Today's AI delivers strong, high-confidence determinations. SOUPY adds a second step:
+                  4 independent perspectives that stress-test each finding — surfacing appeal vulnerabilities
+                  before a provider attorney does.
                 </p>
               </div>
 
@@ -274,7 +276,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   <CardContent className="p-5 space-y-4">
                     <div className="flex items-center gap-2">
                       <Monitor className="h-5 w-5 text-muted-foreground" />
-                      <span className="font-semibold text-sm">Current: Single-Model AI</span>
+                      <span className="font-semibold text-sm">Today: Strong Foundation</span>
                     </div>
                     <div className="text-center py-4">
                       <p className="text-4xl font-bold font-mono">{singleViolations.length}</p>
@@ -282,18 +284,18 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                     </div>
                     <div className="text-center py-2">
                       <p className="text-3xl font-bold font-mono">{demoCase.analyses[0]?.confidence}%</p>
-                      <p className="text-sm text-muted-foreground">confidence (untested)</p>
+                      <p className="text-sm text-muted-foreground">confidence</p>
                     </div>
                     <Separator />
                     <div className="space-y-1.5">
                       {[
-                        'No adversarial challenge to its own assumptions',
-                        'Can\'t predict which findings survive appeal',
-                        'No divergence measurement between perspectives',
-                        'Provider attorney finds the weakness first',
+                        'Proven, high-accuracy determination engine',
+                        'Opportunity to add adversarial validation',
+                        'Opportunity to measure cross-perspective divergence',
+                        'Opportunity to pre-test against appeal challenge',
                       ].map((item, i) => (
                         <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                          <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
                           <span>{item}</span>
                         </div>
                       ))}
@@ -336,16 +338,16 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
 
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">
-                  SOUPY found <span className="font-semibold text-accent">{allViolations.length - singleViolations.length} additional risk vectors</span> and
-                  identified exactly which findings would survive appeal — and which wouldn't.
-                  <span className="font-medium text-foreground"> That's the layer ClaimsXten doesn't have.</span>
+                  SOUPY adds <span className="font-semibold text-accent">{allViolations.length - singleViolations.length} additional risk vectors</span> on top of
+                  your existing findings — and identifies exactly which determinations will hold up under appeal and which need reinforcement.
+                  <span className="font-medium text-foreground"> That's the amplification layer.</span>
                 </p>
               </div>
             </div>
           </Slide>
         )}
 
-        {/* SLIDE 4: Appeal Defense — nobody does this */}
+        {/* SLIDE 4: Appeal Defense — new capability */}
         {currentSlide === 3 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8">
@@ -357,9 +359,9 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   <span className="text-muted-foreground"> the appeal arrives.</span>
                 </h2>
                 <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
-                  Today, when a provider appeals, your team starts from scratch — pulling documentation,
+                  Today, appeal responses require manual effort — pulling documentation,
                   building arguments, researching regulations. SOUPY generates the defense package
-                  at the moment of determination.
+                  automatically at the moment of determination, so your team is always ready.
                 </p>
               </div>
 
@@ -367,8 +369,8 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                 <Card>
                   <CardContent className="p-5 space-y-4">
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-destructive" />
-                      <span className="font-semibold text-sm">Current Appeal Response</span>
+                      <AlertTriangle className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-semibold text-sm">Industry-Standard Appeal Response</span>
                     </div>
                     <div className="space-y-2">
                       {[
@@ -381,10 +383,10 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                       ].map((item, i) => (
                         <div key={i} className="flex items-center justify-between text-sm border-b border-border/50 pb-1.5">
                           <span className="text-muted-foreground">{item.step}</span>
-                          <span className="font-mono text-xs text-destructive">{item.time}</span>
+                          <span className="font-mono text-xs text-muted-foreground">{item.time}</span>
                         </div>
                       ))}
-                      <p className="text-xs font-semibold text-destructive pt-1">Total: 3-5 business days per appeal</p>
+                      <p className="text-xs font-semibold text-muted-foreground pt-1">Industry average: 3-5 business days per appeal</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -416,8 +418,8 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
               </div>
 
               <p className="text-sm text-muted-foreground italic text-center">
-                No product in your portfolio generates the defense. SOUPY is the only system that argues both sides
-                at the point of determination — making every audit decision pre-tested against challenge.
+                This is a net-new capability that extends your existing stack. SOUPY argues both sides
+                at the point of determination — so every audit decision is pre-tested against challenge before it ships.
               </p>
             </div>
           </Slide>
@@ -650,11 +652,11 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   <Sparkles className="h-8 w-8 text-accent mx-auto" />
                   <p className="text-lg font-semibold">
                     This isn't a feature request.
-                    <span className="text-muted-foreground font-normal"> It's a capability that doesn't exist in your portfolio —</span>
+                    <span className="text-muted-foreground font-normal"> It's the next evolution of what you've already built —</span>
                   </p>
                   <p className="text-sm text-muted-foreground max-w-xl mx-auto">
                     adversarial AI reasoning, pre-built appeal defense, and a provider revenue channel.
-                    Three things ClaimsXten, Replay, Virtuoso, and ClaimShark weren't designed to do.
+                    Designed to amplify ClaimsXten, Replay, Virtuoso, and ClaimShark.
                     Built to sit on top of all of them.
                   </p>
                 </CardContent>
