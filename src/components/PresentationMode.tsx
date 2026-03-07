@@ -509,15 +509,18 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
 
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { value: '2x', label: 'Revenue per payer deal', sub: 'Payer + their provider network', color: 'text-primary' },
-                  { value: '$0', label: 'Added engineering cost', sub: 'One engine, two products', color: 'text-consensus' },
-                  { value: '$1.2M', label: 'Provider savings per facility/yr', sub: 'They\'ll pay for that', color: 'text-accent' },
+                  { value: '2x', label: 'Revenue opportunity per deal', sub: 'Payer + their provider network (modeled)', color: 'text-primary' },
+                  { value: 'Marginal', label: 'Added engineering cost', sub: 'Shared engine — incremental config only', color: 'text-consensus' },
+                  { value: '$20B', label: 'Industry denial management cost', sub: 'AHA estimate, 2024 — addressable market', color: 'text-accent', source: 'aha.org' },
                 ].map((stat, i) => (
                   <Card key={i}>
                     <CardContent className="p-4 text-center space-y-1">
                       <p className={cn('text-2xl font-bold font-mono', stat.color)}>{stat.value}</p>
                       <p className="text-xs font-semibold">{stat.label}</p>
                       <p className="text-[10px] text-muted-foreground">{stat.sub}</p>
+                      {'source' in stat && stat.source && (
+                        <p className="text-[9px] text-muted-foreground/60 italic">Source: {stat.source}</p>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
