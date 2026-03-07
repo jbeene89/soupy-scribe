@@ -197,7 +197,6 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
     return caseId;
   };
 
-  // We can't rely on state mid-async, so process using the result directly
   const runBatch = async () => {
     const readyFiles = files.filter(f => f.status === 'ready');
     if (readyFiles.length === 0) {
