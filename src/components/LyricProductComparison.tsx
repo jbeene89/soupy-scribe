@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -193,9 +193,22 @@ function EnhancementAnimation({ product, isActive }: { product: ProductData; isA
   );
 }
 
+function useIsTouchDevice() {
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
+  return isTouch;
+}
+
 function ProductRow({ product, index }: { product: ProductData; index: number }) {
-  const [isHovered, setIsHovered] = useState(false);
+  const [isActive, setIsActive] = useState(false);
+  const isTouch = useIsTouchDevice();
   const Icon = product.icon;
+
+  const handleTap = useCallback(() => {
+    if (isTouch) setIsActive(prev => !prev);
+  }, [isTouch]);
 
   return (
     <div
@@ -204,11 +217,12 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
     >
       <Card
         className={cn(
-          'transition-all duration-300 overflow-hidden',
-          isHovered ? 'border-accent/40 shadow-md' : ''
+          'transition-all duration-300 overflow-hidden cursor-pointer',
+          isActive ? 'border-accent/40 shadow-md' : ''
         )}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={() => !isTouch && setIsActive(true)}
+        onMouseLeave={() => !isTouch && setIsActive(false)}
+        onClick={handleTap}
       >
         <CardContent className="p-0">
           {/* Product header */}
@@ -226,10 +240,10 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
               </div>
               <div className={cn(
                 'flex items-center gap-1.5 px-2 py-1 rounded-md transition-all duration-300',
-                isHovered ? 'bg-accent/10' : 'bg-transparent'
+                isActive ? 'bg-accent/10' : 'bg-transparent'
               )}>
-                <Brain className={cn('h-3.5 w-3.5 transition-colors', isHovered ? 'text-accent' : 'text-muted-foreground')} />
-                <span className={cn('text-[10px] font-medium transition-colors', isHovered ? 'text-accent' : 'text-muted-foreground')}>
+                <Brain className={cn('h-3.5 w-3.5 transition-colors', isActive ? 'text-accent' : 'text-muted-foreground')} />
+                <span className={cn('text-[10px] font-medium transition-colors', isActive ? 'text-accent' : 'text-muted-foreground')}>
                   + SOUPY
                 </span>
               </div>
@@ -282,7 +296,7 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
             {/* What SOUPY adds */}
             <div className={cn(
               'p-4 transition-colors duration-300',
-              isHovered ? 'bg-accent/5' : ''
+              isActive ? 'bg-accent/5' : ''
             )}>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-accent mb-2">
                 SOUPY Adds
@@ -300,7 +314,7 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
 
           {/* Animation strip */}
           <div className="px-4 pb-4">
-            <EnhancementAnimation product={product} isActive={isHovered} />
+            <EnhancementAnimation product={product} isActive={isActive} />
           </div>
         </CardContent>
       </Card>
