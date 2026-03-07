@@ -777,6 +777,43 @@ export const mockPatterns: PhysicianPattern[] = [
       'Better documentation completeness than 3-code pattern',
     ],
   },
+  {
+    patternId: 'PAT-003',
+    physicianId: 'DR-9915',
+    physicianName: 'Dr. Richard Tran',
+    cptCodes: ['27447', '27130', '20930'],
+    cases: [mockCases[5], mockCases[8]],
+    totalCases: 2,
+    rejectionRate: 0,
+    totalClaimAmount: 32950,
+    averageClaimAmount: 16475,
+    dateRange: { start: '2024-03-04', end: '2024-03-25' },
+    insights: [
+      'Orthopedic surgeon with consistently high add-on code usage across joint replacement cases',
+      'Both cases include bone graft (20930) billed separately — known NCCI edit target',
+      'Average claim $16,475 — 3.7x specialty median for arthroplasty',
+      'Documentation gaps in both cases (missing implant manifests)',
+      'Pattern may indicate systematic unbundling or genuinely complex patient population',
+    ],
+  },
+  {
+    patternId: 'PAT-004',
+    physicianId: 'DR-5533',
+    physicianName: 'Dr. Anika Patel',
+    cptCodes: ['22612', '22614', '22842', '63047'],
+    cases: [mockCases[6]],
+    totalCases: 1,
+    rejectionRate: 0,
+    totalClaimAmount: 42300,
+    averageClaimAmount: 42300,
+    dateRange: { start: '2024-03-11', end: '2024-03-11' },
+    insights: [
+      'Single $42K spine case — highest dollar case in queue',
+      'Incomplete operative note is the primary risk factor',
+      '5 CPT codes is within NASS guidelines for multi-level fusion but at the high end',
+      'Requires complete documentation before pattern can be established',
+    ],
+  },
 ];
 
 export const mockEvidenceChecklist: EvidenceChecklistItem[] = [
