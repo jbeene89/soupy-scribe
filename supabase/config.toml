@@ -1,0 +1,4 @@
+project_id = "jfhljwuywvjxyqzwbecd"
+
+[functions.analyze-case]
+verify_jwt = false

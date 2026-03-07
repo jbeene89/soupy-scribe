@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { CaseQueue } from '@/components/CaseQueue';
@@ -11,9 +11,13 @@ import { PlatformValueCard } from '@/components/PlatformValueCard';
 import { IntegrationArchitecture } from '@/components/IntegrationArchitecture';
 import { LyricProductComparison } from '@/components/LyricProductComparison';
 import { PresentationMode } from '@/components/PresentationMode';
+import { CaseUpload } from '@/components/CaseUpload';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
+import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
-import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive } from 'lucide-react';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 const Index = () => {
   const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
@@ -21,8 +25,40 @@ const Index = () => {
   const [soupyConfig, setSoupyConfig] = useState<SOUPYConfig>(defaultSOUPYConfig);
   const [activeTab, setActiveTab] = useState('queue');
   const [presentationMode, setPresentationMode] = useState(false);
+  
+  // Live database cases
+  const [liveCases, setLiveCases] = useState<AuditCase[]>([]);
+  const [loadingLive, setLoadingLive] = useState(false);
+  const [dataSource, setDataSource] = useState<'mock' | 'live'>('mock');
 
-  const handleSelectCase = (c: AuditCase) => {
+  const loadLiveCases = useCallback(async () => {
+    setLoadingLive(true);
+    try {
+      const cases = await fetchCases();
+      setLiveCases(cases);
+    } catch (err) {
+      console.error('Failed to load live cases:', err);
+    } finally {
+      setLoadingLive(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLiveCases();
+  }, [loadLiveCases]);
+
+  const allCases = dataSource === 'live' ? liveCases : [...mockCases, ...liveCases];
+
+  const handleSelectCase = async (c: AuditCase) => {
+    // If it's a live case, refetch for latest data
+    if (liveCases.some(lc => lc.id === c.id)) {
+      const fresh = await fetchCase(c.id);
+      if (fresh) {
+        setSelectedCase(fresh);
+        setActiveTab('audit');
+        return;
+      }
+    }
     setSelectedCase(c);
     setActiveTab('audit');
   };
@@ -30,11 +66,24 @@ const Index = () => {
   const handleBack = () => {
     setSelectedCase(null);
     setActiveTab('queue');
+    loadLiveCases(); // Refresh
+  };
+
+  const handleCaseCreated = async (caseId: string) => {
+    await loadLiveCases();
+    const newCase = await fetchCase(caseId);
+    if (newCase) {
+      setSelectedCase(newCase);
+      setActiveTab('audit');
+    }
   };
 
   if (presentationMode) {
     return <PresentationMode onExit={() => setPresentationMode(false)} />;
   }
+
+  const activeCases = allCases.filter(c => c.status === 'pending' || c.status === 'in-review');
+  const historyCases = allCases.filter(c => c.status === 'approved' || c.status === 'rejected');
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,8 +102,15 @@ const Index = () => {
               <Brain className="h-3.5 w-3.5 text-accent" />
               <span className="text-xs font-medium text-accent">SOUPY ThinkTank</span>
             </div>
+            {liveCases.length > 0 && (
+              <div className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-consensus/30 bg-consensus/10">
+                <Database className="h-3.5 w-3.5 text-consensus" />
+                <span className="text-xs font-medium text-consensus">{liveCases.length} Live</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
+            <CaseUpload onCaseCreated={handleCaseCreated} />
             <Button
               variant="outline"
               size="sm"
@@ -64,6 +120,27 @@ const Index = () => {
               <Presentation className="h-3.5 w-3.5" />
               Present
             </Button>
+            {/* Data source toggle */}
+            <div className="flex items-center border rounded-md overflow-hidden">
+              <button
+                onClick={() => setDataSource('mock')}
+                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  dataSource === 'mock' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                <HardDrive className="h-3 w-3 inline mr-1" />
+                Demo
+              </button>
+              <button
+                onClick={() => { setDataSource('live'); loadLiveCases(); }}
+                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  dataSource === 'live' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                <Database className="h-3 w-3 inline mr-1" />
+                Live
+              </button>
+            </div>
             <AuditPostureToggle posture={posture} onChange={setPosture} />
             <SOUPYConfigDialog config={soupyConfig} onSave={setSoupyConfig} />
           </div>
@@ -118,7 +195,12 @@ const Index = () => {
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
-              <TabsTrigger value="queue">Case Queue</TabsTrigger>
+              <TabsTrigger value="queue">
+                Case Queue
+                {activeCases.length > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">{activeCases.length}</Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="patterns">Pattern Analysis</TabsTrigger>
               <TabsTrigger value="comparison" className="gap-1.5">
                 <GitCompare className="h-3.5 w-3.5" />
@@ -137,7 +219,7 @@ const Index = () => {
 
             <TabsContent value="queue">
               <CaseQueue
-                cases={mockCases.filter(c => c.status === 'pending' || c.status === 'in-review')}
+                cases={activeCases}
                 onSelectCase={handleSelectCase}
                 selectedCaseId={selectedCase?.id}
               />
@@ -164,7 +246,7 @@ const Index = () => {
 
             <TabsContent value="history">
               <CaseQueue
-                cases={mockCases.filter(c => c.status === 'approved' || c.status === 'rejected')}
+                cases={historyCases}
                 onSelectCase={handleSelectCase}
                 selectedCaseId={selectedCase?.id}
               />
