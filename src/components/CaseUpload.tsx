@@ -178,25 +178,6 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
     }
   };
 
-  const processFile = async (fileItem: FileItem): Promise<string | null> => {
-    // Extract
-    updateFile(fileItem.id, { status: 'extracting' });
-    try {
-      const result = await submitCaseText(fileItem.text);
-      updateFile(fileItem.id, { status: 'extracted', caseId: result.caseId, extractedData: result.extracted });
-    } catch (err) {
-      updateFile(fileItem.id, { status: 'error', error: err instanceof Error ? err.message : 'Extraction failed' });
-      return null;
-    }
-
-    // Get updated file to read caseId
-    const updated = files.find(f => f.id === fileItem.id);
-    // We set it above but need to use the result directly
-    const caseId = (await supabaseGetCaseId(fileItem.id)) || '';
-
-    return caseId;
-  };
-
   const runBatch = async () => {
     const readyFiles = files.filter(f => f.status === 'ready');
     if (readyFiles.length === 0) {
