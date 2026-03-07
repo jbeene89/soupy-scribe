@@ -95,8 +95,6 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [currentRole, setCurrentRole] = useState<string>('');
 
   const reset = useCallback(() => {
     setSourceText('');
