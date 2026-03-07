@@ -60,6 +60,7 @@ const SLIDES = [
   { id: 'provider-revenue', label: 'New Revenue' },
   { id: 'flywheel', label: 'The Flywheel' },
   { id: 'exclusivity', label: 'The Offer' },
+  { id: 'sources', label: 'Sources' },
 ];
 
 export function PresentationMode({ onExit }: PresentationModeProps) {
@@ -658,6 +659,63 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   </p>
                 </CardContent>
               </Card>
+            </div>
+          </Slide>
+        )}
+
+        {/* SLIDE 8: Sources */}
+        {currentSlide === 7 && (
+          <Slide>
+            <div className="flex-1 flex flex-col justify-center space-y-8 max-w-2xl mx-auto">
+              <div className="space-y-2 text-center">
+                <Badge variant="outline" className="text-xs">References</Badge>
+                <h2 className="text-2xl font-bold tracking-tight">Sources & Citations</h2>
+                <p className="text-sm text-muted-foreground">
+                  All figures in this presentation are sourced from published industry data.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  {
+                    org: 'Kaiser Family Foundation (KFF)',
+                    title: 'Claims Denials and Appeals in ACA Marketplace Plans in 2023',
+                    detail: 'Appeal overturn rates, denial frequency, and consumer appeal behavior across HealthCare.gov issuers.',
+                    url: 'kff.org/private-insurance/claims-denials-and-appeals-in-aca-marketplace-plans-in-2023',
+                    date: 'January 2025',
+                  },
+                  {
+                    org: 'American Hospital Association (AHA)',
+                    title: 'Payer Denial Tactics — How to Confront a $20 Billion Problem',
+                    detail: 'Industry-wide cost of denial management, administrative burden on providers, and systemic payer practices.',
+                    url: 'aha.org/aha-center-health-innovation-market-scan/2024-04-02-payer-denial-tactics-how-confront-20-billion-problem',
+                    date: 'April 2024',
+                  },
+                  {
+                    org: 'CMS / HealthCare.gov',
+                    title: 'Transparency in Coverage — Marketplace Public Use Files',
+                    detail: 'Underlying data for denial rates, in-network vs out-of-network claim outcomes.',
+                    url: 'cms.gov/cciio/resources/data-resources/marketplace-puf',
+                    date: 'Ongoing',
+                  },
+                ].map((source, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-4 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-accent">{source.org}</p>
+                        <Badge variant="outline" className="text-[10px]">{source.date}</Badge>
+                      </div>
+                      <p className="text-sm font-medium">{source.title}</p>
+                      <p className="text-xs text-muted-foreground">{source.detail}</p>
+                      <p className="text-[10px] text-muted-foreground/60 font-mono break-all">{source.url}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <p className="text-[11px] text-muted-foreground/50 text-center italic">
+                Projected figures (revenue opportunity, engineering cost) are modeled estimates based on platform architecture — not published benchmarks.
+              </p>
             </div>
           </Slide>
         )}
