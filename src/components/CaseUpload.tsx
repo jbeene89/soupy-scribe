@@ -6,9 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Upload, FileText, Brain, CheckCircle, AlertCircle, Loader2, File } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Upload, FileText, Brain, CheckCircle, AlertCircle, Loader2, File, X, Play, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { submitCaseText, runSOUPYAnalysis, getProcessingStatus } from '@/lib/caseService';
+import { submitCaseText, runSOUPYAnalysis } from '@/lib/caseService';
 
 interface CaseUploadProps {
   onCaseCreated: (caseId: string) => void;
@@ -60,7 +61,17 @@ Implants: $8,200
 Facility fee: $3,400
 Total: $20,000`;
 
-type UploadStep = 'input' | 'parsing-pdf' | 'extracting' | 'extracted' | 'analyzing' | 'complete' | 'error';
+type FileItemStatus = 'pending' | 'parsing' | 'ready' | 'extracting' | 'extracted' | 'analyzing' | 'complete' | 'error';
+
+interface FileItem {
+  id: string;
+  name: string;
+  text: string;
+  status: FileItemStatus;
+  error?: string;
+  caseId?: string;
+  extractedData?: any;
+}
 
 async function extractTextFromPDF(file: File): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
@@ -85,152 +96,185 @@ async function extractTextFromPDF(file: File): Promise<string> {
 
 export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [open, setOpen] = useState(false);
-  const [sourceText, setSourceText] = useState('');
-  const [step, setStep] = useState<UploadStep>('input');
-  const [progress, setProgress] = useState(0);
-  const [extractedData, setExtractedData] = useState<any>(null);
-  const [caseId, setCaseId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [currentRole, setCurrentRole] = useState<string>('');
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [pasteText, setPasteText] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [batchRunning, setBatchRunning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = useCallback(() => {
-    setSourceText('');
-    setStep('input');
-    setProgress(0);
-    setExtractedData(null);
-    setCaseId(null);
-    setError(null);
-    setCurrentRole('');
-    setUploadedFileName(null);
+    setFiles([]);
+    setPasteText('');
     setIsDragging(false);
+    setBatchRunning(false);
   }, []);
 
-  const handlePDFFile = async (file: File) => {
-    if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
-      // Try as plain text
-      const text = await file.text();
-      setSourceText(text);
-      setUploadedFileName(file.name);
-      toast.success(`Loaded ${file.name} as text`);
-      return;
-    }
+  const updateFile = (id: string, updates: Partial<FileItem>) => {
+    setFiles(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
+  };
 
-    setStep('parsing-pdf');
-    setProgress(5);
-    setUploadedFileName(file.name);
-
-    try {
+  const parseFile = async (file: File): Promise<{ name: string; text: string }> => {
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
       const text = await extractTextFromPDF(file);
-      if (!text.trim()) {
-        toast.error('No text found in PDF — it may be a scanned image. Try pasting the text instead.');
-        setStep('input');
-        setProgress(0);
-        return;
-      }
-      setSourceText(text);
-      setStep('input');
-      setProgress(0);
-      toast.success(`Extracted ${text.length.toLocaleString()} characters from ${file.name}`);
-    } catch (err) {
-      console.error('PDF parse error:', err);
-      toast.error('Failed to parse PDF. Try pasting the text content instead.');
-      setStep('input');
-      setProgress(0);
+      if (!text.trim()) throw new Error('No text found — may be a scanned image');
+      return { name: file.name, text };
     }
+    const text = await file.text();
+    return { name: file.name, text };
+  };
+
+  const addFiles = async (fileList: FileList) => {
+    const newFiles: FileItem[] = [];
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const id = crypto.randomUUID();
+      newFiles.push({ id, name: file.name, text: '', status: 'parsing' });
+    }
+    setFiles(prev => [...prev, ...newFiles]);
+
+    // Parse all in parallel
+    const fileArray = Array.from(fileList);
+    await Promise.all(fileArray.map(async (file, idx) => {
+      const id = newFiles[idx].id;
+      try {
+        const { text } = await parseFile(file);
+        updateFile(id, { text, status: 'ready' });
+      } catch (err) {
+        updateFile(id, { status: 'error', error: err instanceof Error ? err.message : 'Parse failed' });
+      }
+    }));
+  };
+
+  const addPasteAsFile = () => {
+    if (!pasteText.trim()) return;
+    const id = crypto.randomUUID();
+    setFiles(prev => [...prev, { id, name: 'Pasted Text', text: pasteText, status: 'ready' }]);
+    setPasteText('');
+    toast.success('Text added to batch queue');
+  };
+
+  const loadSample = () => {
+    const id = crypto.randomUUID();
+    setFiles(prev => [...prev, { id, name: 'Sample TKA Case', text: SAMPLE_CASE, status: 'ready' }]);
+    toast.info('Sample case added to batch queue');
+  };
+
+  const removeFile = (id: string) => {
+    setFiles(prev => prev.filter(f => f.id !== id));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handlePDFFile(file);
+    if (e.target.files && e.target.files.length > 0) {
+      addFiles(e.target.files);
+    }
     if (e.target) e.target.value = '';
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handlePDFFile(file);
+    if (e.dataTransfer.files.length > 0) {
+      addFiles(e.dataTransfer.files);
+    }
   };
 
-  const handleExtract = async () => {
-    if (!sourceText.trim()) {
-      toast.error('Please paste case file content');
+  const processFile = async (fileItem: FileItem): Promise<string | null> => {
+    // Extract
+    updateFile(fileItem.id, { status: 'extracting' });
+    try {
+      const result = await submitCaseText(fileItem.text);
+      updateFile(fileItem.id, { status: 'extracted', caseId: result.caseId, extractedData: result.extracted });
+    } catch (err) {
+      updateFile(fileItem.id, { status: 'error', error: err instanceof Error ? err.message : 'Extraction failed' });
+      return null;
+    }
+
+    // Get updated file to read caseId
+    const updated = files.find(f => f.id === fileItem.id);
+    // We set it above but need to use the result directly
+    const caseId = (await supabaseGetCaseId(fileItem.id)) || '';
+
+    return caseId;
+  };
+
+  // We can't rely on state mid-async, so process using the result directly
+  const runBatch = async () => {
+    const readyFiles = files.filter(f => f.status === 'ready');
+    if (readyFiles.length === 0) {
+      toast.error('No files ready to process');
       return;
     }
 
-    setStep('extracting');
-    setProgress(10);
-    setError(null);
+    setBatchRunning(true);
+    let completedCount = 0;
 
-    try {
-      const result = await submitCaseText(sourceText);
-      setCaseId(result.caseId);
-      setExtractedData(result.extracted);
-      setStep('extracted');
-      setProgress(25);
-      toast.success('Case data extracted successfully');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Extraction failed');
-      setStep('error');
-      toast.error('Failed to extract case data');
-    }
-  };
-
-  const handleAnalyze = async () => {
-    if (!caseId) return;
-
-    setStep('analyzing');
-    setProgress(30);
-
-    // Poll for progress
-    const pollInterval = setInterval(async () => {
+    for (const fileItem of readyFiles) {
+      // Step 1: Extract
+      updateFile(fileItem.id, { status: 'extracting' });
+      let caseId: string;
       try {
-        const status = await getProcessingStatus(caseId);
-        if (status) {
-          setProgress(status.progress || 30);
-          setCurrentRole(status.current_step?.replace('analyzing_', '') || '');
-          if (status.status === 'complete') {
-            clearInterval(pollInterval);
-          }
-        }
-      } catch { /* ignore polling errors */ }
-    }, 2000);
+        const result = await submitCaseText(fileItem.text);
+        caseId = result.caseId;
+        updateFile(fileItem.id, { status: 'extracted', caseId, extractedData: result.extracted });
+      } catch (err) {
+        updateFile(fileItem.id, { status: 'error', error: err instanceof Error ? err.message : 'Extraction failed' });
+        continue;
+      }
 
-    try {
-      await runSOUPYAnalysis(caseId);
-      clearInterval(pollInterval);
-      setStep('complete');
-      setProgress(100);
-      toast.success('SOUPY analysis complete!');
-    } catch (err) {
-      clearInterval(pollInterval);
-      setError(err instanceof Error ? err.message : 'Analysis failed');
-      setStep('error');
-      toast.error('Analysis failed');
+      // Step 2: Analyze
+      updateFile(fileItem.id, { status: 'analyzing' });
+      try {
+        await runSOUPYAnalysis(caseId);
+        updateFile(fileItem.id, { status: 'complete' });
+        completedCount++;
+      } catch (err) {
+        updateFile(fileItem.id, { status: 'error', error: err instanceof Error ? err.message : 'Analysis failed' });
+      }
+    }
+
+    setBatchRunning(false);
+    if (completedCount > 0) {
+      toast.success(`${completedCount} case${completedCount > 1 ? 's' : ''} analyzed successfully`);
+      // Notify parent about the first completed case
+      const firstComplete = files.find(f => f.status === 'complete' && f.caseId);
+      if (firstComplete?.caseId) {
+        onCaseCreated(firstComplete.caseId);
+      }
     }
   };
 
-  const handleViewCase = () => {
-    if (caseId) {
-      onCaseCreated(caseId);
-      setOpen(false);
-      reset();
+  const readyCount = files.filter(f => f.status === 'ready').length;
+  const completeCount = files.filter(f => f.status === 'complete').length;
+  const errorCount = files.filter(f => f.status === 'error').length;
+  const processingCount = files.filter(f => ['extracting', 'extracted', 'analyzing'].includes(f.status)).length;
+  const totalProgress = files.length > 0
+    ? Math.round((completeCount / files.length) * 100)
+    : 0;
+
+  const statusIcon = (status: FileItemStatus) => {
+    switch (status) {
+      case 'parsing': return <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />;
+      case 'ready': return <FileText className="h-3.5 w-3.5 text-accent" />;
+      case 'extracting': return <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />;
+      case 'extracted': return <CheckCircle className="h-3.5 w-3.5 text-accent" />;
+      case 'analyzing': return <Brain className="h-3.5 w-3.5 animate-pulse text-accent" />;
+      case 'complete': return <CheckCircle className="h-3.5 w-3.5 text-consensus" />;
+      case 'error': return <AlertCircle className="h-3.5 w-3.5 text-destructive" />;
+      default: return <File className="h-3.5 w-3.5 text-muted-foreground" />;
     }
   };
 
-  const loadSample = () => {
-    setSourceText(SAMPLE_CASE);
-    toast.info('Sample case loaded — this is a TKA with potential unbundling');
-  };
-
-  const roleLabels: Record<string, string> = {
-    builder: '🔨 Builder — Finding best-case interpretation...',
-    redteam: '🛡️ Red Team — Identifying audit vulnerabilities...',
-    analyst: '📊 Systems Analyst — Applying regulatory framework...',
-    breaker: '⚡ Frame Breaker — Challenging assumptions...',
+  const statusLabel = (status: FileItemStatus) => {
+    switch (status) {
+      case 'parsing': return 'Parsing...';
+      case 'ready': return 'Ready';
+      case 'extracting': return 'Extracting...';
+      case 'extracted': return 'Extracted';
+      case 'analyzing': return 'Analyzing...';
+      case 'complete': return 'Complete';
+      case 'error': return 'Error';
+      default: return 'Pending';
+    }
   };
 
   return (
@@ -238,226 +282,156 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Upload className="h-4 w-4" />
-          Upload Case
+          Upload Cases
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-accent" />
-            New Case — AI-Powered Intake
+            Batch Case Upload
           </DialogTitle>
         </DialogHeader>
 
         {/* Progress bar */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{step === 'input' ? 'Upload or paste case data' : step === 'parsing-pdf' ? 'Parsing PDF...' : step === 'extracting' ? 'Extracting...' : step === 'extracted' ? 'Review extraction' : step === 'analyzing' ? 'SOUPY Analysis' : step === 'complete' ? 'Complete' : 'Error'}</span>
-            <span>{progress}%</span>
+        {files.length > 0 && (
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{completeCount} of {files.length} complete{errorCount > 0 ? ` · ${errorCount} error${errorCount > 1 ? 's' : ''}` : ''}</span>
+              <span>{totalProgress}%</span>
+            </div>
+            <Progress value={totalProgress} className="h-2" />
           </div>
-          <Progress value={progress} className="h-2" />
+        )}
+
+        {/* Drop zone */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept=".pdf,.txt,.csv,.hl7,.json,.xml"
+          className="hidden"
+          multiple
+        />
+        <div
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all ${
+            isDragging
+              ? 'border-accent bg-accent/10'
+              : 'border-muted-foreground/20 hover:border-accent/40 hover:bg-accent/5'
+          }`}
+        >
+          <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+          <p className="text-sm font-medium">Drop multiple files here, or click to browse</p>
+          <p className="text-xs text-muted-foreground mt-1">PDF, TXT, CSV, HL7, JSON, XML — select multiple at once</p>
         </div>
 
-        {/* PDF Parsing state */}
-        {step === 'parsing-pdf' && (
-          <div className="py-12 text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-accent" />
-            <p className="text-sm font-medium">Parsing PDF: {uploadedFileName}...</p>
-            <p className="text-xs text-muted-foreground">Extracting text from all pages</p>
-          </div>
-        )}
-
-        {/* Step 1: Input */}
-        {step === 'input' && (
-          <div className="space-y-4">
-            {/* PDF Upload Zone */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".pdf,.txt,.csv,.hl7,.json,.xml"
-              className="hidden"
-            />
-            <div
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all ${
-                isDragging
-                  ? 'border-accent bg-accent/10'
-                  : uploadedFileName
-                    ? 'border-consensus/40 bg-consensus/5'
-                    : 'border-muted-foreground/20 hover:border-accent/40 hover:bg-accent/5'
-              }`}
-            >
-              {uploadedFileName ? (
-                <div className="flex items-center justify-center gap-2">
-                  <File className="h-5 w-5 text-consensus" />
-                  <span className="text-sm font-medium">{uploadedFileName}</span>
-                  <Badge variant="secondary" className="text-[10px]">Loaded</Badge>
-                </div>
-              ) : (
-                <>
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-                  <p className="text-sm font-medium">Drop a PDF operative report here, or click to browse</p>
-                  <p className="text-xs text-muted-foreground mt-1">Supports: PDF, TXT, CSV, HL7, JSON, XML</p>
-                </>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Separator className="flex-1" />
-              <span className="text-xs text-muted-foreground">or paste text</span>
-              <Separator className="flex-1" />
-            </div>
-
-            <div className="flex items-center justify-end">
-              <Button variant="outline" size="sm" onClick={loadSample} className="text-xs">
-                Load Sample Case
-              </Button>
-            </div>
-            <Textarea
-              placeholder="Paste operative report, 837 claim data, EHR notes, or any case documentation here..."
-              value={sourceText}
-              onChange={(e) => setSourceText(e.target.value)}
-              className="min-h-[200px] font-mono text-xs"
-            />
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">
-                {sourceText.length > 0 ? `${sourceText.length.toLocaleString()} characters${uploadedFileName ? ` from ${uploadedFileName}` : ''}` : 'Supports: Op reports, 837 files, clinical notes, claim summaries'}
-              </span>
-              <Button onClick={handleExtract} disabled={!sourceText.trim()}>
-                <FileText className="h-4 w-4 mr-2" />
-                Extract & Create Case
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Extracting */}
-        {step === 'extracting' && (
-          <div className="py-12 text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-accent" />
-            <p className="text-sm font-medium">Extracting case data with AI...</p>
-            <p className="text-xs text-muted-foreground">Identifying CPT codes, ICD-10 codes, provider info, and claim amounts</p>
-          </div>
-        )}
-
-        {/* Step 3: Extracted — Review */}
-        {step === 'extracted' && extractedData && (
-          <div className="space-y-4">
-            <Card className="p-4 space-y-3">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-consensus" />
-                Extracted Case Data
-              </h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-xs text-muted-foreground">Patient</span>
-                  <p className="font-mono">{extractedData.patient_id}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-muted-foreground">Provider</span>
-                  <p>{extractedData.physician_name} ({extractedData.physician_id})</p>
-                </div>
-                <div>
-                  <span className="text-xs text-muted-foreground">Date of Service</span>
-                  <p>{extractedData.date_of_service}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-muted-foreground">Claim Amount</span>
-                  <p className="font-semibold">${extractedData.claim_amount?.toLocaleString()}</p>
-                </div>
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <span className="text-xs text-muted-foreground">CPT Codes</span>
-                <div className="flex gap-2 flex-wrap">
-                  {extractedData.cpt_codes?.map((c: string) => (
-                    <Badge key={c} variant="outline" className="font-mono">{c}</Badge>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <span className="text-xs text-muted-foreground">ICD-10 Codes</span>
-                <div className="flex gap-2 flex-wrap">
-                  {extractedData.icd_codes?.map((c: string) => (
-                    <Badge key={c} variant="secondary" className="font-mono">{c}</Badge>
-                  ))}
-                </div>
-              </div>
-              {extractedData.summary && (
-                <div>
-                  <span className="text-xs text-muted-foreground">Clinical Summary</span>
-                  <p className="text-xs mt-1">{extractedData.summary}</p>
-                </div>
-              )}
-            </Card>
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => { setStep('input'); setProgress(0); }}>
-                Edit Source
-              </Button>
-              <Button onClick={handleAnalyze} className="gap-2">
-                <Brain className="h-4 w-4" />
-                Run SOUPY Analysis
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Analyzing */}
-        {step === 'analyzing' && (
-          <div className="py-8 space-y-6">
-            <div className="text-center space-y-2">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-accent" />
-              <p className="text-sm font-medium">SOUPY ThinkTank Protocol Running...</p>
-              <p className="text-xs text-muted-foreground">4 AI perspectives analyzing your case simultaneously</p>
-            </div>
-            <div className="space-y-2">
-              {['builder', 'redteam', 'analyst', 'breaker'].map((role) => {
-                const isActive = currentRole === role;
-                const isDone = ['builder', 'redteam', 'analyst', 'breaker'].indexOf(role) < 
-                               ['builder', 'redteam', 'analyst', 'breaker'].indexOf(currentRole);
-                return (
-                  <div key={role} className={`rounded-md border p-3 text-xs transition-all ${isActive ? 'border-accent bg-accent/5' : isDone ? 'border-consensus/30 bg-consensus/5' : 'opacity-50'}`}>
-                    {isDone ? (
-                      <span className="flex items-center gap-2"><CheckCircle className="h-3.5 w-3.5 text-consensus" /> {role.charAt(0).toUpperCase() + role.slice(1)} — Complete</span>
-                    ) : isActive ? (
-                      <span className="flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin text-accent" /> {roleLabels[role]}</span>
-                    ) : (
-                      <span className="text-muted-foreground">{role.charAt(0).toUpperCase() + role.slice(1)} — Waiting</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Complete */}
-        {step === 'complete' && (
-          <div className="py-8 text-center space-y-4">
-            <CheckCircle className="h-12 w-12 text-consensus mx-auto" />
-            <div>
-              <p className="text-lg font-semibold">Analysis Complete</p>
-              <p className="text-sm text-muted-foreground">4 AI perspectives generated. Case is ready for review.</p>
-            </div>
-            <Button onClick={handleViewCase} size="lg" className="gap-2">
-              View Full Analysis
+        {/* Paste text section */}
+        <div className="flex items-center gap-3">
+          <Separator className="flex-1" />
+          <span className="text-xs text-muted-foreground">or paste text</span>
+          <Separator className="flex-1" />
+        </div>
+        <div className="space-y-2">
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={loadSample} className="text-xs">
+              Load Sample Case
             </Button>
           </div>
+          <Textarea
+            placeholder="Paste an operative report and click 'Add to Queue'..."
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            className="min-h-[100px] font-mono text-xs"
+          />
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">
+              {pasteText.length > 0 ? `${pasteText.length.toLocaleString()} characters` : ''}
+            </span>
+            <Button variant="secondary" size="sm" onClick={addPasteAsFile} disabled={!pasteText.trim()}>
+              <FileText className="h-3.5 w-3.5 mr-1.5" />
+              Add to Queue
+            </Button>
+          </div>
+        </div>
+
+        {/* File queue */}
+        {files.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Queue ({files.length} file{files.length !== 1 ? 's' : ''})</h3>
+                {!batchRunning && readyCount > 0 && (
+                  <Button onClick={runBatch} size="sm" className="gap-1.5">
+                    <Play className="h-3.5 w-3.5" />
+                    Process All ({readyCount})
+                  </Button>
+                )}
+                {batchRunning && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Processing...
+                  </Badge>
+                )}
+              </div>
+              <ScrollArea className="max-h-[250px]">
+                <div className="space-y-1.5">
+                  {files.map((f) => (
+                    <Card key={f.id} className={`p-3 flex items-center gap-3 ${f.status === 'error' ? 'border-destructive/30' : f.status === 'complete' ? 'border-consensus/30' : ''}`}>
+                      {statusIcon(f.status)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{f.name}</p>
+                        {f.error && <p className="text-[10px] text-destructive truncate">{f.error}</p>}
+                        {f.extractedData?.cpt_codes && (
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {f.extractedData.cpt_codes.slice(0, 4).map((c: string) => (
+                              <Badge key={c} variant="outline" className="text-[9px] px-1 py-0 font-mono">{c}</Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <Badge variant={f.status === 'complete' ? 'default' : f.status === 'error' ? 'destructive' : 'secondary'} className="text-[10px] shrink-0">
+                        {statusLabel(f.status)}
+                      </Badge>
+                      {!batchRunning && f.status !== 'complete' && (
+                        <button onClick={() => removeFile(f.id)} className="text-muted-foreground hover:text-destructive transition-colors">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {f.status === 'complete' && f.caseId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-6 px-2"
+                          onClick={() => {
+                            onCaseCreated(f.caseId!);
+                            setOpen(false);
+                            reset();
+                          }}
+                        >
+                          View
+                        </Button>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </>
         )}
 
-        {/* Error state */}
-        {step === 'error' && (
-          <div className="py-8 text-center space-y-4">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
-            <div>
-              <p className="text-lg font-semibold">Something went wrong</p>
-              <p className="text-sm text-muted-foreground">{error}</p>
-            </div>
-            <Button variant="outline" onClick={reset}>Try Again</Button>
+        {/* All done summary */}
+        {!batchRunning && completeCount > 0 && completeCount === files.length && (
+          <div className="text-center py-4 space-y-3">
+            <CheckCircle className="h-10 w-10 text-consensus mx-auto" />
+            <p className="text-sm font-semibold">All {completeCount} cases analyzed!</p>
+            <Button onClick={() => { setOpen(false); reset(); }}>
+              Close & View Cases
+            </Button>
           </div>
         )}
       </DialogContent>
