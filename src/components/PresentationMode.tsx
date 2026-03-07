@@ -157,11 +157,12 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                   {
-                    stat: '38%',
+                    stat: '40%+',
                     label: 'Of denials overturned on appeal',
-                    sub: 'Because determinations weren\'t built to withstand challenge',
+                    sub: 'KFF / CMS Marketplace data, 2023',
                     icon: TrendingDown,
                     color: 'text-destructive',
+                    source: 'kff.org',
                   },
                   {
                     stat: '1',
@@ -184,6 +185,9 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                       <p className={cn('text-2xl font-bold font-mono', item.color)}>{item.stat}</p>
                       <p className="text-xs font-medium">{item.label}</p>
                       <p className="text-[10px] text-muted-foreground">{item.sub}</p>
+                      {'source' in item && item.source && (
+                        <p className="text-[9px] text-muted-foreground/60 italic">Source: {item.source}</p>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
