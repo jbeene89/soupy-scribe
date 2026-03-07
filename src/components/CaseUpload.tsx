@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Upload, FileText, Brain, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, Brain, CheckCircle, AlertCircle, Loader2, File } from 'lucide-react';
 import { toast } from 'sonner';
 import { submitCaseText, runSOUPYAnalysis, getProcessingStatus } from '@/lib/caseService';
 
@@ -60,7 +60,28 @@ Implants: $8,200
 Facility fee: $3,400
 Total: $20,000`;
 
-type UploadStep = 'input' | 'extracting' | 'extracted' | 'analyzing' | 'complete' | 'error';
+type UploadStep = 'input' | 'parsing-pdf' | 'extracting' | 'extracted' | 'analyzing' | 'complete' | 'error';
+
+async function extractTextFromPDF(file: File): Promise<string> {
+  const pdfjsLib = await import('pdfjs-dist');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  
+  const pages: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const text = content.items
+      .map((item: any) => item.str)
+      .join(' ')
+      .replace(/\s+/g, ' ');
+    pages.push(text);
+  }
+  
+  return pages.join('\n\n--- Page Break ---\n\n');
+}
 
 export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [open, setOpen] = useState(false);
@@ -69,6 +90,11 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [progress, setProgress] = useState(0);
   const [extractedData, setExtractedData] = useState<any>(null);
   const [caseId, setCaseId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [currentRole, setCurrentRole] = useState<string>('');
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState<string>('');
 
@@ -80,7 +106,56 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
     setCaseId(null);
     setError(null);
     setCurrentRole('');
+    setUploadedFileName(null);
+    setIsDragging(false);
   }, []);
+
+  const handlePDFFile = async (file: File) => {
+    if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+      // Try as plain text
+      const text = await file.text();
+      setSourceText(text);
+      setUploadedFileName(file.name);
+      toast.success(`Loaded ${file.name} as text`);
+      return;
+    }
+
+    setStep('parsing-pdf');
+    setProgress(5);
+    setUploadedFileName(file.name);
+
+    try {
+      const text = await extractTextFromPDF(file);
+      if (!text.trim()) {
+        toast.error('No text found in PDF — it may be a scanned image. Try pasting the text instead.');
+        setStep('input');
+        setProgress(0);
+        return;
+      }
+      setSourceText(text);
+      setStep('input');
+      setProgress(0);
+      toast.success(`Extracted ${text.length.toLocaleString()} characters from ${file.name}`);
+    } catch (err) {
+      console.error('PDF parse error:', err);
+      toast.error('Failed to parse PDF. Try pasting the text content instead.');
+      setStep('input');
+      setProgress(0);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handlePDFFile(file);
+    if (e.target) e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handlePDFFile(file);
+  };
 
   const handleExtract = async () => {
     if (!sourceText.trim()) {
