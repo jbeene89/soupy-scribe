@@ -60,6 +60,7 @@ const SLIDES = [
   { id: 'provider-revenue', label: 'New Revenue' },
   { id: 'flywheel', label: 'The Flywheel' },
   { id: 'exclusivity', label: 'The Offer' },
+  { id: 'sources', label: 'Sources' },
 ];
 
 export function PresentationMode({ onExit }: PresentationModeProps) {
