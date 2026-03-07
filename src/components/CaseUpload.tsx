@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Upload, FileText, Brain, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, Brain, CheckCircle, AlertCircle, Loader2, File } from 'lucide-react';
 import { toast } from 'sonner';
 import { submitCaseText, runSOUPYAnalysis, getProcessingStatus } from '@/lib/caseService';
 
@@ -60,7 +60,28 @@ Implants: $8,200
 Facility fee: $3,400
 Total: $20,000`;
 
-type UploadStep = 'input' | 'extracting' | 'extracted' | 'analyzing' | 'complete' | 'error';
+type UploadStep = 'input' | 'parsing-pdf' | 'extracting' | 'extracted' | 'analyzing' | 'complete' | 'error';
+
+async function extractTextFromPDF(file: File): Promise<string> {
+  const pdfjsLib = await import('pdfjs-dist');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  
+  const pages: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const text = content.items
+      .map((item: any) => item.str)
+      .join(' ')
+      .replace(/\s+/g, ' ');
+    pages.push(text);
+  }
+  
+  return pages.join('\n\n--- Page Break ---\n\n');
+}
 
 export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [open, setOpen] = useState(false);
@@ -71,6 +92,9 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [caseId, setCaseId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState<string>('');
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = useCallback(() => {
     setSourceText('');
@@ -80,7 +104,56 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
     setCaseId(null);
     setError(null);
     setCurrentRole('');
+    setUploadedFileName(null);
+    setIsDragging(false);
   }, []);
+
+  const handlePDFFile = async (file: File) => {
+    if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+      // Try as plain text
+      const text = await file.text();
+      setSourceText(text);
+      setUploadedFileName(file.name);
+      toast.success(`Loaded ${file.name} as text`);
+      return;
+    }
+
+    setStep('parsing-pdf');
+    setProgress(5);
+    setUploadedFileName(file.name);
+
+    try {
+      const text = await extractTextFromPDF(file);
+      if (!text.trim()) {
+        toast.error('No text found in PDF — it may be a scanned image. Try pasting the text instead.');
+        setStep('input');
+        setProgress(0);
+        return;
+      }
+      setSourceText(text);
+      setStep('input');
+      setProgress(0);
+      toast.success(`Extracted ${text.length.toLocaleString()} characters from ${file.name}`);
+    } catch (err) {
+      console.error('PDF parse error:', err);
+      toast.error('Failed to parse PDF. Try pasting the text content instead.');
+      setStep('input');
+      setProgress(0);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handlePDFFile(file);
+    if (e.target) e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handlePDFFile(file);
+  };
 
   const handleExtract = async () => {
     if (!sourceText.trim()) {
@@ -179,32 +252,80 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
         {/* Progress bar */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{step === 'input' ? 'Paste case data' : step === 'extracting' ? 'Extracting...' : step === 'extracted' ? 'Review extraction' : step === 'analyzing' ? 'SOUPY Analysis' : step === 'complete' ? 'Complete' : 'Error'}</span>
+            <span>{step === 'input' ? 'Upload or paste case data' : step === 'parsing-pdf' ? 'Parsing PDF...' : step === 'extracting' ? 'Extracting...' : step === 'extracted' ? 'Review extraction' : step === 'analyzing' ? 'SOUPY Analysis' : step === 'complete' ? 'Complete' : 'Error'}</span>
             <span>{progress}%</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
 
+        {/* PDF Parsing state */}
+        {step === 'parsing-pdf' && (
+          <div className="py-12 text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-accent" />
+            <p className="text-sm font-medium">Parsing PDF: {uploadedFileName}...</p>
+            <p className="text-xs text-muted-foreground">Extracting text from all pages</p>
+          </div>
+        )}
+
         {/* Step 1: Input */}
         {step === 'input' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Paste an operative report, claim file, or case notes. The AI will extract codes, amounts, and provider details automatically.
-              </p>
-              <Button variant="outline" size="sm" onClick={loadSample} className="shrink-0 ml-3 text-xs">
-                Load Sample
+            {/* PDF Upload Zone */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".pdf,.txt,.csv,.hl7,.json,.xml"
+              className="hidden"
+            />
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all ${
+                isDragging
+                  ? 'border-accent bg-accent/10'
+                  : uploadedFileName
+                    ? 'border-consensus/40 bg-consensus/5'
+                    : 'border-muted-foreground/20 hover:border-accent/40 hover:bg-accent/5'
+              }`}
+            >
+              {uploadedFileName ? (
+                <div className="flex items-center justify-center gap-2">
+                  <File className="h-5 w-5 text-consensus" />
+                  <span className="text-sm font-medium">{uploadedFileName}</span>
+                  <Badge variant="secondary" className="text-[10px]">Loaded</Badge>
+                </div>
+              ) : (
+                <>
+                  <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-sm font-medium">Drop a PDF operative report here, or click to browse</p>
+                  <p className="text-xs text-muted-foreground mt-1">Supports: PDF, TXT, CSV, HL7, JSON, XML</p>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Separator className="flex-1" />
+              <span className="text-xs text-muted-foreground">or paste text</span>
+              <Separator className="flex-1" />
+            </div>
+
+            <div className="flex items-center justify-end">
+              <Button variant="outline" size="sm" onClick={loadSample} className="text-xs">
+                Load Sample Case
               </Button>
             </div>
             <Textarea
               placeholder="Paste operative report, 837 claim data, EHR notes, or any case documentation here..."
               value={sourceText}
               onChange={(e) => setSourceText(e.target.value)}
-              className="min-h-[300px] font-mono text-xs"
+              className="min-h-[200px] font-mono text-xs"
             />
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">
-                {sourceText.length > 0 ? `${sourceText.length.toLocaleString()} characters` : 'Supports: Op reports, 837 files, clinical notes, claim summaries'}
+                {sourceText.length > 0 ? `${sourceText.length.toLocaleString()} characters${uploadedFileName ? ` from ${uploadedFileName}` : ''}` : 'Supports: Op reports, 837 files, clinical notes, claim summaries'}
               </span>
               <Button onClick={handleExtract} disabled={!sourceText.trim()}>
                 <FileText className="h-4 w-4 mr-2" />
