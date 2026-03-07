@@ -53,9 +53,9 @@ function Slide({ children, className }: SlideProps) {
 }
 
 const SLIDES = [
-  { id: 'gap', label: 'The Gap' },
+  { id: 'opportunity', label: 'The Opportunity' },
   { id: 'live-case', label: 'Live Case' },
-  { id: 'single-vs-soupy', label: 'The Blindspot' },
+  { id: 'next-layer', label: 'Next Layer' },
   { id: 'appeal-defense', label: 'Appeal Defense' },
   { id: 'provider-revenue', label: 'New Revenue' },
   { id: 'flywheel', label: 'The Flywheel' },
