@@ -9,10 +9,11 @@ import { SOUPYConfigDialog } from '@/components/SOUPYConfigDialog';
 import { ComparisonView } from '@/components/ComparisonView';
 import { PlatformValueCard } from '@/components/PlatformValueCard';
 import { IntegrationArchitecture } from '@/components/IntegrationArchitecture';
+import { LyricProductComparison } from '@/components/LyricProductComparison';
 import { PresentationMode } from '@/components/PresentationMode';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
-import { Scale, Brain, GitCompare, BarChart3, Presentation } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers } from 'lucide-react';
 
 const Index = () => {
   const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
