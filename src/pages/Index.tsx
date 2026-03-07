@@ -124,6 +124,10 @@ const Index = () => {
                 <GitCompare className="h-3.5 w-3.5" />
                 Value Demo
               </TabsTrigger>
+              <TabsTrigger value="lyric-map" className="gap-1.5">
+                <Layers className="h-3.5 w-3.5" />
+                Lyric Enhancement
+              </TabsTrigger>
               <TabsTrigger value="platform" className="gap-1.5">
                 <BarChart3 className="h-3.5 w-3.5" />
                 Platform Value
