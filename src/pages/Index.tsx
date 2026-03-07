@@ -151,6 +151,10 @@ const Index = () => {
               <ComparisonView />
             </TabsContent>
 
+            <TabsContent value="lyric-map">
+              <LyricProductComparison />
+            </TabsContent>
+
             <TabsContent value="platform">
               <div className="space-y-6">
                 <PlatformValueCard />
