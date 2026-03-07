@@ -864,4 +864,84 @@ export const mockCodeCombinations: CodeCombinationAnalysis[] = [
       'Total qualifying critical care minutes calculated',
     ],
   },
+  {
+    codes: ['27447', '20930'],
+    flagReason: 'Total knee arthroplasty with separate bone graft billing. NCCI edits pair these codes — modifier 59 required for separate billing.',
+    legitimateExplanations: [
+      'Structural allograft needed for severe bone deficiency (osteoporosis, revision) with separate harvest site',
+      'Bone graft used to fill a defect separate from the arthroplasty bed (e.g., tibial plateau defect)',
+      'Morselized allograft ordered as separate implant with its own lot number and invoice',
+    ],
+    noncompliantExplanations: [
+      'Bone graft is part of standard TKA technique — impaction grafting of bone cuts is included',
+      'No separate incision or harvest site documented',
+      'Graft used within the arthroplasty bed as part of standard implant fixation',
+    ],
+    requiredDocumentation: [
+      'Operative note describing separate graft site and indication',
+      'Implant manifest with allograft lot number',
+      'Medical necessity for structural vs. standard graft',
+      'Modifier 59 or XE/XS documentation',
+    ],
+  },
+  {
+    codes: ['22612', '63047'],
+    flagReason: 'Posterior lumbar fusion with laminectomy — some payers bundle decompression into fusion approach.',
+    legitimateExplanations: [
+      'Decompression was the primary procedure; fusion added for instability — sequence documented',
+      'Decompression performed at a level adjacent to the fusion level',
+      'Separate operative report sections for each procedure with distinct indications',
+    ],
+    noncompliantExplanations: [
+      'Decompression performed at the same level as fusion — may be considered part of the approach',
+      'No modifier documentation supporting distinct procedural service',
+      'Single operative indication covers both procedures without separate justification',
+    ],
+    requiredDocumentation: [
+      'Level-by-level operative documentation',
+      'Fluoroscopic confirmation of levels treated',
+      'Separate medical necessity for decompression vs. fusion',
+      'NASS-compliant documentation if multi-level',
+    ],
+  },
+  {
+    codes: ['44204', '44180'],
+    flagReason: 'Laparoscopic colectomy with laparoscopic colostomy — colostomy may be bundled into colectomy (Hartmann\'s procedure).',
+    legitimateExplanations: [
+      'Colostomy was an unplanned addition due to intraoperative findings (e.g., perforation, ischemia)',
+      'Colostomy site preparation and maturation documented as separate surgical work',
+      'Payer-specific policy allows separate billing for diversion procedures',
+    ],
+    noncompliantExplanations: [
+      'Hartmann\'s procedure is by definition colectomy + colostomy — single procedure concept',
+      'Planned colostomy at time of colectomy is part of the surgical plan, not a separate service',
+      'No documentation distinguishing colostomy creation from colectomy endpoint',
+    ],
+    requiredDocumentation: [
+      'Operative note documenting colostomy as distinct decision point',
+      'Medical necessity for fecal diversion',
+      'Payer-specific bundling rules checked',
+      'Intraoperative photos if available',
+    ],
+  },
+  {
+    codes: ['27130', '27236'],
+    flagReason: 'Total hip arthroplasty with ORIF of femoral fracture — if THA treats the fracture, ORIF is not separately billable.',
+    legitimateExplanations: [
+      'Complex fracture pattern with subtrochanteric extension requiring separate fixation before THA stem insertion',
+      'Cerclage wiring of femoral shaft needed to stabilize fracture before prosthesis placement',
+      'Distinct anatomic zones treated: joint (THA) and shaft (ORIF)',
+    ],
+    noncompliantExplanations: [
+      'Simple femoral neck fracture treated with THA — ORIF is an alternative, not an addition',
+      'No imaging showing fracture extending beyond the hip joint',
+      'Single operative indication without separate justification for ORIF',
+    ],
+    requiredDocumentation: [
+      'Pre-op CT or X-ray showing fracture classification (AO/OTA)',
+      'Operative note documenting sequence of fixation then arthroplasty',
+      'Intraoperative fluoroscopy confirming separate fixation',
+      'Implant manifest for both fixation hardware and prosthesis',
+    ],
+  },
 ];
