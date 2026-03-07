@@ -9,10 +9,11 @@ import { SOUPYConfigDialog } from '@/components/SOUPYConfigDialog';
 import { ComparisonView } from '@/components/ComparisonView';
 import { PlatformValueCard } from '@/components/PlatformValueCard';
 import { IntegrationArchitecture } from '@/components/IntegrationArchitecture';
+import { LyricProductComparison } from '@/components/LyricProductComparison';
 import { PresentationMode } from '@/components/PresentationMode';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
-import { Scale, Brain, GitCompare, BarChart3, Presentation } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers } from 'lucide-react';
 
 const Index = () => {
   const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
@@ -123,6 +124,10 @@ const Index = () => {
                 <GitCompare className="h-3.5 w-3.5" />
                 Value Demo
               </TabsTrigger>
+              <TabsTrigger value="lyric-map" className="gap-1.5">
+                <Layers className="h-3.5 w-3.5" />
+                Lyric Enhancement
+              </TabsTrigger>
               <TabsTrigger value="platform" className="gap-1.5">
                 <BarChart3 className="h-3.5 w-3.5" />
                 Platform Value
@@ -144,6 +149,10 @@ const Index = () => {
 
             <TabsContent value="comparison">
               <ComparisonView />
+            </TabsContent>
+
+            <TabsContent value="lyric-map">
+              <LyricProductComparison />
             </TabsContent>
 
             <TabsContent value="platform">
