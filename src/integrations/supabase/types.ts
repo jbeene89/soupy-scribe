@@ -28,6 +28,7 @@ export type Database = {
           icd_codes: string[]
           id: string
           metadata: Json | null
+          owner_id: string | null
           patient_id: string
           physician_id: string
           physician_name: string
@@ -49,6 +50,7 @@ export type Database = {
           icd_codes?: string[]
           id?: string
           metadata?: Json | null
+          owner_id?: string | null
           patient_id: string
           physician_id: string
           physician_name: string
@@ -70,6 +72,7 @@ export type Database = {
           icd_codes?: string[]
           id?: string
           metadata?: Json | null
+          owner_id?: string | null
           patient_id?: string
           physician_id?: string
           physician_name?: string
