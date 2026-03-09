@@ -211,6 +211,10 @@ const Index = () => {
                 <Layers className="h-3.5 w-3.5" />
                 Lyric Enhancement
               </TabsTrigger>
+              <TabsTrigger value="ai-integration" className="gap-1.5">
+                <Cpu className="h-3.5 w-3.5" />
+                AI Integration
+              </TabsTrigger>
               <TabsTrigger value="platform" className="gap-1.5">
                 <BarChart3 className="h-3.5 w-3.5" />
                 Platform Value
