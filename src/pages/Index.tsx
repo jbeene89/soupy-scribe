@@ -16,7 +16,7 @@ import { CaseUpload } from '@/components/CaseUpload';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
-import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
