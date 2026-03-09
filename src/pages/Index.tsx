@@ -10,12 +10,13 @@ import { ComparisonView } from '@/components/ComparisonView';
 import { PlatformValueCard } from '@/components/PlatformValueCard';
 import { IntegrationArchitecture } from '@/components/IntegrationArchitecture';
 import { LyricProductComparison } from '@/components/LyricProductComparison';
+import { LyricAIIntegration } from '@/components/LyricAIIntegration';
 import { PresentationMode } from '@/components/PresentationMode';
 import { CaseUpload } from '@/components/CaseUpload';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
-import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
@@ -210,6 +211,10 @@ const Index = () => {
                 <Layers className="h-3.5 w-3.5" />
                 Lyric Enhancement
               </TabsTrigger>
+              <TabsTrigger value="ai-integration" className="gap-1.5">
+                <Cpu className="h-3.5 w-3.5" />
+                AI Integration
+              </TabsTrigger>
               <TabsTrigger value="platform" className="gap-1.5">
                 <BarChart3 className="h-3.5 w-3.5" />
                 Platform Value
@@ -235,6 +240,10 @@ const Index = () => {
 
             <TabsContent value="lyric-map">
               <LyricProductComparison />
+            </TabsContent>
+
+            <TabsContent value="ai-integration">
+              <LyricAIIntegration />
             </TabsContent>
 
             <TabsContent value="platform">
