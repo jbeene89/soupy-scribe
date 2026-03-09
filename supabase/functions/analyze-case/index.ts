@@ -267,6 +267,13 @@ serve(async (req) => {
         });
       }
 
+      // Verify ownership
+      if (auditCase.owner_id && auditCase.owner_id !== userId) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       await supabase.from("audit_cases").update({ status: "in-review" }).eq("id", caseId);
       await supabase.from("processing_queue").update({
         status: "processing",
