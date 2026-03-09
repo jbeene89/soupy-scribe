@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_SOURCE_TEXT_LENGTH = 50_000;
+
 const SOUPY_ROLES = [
   {
     role: "builder",
@@ -68,6 +71,32 @@ Provide your analysis as a JSON object with these fields:
 
 Be specific and reference real CMS guidelines, NCCI edits, and CPT coding rules.`;
 
+// Authenticate the request and return the user ID
+async function authenticateRequest(req: Request, supabaseUrl: string, supabaseAnonKey: string): Promise<{ userId: string } | Response> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const token = authHeader.replace("Bearer ", "");
+  const { data, error } = await supabaseAuth.auth.getClaims(token);
+  if (error || !data?.claims) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  return { userId: data.claims.sub as string };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -78,13 +107,50 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Authenticate the request
+    const authResult = await authenticateRequest(req, supabaseUrl, supabaseAnonKey);
+    if (authResult instanceof Response) return authResult;
+    const userId = authResult.userId;
+
+    // Use service role client for DB operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { action, caseId, sourceText } = await req.json();
 
+    // Validate action
+    if (action !== "extract" && action !== "analyze") {
+      return new Response(JSON.stringify({ error: "Invalid action. Use 'extract' or 'analyze'" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate inputs based on action
     if (action === "extract") {
-      // Step 1: Extract structured data from case file text
+      if (typeof sourceText !== "string" || sourceText.trim().length === 0) {
+        return new Response(JSON.stringify({ error: "sourceText is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (sourceText.length > MAX_SOURCE_TEXT_LENGTH) {
+        return new Response(JSON.stringify({ error: "Input text too large. Maximum 50,000 characters." }), {
+          status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (action === "analyze") {
+      if (!caseId || !UUID_RE.test(caseId)) {
+        return new Response(JSON.stringify({ error: "Valid caseId is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    if (action === "extract") {
       console.log("Extracting case data from source text...");
 
       const extractResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -128,7 +194,7 @@ serve(async (req) => {
 
       if (!extractResponse.ok) {
         const status = extractResponse.status;
-        const body = await extractResponse.text();
+        console.error("Extract failed:", status, await extractResponse.text());
         if (status === 429) {
           return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
             status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -139,8 +205,7 @@ serve(async (req) => {
             status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        console.error("Extract failed:", status, body);
-        throw new Error(`AI extraction failed: ${status}`);
+        throw new Error("AI extraction failed");
       }
 
       const extractData = await extractResponse.json();
@@ -149,7 +214,6 @@ serve(async (req) => {
 
       const extracted = JSON.parse(toolCall.function.arguments);
 
-      // Create the case in the database
       const { data: newCase, error: caseError } = await supabase
         .from("audit_cases")
         .insert({
@@ -164,13 +228,16 @@ serve(async (req) => {
           status: "pending",
           risk_score: {},
           metadata: { summary: extracted.summary, procedure_type: extracted.procedure_type },
+          owner_id: userId,
         })
         .select()
         .single();
 
-      if (caseError) throw new Error(`Database error: ${caseError.message}`);
+      if (caseError) {
+        console.error("Database insert error:", caseError);
+        throw new Error("Failed to create case");
+      }
 
-      // Create processing queue entry
       await supabase.from("processing_queue").insert({
         case_id: newCase.id,
         status: "queued",
@@ -184,21 +251,22 @@ serve(async (req) => {
     }
 
     if (action === "analyze") {
-      // Step 2: Run SOUPY 4-role analysis
       if (!caseId) throw new Error("caseId required for analysis");
 
       console.log(`Running SOUPY analysis for case ${caseId}...`);
 
-      // Get the case
       const { data: auditCase, error: caseErr } = await supabase
         .from("audit_cases")
         .select("*")
         .eq("id", caseId)
         .single();
 
-      if (caseErr || !auditCase) throw new Error("Case not found");
+      if (caseErr || !auditCase) {
+        return new Response(JSON.stringify({ error: "Case not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-      // Update status
       await supabase.from("audit_cases").update({ status: "in-review" }).eq("id", caseId);
       await supabase.from("processing_queue").update({
         status: "processing",
@@ -213,13 +281,11 @@ Claim Amount: $${auditCase.claim_amount}
 Clinical Summary: ${(auditCase.metadata as any)?.summary || "Not available"}
 Source Text: ${auditCase.source_text?.substring(0, 3000) || "Not available"}`;
 
-      // Run all 4 SOUPY roles
       const analysisResults = [];
       for (let i = 0; i < SOUPY_ROLES.length; i++) {
         const soupyRole = SOUPY_ROLES[i];
         console.log(`Running ${soupyRole.role} analysis...`);
 
-        // Update progress
         await supabase.from("processing_queue").update({
           current_step: `analyzing_${soupyRole.role}`,
           progress: 30 + (i + 1) * 15,
@@ -284,16 +350,13 @@ Source Text: ${auditCase.source_text?.substring(0, 3000) || "Not available"}`;
           });
 
           if (!roleResponse.ok) {
-            const errText = await roleResponse.text();
-            console.error(`${soupyRole.role} failed:`, roleResponse.status, errText);
-            
-            // Insert error analysis
+            console.error(`${soupyRole.role} failed:`, roleResponse.status, await roleResponse.text());
             await supabase.from("case_analyses").insert({
               case_id: caseId,
               role: soupyRole.role,
               model: soupyRole.model,
               status: "error",
-              overall_assessment: `Analysis failed: ${roleResponse.status}`,
+              overall_assessment: `Analysis failed`,
             });
             continue;
           }
@@ -316,7 +379,6 @@ Source Text: ${auditCase.source_text?.substring(0, 3000) || "Not available"}`;
           const analysis = JSON.parse(roleToolCall.function.arguments);
           analysisResults.push({ ...analysis, role: soupyRole.role });
 
-          // Save to database
           await supabase.from("case_analyses").insert({
             case_id: caseId,
             role: soupyRole.role,
@@ -337,12 +399,11 @@ Source Text: ${auditCase.source_text?.substring(0, 3000) || "Not available"}`;
             role: soupyRole.role,
             model: soupyRole.model,
             status: "error",
-            overall_assessment: `Error: ${roleErr instanceof Error ? roleErr.message : "Unknown"}`,
+            overall_assessment: "Analysis encountered an error",
           });
         }
       }
 
-      // Calculate consensus score
       const completedAnalyses = analysisResults.filter(a => a.confidence > 0);
       let consensusScore = 50;
       if (completedAnalyses.length > 1) {
@@ -353,7 +414,6 @@ Source Text: ${auditCase.source_text?.substring(0, 3000) || "Not available"}`;
         consensusScore = Math.round((agreement + avgConfidence) / 2);
       }
 
-      // Calculate risk score
       const totalViolations = analysisResults.reduce((sum, a) => sum + (a.violations?.length || 0), 0);
       const criticalViolations = analysisResults.reduce((sum, a) => 
         sum + (a.violations?.filter((v: any) => v.severity === "critical")?.length || 0), 0);
@@ -361,7 +421,6 @@ Source Text: ${auditCase.source_text?.substring(0, 3000) || "Not available"}`;
       const riskNum = Math.min(100, 20 + criticalViolations * 25 + totalViolations * 10);
       const riskLevel = riskNum >= 80 ? "critical" : riskNum >= 60 ? "high" : riskNum >= 40 ? "medium" : "low";
 
-      // Update case with scores
       await supabase.from("audit_cases").update({
         consensus_score: consensusScore,
         risk_score: {
@@ -378,7 +437,6 @@ Source Text: ${auditCase.source_text?.substring(0, 3000) || "Not available"}`;
         },
       }).eq("id", caseId);
 
-      // Complete processing
       await supabase.from("processing_queue").update({
         status: "complete",
         current_step: "complete",
@@ -396,7 +454,7 @@ Source Text: ${auditCase.source_text?.substring(0, 3000) || "Not available"}`;
       });
     }
 
-    return new Response(JSON.stringify({ error: "Invalid action. Use 'extract' or 'analyze'" }), {
+    return new Response(JSON.stringify({ error: "Invalid action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -404,7 +462,7 @@ Source Text: ${auditCase.source_text?.substring(0, 3000) || "Not available"}`;
   } catch (e) {
     console.error("analyze-case error:", e);
     return new Response(JSON.stringify({ 
-      error: e instanceof Error ? e.message : "Unknown error" 
+      error: "An internal error occurred. Please try again." 
     }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
