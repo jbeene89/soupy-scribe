@@ -10,6 +10,7 @@ import { ComparisonView } from '@/components/ComparisonView';
 import { PlatformValueCard } from '@/components/PlatformValueCard';
 import { IntegrationArchitecture } from '@/components/IntegrationArchitecture';
 import { LyricProductComparison } from '@/components/LyricProductComparison';
+import { LyricAIIntegration } from '@/components/LyricAIIntegration';
 import { PresentationMode } from '@/components/PresentationMode';
 import { CaseUpload } from '@/components/CaseUpload';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
