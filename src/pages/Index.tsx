@@ -242,6 +242,10 @@ const Index = () => {
               <LyricProductComparison />
             </TabsContent>
 
+            <TabsContent value="ai-integration">
+              <LyricAIIntegration />
+            </TabsContent>
+
             <TabsContent value="platform">
               <div className="space-y-6">
                 <PlatformValueCard />
