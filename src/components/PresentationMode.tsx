@@ -22,6 +22,7 @@ import {
   XCircle,
   Zap,
   ArrowRight,
+  ArrowDown,
   TrendingDown,
   DollarSign,
   Eye,
@@ -31,6 +32,12 @@ import {
   Lock,
   Users,
   GitCompare,
+  Cpu,
+  Server,
+  FileText,
+  Database,
+  BarChart3,
+  RefreshCw,
 } from 'lucide-react';
 
 const demoCase = mockCases.find(c => c.analyses.length > 0)!;
