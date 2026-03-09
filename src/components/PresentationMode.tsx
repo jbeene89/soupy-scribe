@@ -66,6 +66,7 @@ const SLIDES = [
   { id: 'appeal-defense', label: 'Appeal Defense' },
   { id: 'provider-revenue', label: 'New Revenue' },
   { id: 'flywheel', label: 'The Flywheel' },
+  { id: 'ai-integration', label: 'Integration' },
   { id: 'exclusivity', label: 'The Offer' },
   { id: 'sources', label: 'Sources' },
 ];
