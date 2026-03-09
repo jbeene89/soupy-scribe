@@ -613,8 +613,135 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 7: The Offer — exclusivity */}
+        {/* SLIDE 7: AI Integration Pipeline */}
         {currentSlide === 6 && (
+          <Slide>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Badge variant="outline" className="text-xs">Technical Architecture</Badge>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                  How SOUPY plugs into <span className="text-accent">your existing pipeline.</span>
+                </h2>
+                <p className="text-sm text-muted-foreground max-w-2xl">
+                  Zero disruption. SOUPY sits as a reasoning layer between Lyric's current rule engines
+                  and the final determination — no re-architecture, no migration.
+                </p>
+              </div>
+
+              {/* Stage 1 & 2: Existing */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Database className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stage 1 — Claim Intake</span>
+                      <Badge variant="outline" className="ml-auto text-[9px]">No Change</Badge>
+                    </div>
+                    <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-2"><Server className="h-3.5 w-3.5 shrink-0" /><span>835/837 Transaction Feed — unchanged</span></div>
+                      <div className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 shrink-0" /><span>EHR / HL7 FHIR ingestion — unchanged</span></div>
+                      <div className="flex items-center gap-2"><Database className="h-3.5 w-3.5 shrink-0" /><span>KnowledgePacks & Concepts — unchanged</span></div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-primary/30">
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stage 2 — Rule Engine</span>
+                      <Badge variant="outline" className="ml-auto text-[9px] border-primary/30 text-primary">Existing</Badge>
+                    </div>
+                    <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-2"><Shield className="h-3.5 w-3.5 shrink-0 text-primary" /><span>ClaimsXten fires deterministic edit rules</span></div>
+                      <div className="flex items-center gap-2"><Eye className="h-3.5 w-3.5 shrink-0 text-primary" /><span>Replay pattern detection on historical data</span></div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground italic mt-1">Today, this is where the decision gets made.</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Arrow */}
+              <div className="flex flex-col items-center gap-0.5">
+                <ArrowDown className="h-5 w-5 text-accent" />
+                <span className="text-[10px] text-accent font-medium">SOUPY intercepts here</span>
+              </div>
+
+              {/* Stage 3: SOUPY */}
+              <Card className="border-2 border-accent">
+                <CardContent className="p-5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-5 w-5 text-accent" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-accent">Stage 3 — SOUPY Intelligence Layer (NEW)</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { icon: Shield, name: 'Builder', desc: 'Constructs strongest case', color: 'text-primary' },
+                      { icon: AlertTriangle, name: 'Red Team', desc: 'Attacks from every angle', color: 'text-destructive' },
+                      { icon: BarChart3, name: 'Analyst', desc: 'Maps systemic patterns', color: 'text-consensus' },
+                      { icon: RefreshCw, name: 'Frame Breaker', desc: 'Challenges shared assumptions', color: 'text-accent' },
+                    ].map((role, i) => (
+                      <div key={i} className="rounded-lg border bg-card p-3 text-center space-y-1">
+                        <role.icon className={`h-4 w-4 mx-auto ${role.color}`} />
+                        <p className="text-[11px] font-semibold">{role.name}</p>
+                        <p className="text-[9px] text-muted-foreground">{role.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-[10px]">
+                    <div className="rounded-md border bg-card/80 p-2">
+                      <p className="font-semibold text-accent">1. Divergence</p>
+                      <p className="text-muted-foreground">4 models analyze independently — no cross-contamination</p>
+                    </div>
+                    <div className="rounded-md border bg-card/80 p-2">
+                      <p className="font-semibold text-accent">2. Reality Anchoring</p>
+                      <p className="text-muted-foreground">Evidence validated against LCD/NCD & KnowledgePacks</p>
+                    </div>
+                    <div className="rounded-md border bg-card/80 p-2">
+                      <p className="font-semibold text-accent">3. Adaptive Synthesis</p>
+                      <p className="text-muted-foreground">Consensus scored, dissent preserved, appeal defense generated</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Arrow */}
+              <div className="flex flex-col items-center gap-0.5">
+                <ArrowDown className="h-5 w-5 text-consensus" />
+                <span className="text-[10px] text-muted-foreground">Enriched output flows back into existing systems</span>
+              </div>
+
+              {/* Stage 4: Output */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { icon: BarChart3, title: 'Virtuoso Analytics', desc: 'Now with appeal-resilience metrics', tag: 'Enhanced', color: 'text-consensus' },
+                  { icon: FileText, title: 'Appeal Portal', desc: 'Pre-built defense letters at determination time', tag: 'New', color: 'text-accent' },
+                  { icon: Lock, title: 'Audit Trail', desc: 'Complete reasoning transcript — every perspective', tag: 'New', color: 'text-accent' },
+                ].map((item, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-3 space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <item.icon className={`h-3.5 w-3.5 ${item.color}`} />
+                        <span className="text-[11px] font-semibold">{item.title}</span>
+                        <Badge variant="outline" className={`ml-auto text-[8px] px-1 py-0 ${item.tag === 'New' ? 'border-accent/30 text-accent' : 'border-consensus/30 text-consensus'}`}>{item.tag}</Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-center gap-3">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-dashed border-accent/30 bg-accent/5">
+                  <Cpu className="h-4 w-4 text-accent" />
+                  <span className="text-xs font-semibold text-accent">8 weeks from contract to production — single REST endpoint</span>
+                </div>
+              </div>
+            </div>
+          </Slide>
+        )}
+
+        {/* SLIDE 8: The Offer — exclusivity */}
+        {currentSlide === 7 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8">
               <div className="space-y-2 text-center">
