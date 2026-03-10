@@ -70,6 +70,19 @@ const Index = () => {
     loadLiveCases(); // Refresh
   };
 
+  const handleDecisionMade = (outcome: 'approved' | 'rejected' | 'info-requested') => {
+    if (!selectedCase) return;
+    const currentCases = allCases.filter(c => c.status === 'pending' || c.status === 'in-review');
+    const currentIndex = currentCases.findIndex(c => c.id === selectedCase.id);
+    const nextCase = currentCases[currentIndex + 1] || currentCases[currentIndex - 1];
+    if (nextCase) {
+      handleSelectCase(nextCase);
+    } else {
+      handleBack();
+      toast.info('No more cases in queue');
+    }
+  };
+
   const handleCaseCreated = async (caseId: string) => {
     await loadLiveCases();
     const newCase = await fetchCase(caseId);
@@ -192,7 +205,7 @@ const Index = () => {
           </div>
         )}
         {selectedCase && activeTab === 'audit' ? (
-          <AuditDetail auditCase={selectedCase} onBack={handleBack} posture={posture} />
+          <AuditDetail auditCase={selectedCase} onBack={handleBack} posture={posture} onDecisionMade={handleDecisionMade} />
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">

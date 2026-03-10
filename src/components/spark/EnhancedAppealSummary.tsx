@@ -41,8 +41,19 @@ export function EnhancedAppealSummary({ auditCase }: EnhancedAppealSummaryProps)
     return null;
   }
 
+  const defaultDefense: RoleDefense = {
+    role: 'builder',
+    strategy: 'No defense analysis available yet.',
+    strengths: [],
+    weaknesses: [],
+    strength: 0,
+  };
+
   // Group defenses by violation
   const violationDefenses: { violation: CodeViolation; bestDefense: RoleDefense }[] = allViolations.map(v => {
+    if (!v.defenses || v.defenses.length === 0) {
+      return { violation: v, bestDefense: defaultDefense };
+    }
     const bestDefense = v.defenses.reduce((best, current) =>
       current.strength > best.strength ? current : best
     );

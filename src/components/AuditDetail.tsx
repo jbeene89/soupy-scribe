@@ -26,14 +26,16 @@ interface AuditDetailProps {
   auditCase: AuditCase;
   onBack: () => void;
   posture: 'payment-integrity' | 'compliance-coaching';
+  onDecisionMade?: (outcome: 'approved' | 'rejected' | 'info-requested') => void;
 }
 
-export function AuditDetail({ auditCase, onBack, posture }: AuditDetailProps) {
+export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: AuditDetailProps) {
   const hasAnalyses = auditCase.analyses.length > 0;
   const isAnalyzing = auditCase.analyses.some(a => a.status === 'analyzing');
 
   const handleDecision = (outcome: 'approved' | 'rejected' | 'info-requested', reasoning: string) => {
     toast.success(`Case ${outcome === 'info-requested' ? 'info requested' : outcome}`);
+    onDecisionMade?.(outcome);
   };
 
   // Find matching code combinations for this case
