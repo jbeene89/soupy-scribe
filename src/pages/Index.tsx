@@ -24,6 +24,8 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
+  const { isAuthenticated } = useAuth();
+  const [showSignIn, setShowSignIn] = useState(false);
   const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
   const [posture, setPosture] = useState<AuditPosture>('payment-integrity');
   const [soupyConfig, setSoupyConfig] = useState<SOUPYConfig>(defaultSOUPYConfig);
