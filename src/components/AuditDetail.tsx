@@ -26,6 +26,7 @@ interface AuditDetailProps {
   auditCase: AuditCase;
   onBack: () => void;
   posture: 'payment-integrity' | 'compliance-coaching';
+  onDecisionMade?: (outcome: 'approved' | 'rejected' | 'info-requested') => void;
 }
 
 export function AuditDetail({ auditCase, onBack, posture }: AuditDetailProps) {
