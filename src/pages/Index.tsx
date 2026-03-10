@@ -13,12 +13,15 @@ import { LyricProductComparison } from '@/components/LyricProductComparison';
 import { LyricAIIntegration } from '@/components/LyricAIIntegration';
 import { PresentationMode } from '@/components/PresentationMode';
 import { CaseUpload } from '@/components/CaseUpload';
+import { AuthGate, SignInDialog } from '@/components/AuthGate';
+import { useAuth } from '@/hooks/useAuth';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
-import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
