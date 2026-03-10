@@ -164,9 +164,31 @@ const Index = () => {
             </div>
             <AuditPostureToggle posture={posture} onChange={setPosture} />
             <SOUPYConfigDialog config={soupyConfig} onSave={setSoupyConfig} />
+            {isAuthenticated ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => supabase.auth.signOut()}
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sign Out
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => setShowSignIn(true)}
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
       </header>
+
+      <SignInDialog open={showSignIn} onOpenChange={setShowSignIn} />
 
       {/* Main Content */}
       <main className="container mx-auto px-8 py-6 space-y-6">
