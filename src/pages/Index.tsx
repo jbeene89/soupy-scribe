@@ -13,14 +13,19 @@ import { LyricProductComparison } from '@/components/LyricProductComparison';
 import { LyricAIIntegration } from '@/components/LyricAIIntegration';
 import { PresentationMode } from '@/components/PresentationMode';
 import { CaseUpload } from '@/components/CaseUpload';
+import { AuthGate, SignInDialog } from '@/components/AuthGate';
+import { useAuth } from '@/hooks/useAuth';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
-import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
+  const { isAuthenticated } = useAuth();
+  const [showSignIn, setShowSignIn] = useState(false);
   const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
   const [posture, setPosture] = useState<AuditPosture>('payment-integrity');
   const [soupyConfig, setSoupyConfig] = useState<SOUPYConfig>(defaultSOUPYConfig);
@@ -124,7 +129,9 @@ const Index = () => {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <CaseUpload onCaseCreated={handleCaseCreated} />
+            <AuthGate hide>
+              <CaseUpload onCaseCreated={handleCaseCreated} />
+            </AuthGate>
             <Button
               variant="outline"
               size="sm"
@@ -157,9 +164,31 @@ const Index = () => {
             </div>
             <AuditPostureToggle posture={posture} onChange={setPosture} />
             <SOUPYConfigDialog config={soupyConfig} onSave={setSoupyConfig} />
+            {isAuthenticated ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => supabase.auth.signOut()}
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sign Out
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => setShowSignIn(true)}
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
       </header>
+
+      <SignInDialog open={showSignIn} onOpenChange={setShowSignIn} />
 
       {/* Main Content */}
       <main className="container mx-auto px-8 py-6 space-y-6">

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { AuthGate } from '@/components/AuthGate';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
@@ -65,92 +66,94 @@ export function DecisionPanel({ auditCase, onDecision }: DecisionPanelProps) {
   const outcomeDetails = getOutcomeDetails();
 
   return (
-    <>
-      <Card className="sticky bottom-0 left-0 right-0 p-4 sm:p-6 border-t-2 border-accent bg-card shadow-lg">
-        <div className="max-w-7xl mx-auto">
-          <h3 className="font-semibold mb-3 sm:mb-4">Audit Decision</h3>
+    <AuthGate>
+      <>
+        <Card className="sticky bottom-0 left-0 right-0 p-4 sm:p-6 border-t-2 border-accent bg-card shadow-lg">
+          <div className="max-w-7xl mx-auto">
+            <h3 className="font-semibold mb-3 sm:mb-4">Audit Decision</h3>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            <Button
-              onClick={() => handleDecisionClick('approved')}
-              disabled={!hasCompleteAnalyses}
-              className="flex-1 bg-consensus hover:bg-consensus/90 text-consensus-foreground"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Approve Claim
-            </Button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+              <Button
+                onClick={() => handleDecisionClick('approved')}
+                disabled={!hasCompleteAnalyses}
+                className="flex-1 bg-consensus hover:bg-consensus/90 text-consensus-foreground"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Approve Claim
+              </Button>
 
-            <Button
-              onClick={() => handleDecisionClick('info-requested')}
-              disabled={!hasCompleteAnalyses}
-              variant="outline"
-              className="flex-1"
-            >
-              <HelpCircle className="h-4 w-4 mr-2" />
-              Request Information
-            </Button>
+              <Button
+                onClick={() => handleDecisionClick('info-requested')}
+                disabled={!hasCompleteAnalyses}
+                variant="outline"
+                className="flex-1"
+              >
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Request Information
+              </Button>
 
-            <Button
-              onClick={() => handleDecisionClick('rejected')}
-              disabled={!hasCompleteAnalyses}
-              variant="destructive"
-              className="flex-1"
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              Reject Claim
-            </Button>
+              <Button
+                onClick={() => handleDecisionClick('rejected')}
+                disabled={!hasCompleteAnalyses}
+                variant="destructive"
+                className="flex-1"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Reject Claim
+              </Button>
+            </div>
+
+            {!hasCompleteAnalyses && (
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                {hasAnalyses
+                  ? 'Some AI analyses are still running...'
+                  : 'Waiting for AI analyses to begin...'}
+              </p>
+            )}
           </div>
+        </Card>
 
-          {!hasCompleteAnalyses && (
-            <p className="text-xs text-muted-foreground mt-3 text-center">
-              {hasAnalyses
-                ? 'Some AI analyses are still running...'
-                : 'Waiting for AI analyses to begin...'}
-            </p>
-          )}
-        </div>
-      </Card>
+        <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <DialogContent className="sm:max-w-[525px]">
+            <DialogHeader>
+              <DialogTitle>{outcomeDetails.title}</DialogTitle>
+              <DialogDescription>
+                {outcomeDetails.description}
+              </DialogDescription>
+            </DialogHeader>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[525px]">
-          <DialogHeader>
-            <DialogTitle>{outcomeDetails.title}</DialogTitle>
-            <DialogDescription>
-              {outcomeDetails.description}
-            </DialogDescription>
-          </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="reasoning">Reasoning *</Label>
+              <Textarea
+                id="reasoning"
+                placeholder="Enter your reasoning and notes..."
+                value={reasoning}
+                onChange={(e) => setReasoning(e.target.value)}
+                rows={6}
+                className="resize-none"
+              />
+              <p className="text-xs text-muted-foreground">
+                This will be included in the audit trail and decision record.
+              </p>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="reasoning">Reasoning *</Label>
-            <Textarea
-              id="reasoning"
-              placeholder="Enter your reasoning and notes..."
-              value={reasoning}
-              onChange={(e) => setReasoning(e.target.value)}
-              rows={6}
-              className="resize-none"
-            />
-            <p className="text-xs text-muted-foreground">
-              This will be included in the audit trail and decision record.
-            </p>
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={handleCancel}>
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmDecision}
-              disabled={!reasoning.trim()}
-              className={
-                pendingOutcome === 'approved' ? 'bg-consensus hover:bg-consensus/90 text-consensus-foreground' : ''
-              }
-            >
-              Confirm Decision
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDecision}
+                disabled={!reasoning.trim()}
+                className={
+                  pendingOutcome === 'approved' ? 'bg-consensus hover:bg-consensus/90 text-consensus-foreground' : ''
+                }
+              >
+                Confirm Decision
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    </AuthGate>
   );
 }
