@@ -97,7 +97,9 @@ ${payer.requiresFields.map(f => `☐ ${f}`).join('\n')}
 
 VIOLATIONS & DEFENSES (${violations.length} total)
 ${violations.map((v, i) => {
-  const bestDefense = v.defenses.reduce((best, curr) => curr.strength > best.strength ? curr : best);
+  const bestDefense = v.defenses && v.defenses.length > 0
+    ? v.defenses.reduce((best, curr) => curr.strength > best.strength ? curr : best)
+    : { strength: 0, strategy: 'No defense analysis available' };
   return `
 ${i + 1}. ${v.code} — ${v.type} (${v.severity})
    ${v.description}

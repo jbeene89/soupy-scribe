@@ -205,7 +205,7 @@ const Index = () => {
           </div>
         )}
         {selectedCase && activeTab === 'audit' ? (
-          <AuditDetail auditCase={selectedCase} onBack={handleBack} posture={posture} />
+          <AuditDetail auditCase={selectedCase} onBack={handleBack} posture={posture} onDecisionMade={handleDecisionMade} />
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
