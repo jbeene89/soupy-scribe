@@ -129,7 +129,9 @@ const Index = () => {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <CaseUpload onCaseCreated={handleCaseCreated} />
+            <AuthGate hide>
+              <CaseUpload onCaseCreated={handleCaseCreated} />
+            </AuthGate>
             <Button
               variant="outline"
               size="sm"
