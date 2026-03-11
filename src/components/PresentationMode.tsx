@@ -38,6 +38,8 @@ import {
   Database,
   BarChart3,
   RefreshCw,
+  FileSearch,
+  Clock,
 } from 'lucide-react';
 
 const demoCase = mockCases.find(c => c.analyses.length > 0)!;
@@ -64,6 +66,7 @@ const SLIDES = [
   { id: 'live-case', label: 'Live Case' },
   { id: 'next-layer', label: 'Next Layer' },
   { id: 'appeal-defense', label: 'Appeal Defense' },
+  { id: 'pre-appeal', label: 'Pre-Appeal Resolution' },
   { id: 'provider-revenue', label: 'New Revenue' },
   { id: 'flywheel', label: 'The Flywheel' },
   { id: 'ai-integration', label: 'Integration' },
@@ -87,31 +90,15 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [onExit]);
 
-  useEffect(() => {
-    let startX = 0;
-    const touchStart = (e: TouchEvent) => { startX = e.touches[0].clientX; };
-    const touchEnd = (e: TouchEvent) => {
-      const diff = startX - e.changedTouches[0].clientX;
-      if (Math.abs(diff) > 60) {
-        if (diff > 0) next();
-        else prev();
-      }
-    };
-    window.addEventListener('touchstart', touchStart);
-    window.addEventListener('touchend', touchEnd);
-    return () => {
-      window.removeEventListener('touchstart', touchStart);
-      window.removeEventListener('touchend', touchEnd);
-    };
-  }, []);
+  // No swipe handlers — removed per request
 
   const allViolations = demoCase.analyses.flatMap(a => a.violations);
   const singleViolations = demoCase.analyses[0]?.violations || [];
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background overflow-y-auto">
+    <div className="fixed inset-0 z-[100] bg-background flex flex-col">
       {/* Top bar */}
-      <div className="sticky top-0 z-50 bg-card/90 backdrop-blur-sm border-b px-4 py-2 flex items-center justify-between">
+      <div className="shrink-0 z-50 bg-card/90 backdrop-blur-sm border-b px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-md bg-primary">
             <Scale className="h-4 w-4 text-primary-foreground" />
@@ -141,10 +128,37 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
         </div>
       </div>
 
-      {/* Slide content */}
-      <div className="container mx-auto px-6 sm:px-10 py-8 max-w-5xl">
+      {/* Main content area with side arrows */}
+      <div className="flex-1 relative overflow-hidden">
+        {/* Left arrow */}
+        <button
+          onClick={prev}
+          disabled={currentSlide === 0}
+          className={cn(
+            'absolute left-2 top-1/2 -translate-y-1/2 z-40 rounded-full border bg-card/90 backdrop-blur-sm shadow-lg p-2 sm:p-3 transition-all hover:bg-muted',
+            currentSlide === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          )}
+        >
+          <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
+        </button>
 
-        {/* SLIDE 1: The Opportunity — what SOUPY adds */}
+        {/* Right arrow */}
+        <button
+          onClick={next}
+          disabled={currentSlide === SLIDES.length - 1}
+          className={cn(
+            'absolute right-2 top-1/2 -translate-y-1/2 z-40 rounded-full border bg-card/90 backdrop-blur-sm shadow-lg p-2 sm:p-3 transition-all hover:bg-muted',
+            currentSlide === SLIDES.length - 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          )}
+        >
+          <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
+        </button>
+
+        {/* Scrollable slide content */}
+        <div className="h-full overflow-y-auto px-12 sm:px-16 py-8">
+          <div className="container mx-auto max-w-5xl">
+
+        {/* SLIDE 1: The Opportunity */}
         {currentSlide === 0 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8">
@@ -261,7 +275,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 3: The Next Layer — single AI vs adversarial */}
+        {/* SLIDE 3: The Next Layer */}
         {currentSlide === 2 && (
           <Slide>
             <div className="space-y-6">
@@ -279,7 +293,6 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Current state */}
                 <Card className="border-muted-foreground/20">
                   <CardContent className="p-5 space-y-4">
                     <div className="flex items-center gap-2">
@@ -311,7 +324,6 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   </CardContent>
                 </Card>
 
-                {/* SOUPY */}
                 <Card className="border-2 border-accent">
                   <CardContent className="p-5 space-y-4">
                     <div className="flex items-center gap-2">
@@ -355,7 +367,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 4: Appeal Defense — new capability */}
+        {/* SLIDE 4: Appeal Defense */}
         {currentSlide === 3 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8">
@@ -433,8 +445,115 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 5: Provider Revenue — entirely new market */}
+        {/* SLIDE 5: Pre-Appeal Resolution — NEW */}
         {currentSlide === 4 && (
+          <Slide>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Badge variant="outline" className="text-xs">Premium Add-On</Badge>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                  Resolve denials <span className="text-accent">before</span> they become appeals.
+                </h2>
+                <p className="text-sm text-muted-foreground max-w-2xl">
+                  Not every denial needs a full formal appeal. Pre-Appeal Resolution identifies which denials 
+                  are curable through targeted documentation or coding clarification — saving both sides time and money.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <Card className="border-muted-foreground/20">
+                  <CardContent className="p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-semibold text-sm">Today: Every Denial → Full Appeal</span>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { issue: 'Missing one document', result: 'Full appeal filed' },
+                        { issue: 'Modifier coding clarification', result: 'Full appeal filed' },
+                        { issue: 'Simple date mismatch', result: 'Full appeal filed' },
+                        { issue: 'Administrative correction needed', result: 'Full appeal filed' },
+                        { issue: 'Structurally unsupportable claim', result: 'Full appeal filed' },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm border-b border-border/50 pb-1.5">
+                          <span className="text-muted-foreground">{item.issue}</span>
+                          <span className="font-mono text-[10px] text-violation">{item.result}</span>
+                        </div>
+                      ))}
+                      <p className="text-xs font-semibold text-muted-foreground pt-1">Every denial gets the same expensive process</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 border-accent">
+                  <CardContent className="p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-accent" />
+                      <span className="font-semibold text-sm text-accent">Pre-Appeal Resolution</span>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { issue: 'Missing one document', result: 'Targeted record request' },
+                        { issue: 'Modifier coding clarification', result: 'Correct & resubmit' },
+                        { issue: 'Simple date mismatch', result: 'Administrative fix' },
+                        { issue: 'Additional records strengthen case', result: 'Gather then resolve' },
+                        { issue: 'Structurally unsupportable claim', result: 'Stop — save resources' },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm border-b border-border/50 pb-1.5">
+                          <span>{item.issue}</span>
+                          <span className="font-mono text-[10px] text-consensus">{item.result}</span>
+                        </div>
+                      ))}
+                      <p className="text-xs font-semibold text-consensus pt-1">Right resolution path for each denial type</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Key capabilities */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { icon: FileSearch, title: 'Issue Classification', desc: '9 denial categories auto-classified', color: 'text-accent' },
+                  { icon: BarChart3, title: 'Resolution Likelihood', desc: 'AI confidence on curability', color: 'text-consensus' },
+                  { icon: FileText, title: 'Submission Builder', desc: 'Guided reconsideration packets', color: 'text-primary' },
+                  { icon: Shield, title: 'Payer Review Panel', desc: '7 structured response types', color: 'text-disagreement' },
+                ].map((cap, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-3 text-center space-y-1.5">
+                      <cap.icon className={cn('h-5 w-5 mx-auto', cap.color)} />
+                      <p className="text-[11px] font-semibold">{cap.title}</p>
+                      <p className="text-[9px] text-muted-foreground">{cap.desc}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { value: '60%+', label: 'Of denials may be resolvable without full appeal', sub: 'Modeled from curable issue categories', color: 'text-accent' },
+                  { value: '3-5 days', label: 'Saved per curable denial', sub: 'vs. standard appeal timeline', color: 'text-consensus' },
+                  { value: '$0', label: 'Wasted on unsupportable appeals', sub: 'AI identifies dead-end cases before effort', color: 'text-primary' },
+                ].map((stat, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-4 text-center space-y-1">
+                      <p className={cn('text-2xl font-bold font-mono', stat.color)}>{stat.value}</p>
+                      <p className="text-xs font-semibold">{stat.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{stat.sub}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <p className="text-sm text-muted-foreground italic text-center max-w-2xl mx-auto">
+                Pre-Appeal Resolution preserves all standard appeal rights. It's an optional accelerated path
+                that reduces unnecessary labor while ensuring cases that need formal appeal still get it.
+              </p>
+            </div>
+          </Slide>
+        )}
+
+        {/* SLIDE 6: Provider Revenue (was 5) */}
+        {currentSlide === 5 && (
           <Slide>
             <div className="space-y-6">
               <div className="space-y-2">
@@ -540,8 +659,8 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 6: Flywheel */}
-        {currentSlide === 5 && (
+        {/* SLIDE 7: Flywheel (was 6) */}
+        {currentSlide === 6 && (
           <Slide>
             <div className="space-y-6">
               <div className="space-y-2">
@@ -613,8 +732,8 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 7: AI Integration Pipeline */}
-        {currentSlide === 6 && (
+        {/* SLIDE 8: AI Integration Pipeline (was 7) */}
+        {currentSlide === 7 && (
           <Slide>
             <div className="space-y-6">
               <div className="space-y-2">
@@ -628,7 +747,6 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                 </p>
               </div>
 
-              {/* Stage 1 & 2: Existing */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Card>
                   <CardContent className="p-4 space-y-2">
@@ -660,13 +778,11 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                 </Card>
               </div>
 
-              {/* Arrow */}
               <div className="flex flex-col items-center gap-0.5">
                 <ArrowDown className="h-5 w-5 text-accent" />
                 <span className="text-[10px] text-accent font-medium">SOUPY intercepts here</span>
               </div>
 
-              {/* Stage 3: SOUPY */}
               <Card className="border-2 border-accent">
                 <CardContent className="p-5 space-y-4">
                   <div className="flex items-center gap-2">
@@ -704,13 +820,11 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                 </CardContent>
               </Card>
 
-              {/* Arrow */}
               <div className="flex flex-col items-center gap-0.5">
                 <ArrowDown className="h-5 w-5 text-consensus" />
                 <span className="text-[10px] text-muted-foreground">Enriched output flows back into existing systems</span>
               </div>
 
-              {/* Stage 4: Output */}
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { icon: BarChart3, title: 'Virtuoso Analytics', desc: 'Now with appeal-resilience metrics', tag: 'Enhanced', color: 'text-consensus' },
@@ -740,8 +854,8 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 8: The Offer — exclusivity */}
-        {currentSlide === 7 && (
+        {/* SLIDE 9: The Offer (was 8) */}
+        {currentSlide === 8 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8">
               <div className="space-y-2 text-center">
@@ -800,8 +914,8 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 9: Sources */}
-        {currentSlide === 8 && (
+        {/* SLIDE 10: Sources (was 9) */}
+        {currentSlide === 9 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8 max-w-2xl mx-auto">
               <div className="space-y-2 text-center">
@@ -856,47 +970,30 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
             </div>
           </Slide>
         )}
+
+          </div>
+        </div>
       </div>
 
-      {/* Navigation footer */}
-      <div className="sticky bottom-0 bg-card/90 backdrop-blur-sm border-t px-4 py-3">
-        <div className="container mx-auto max-w-5xl flex items-center justify-between">
+      {/* Bottom next button */}
+      <div className="shrink-0 bg-card/90 backdrop-blur-sm border-t px-4 py-3">
+        <div className="container mx-auto max-w-5xl flex items-center justify-center">
           <Button
-            variant="ghost"
-            size="sm"
-            onClick={prev}
-            disabled={currentSlide === 0}
-            className="gap-1.5"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">{currentSlide > 0 ? SLIDES[currentSlide - 1].label : ''}</span>
-          </Button>
-
-          <div className="flex items-center gap-1.5 sm:hidden">
-            {SLIDES.map((_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  'h-1.5 rounded-full transition-all',
-                  i === currentSlide ? 'w-4 bg-accent' : 'w-1.5 bg-muted-foreground/30'
-                )}
-              />
-            ))}
-          </div>
-
-          <Button
-            variant={currentSlide === SLIDES.length - 1 ? 'ghost' : 'default'}
-            size="sm"
+            variant={currentSlide === SLIDES.length - 1 ? 'outline' : 'default'}
+            size="lg"
             onClick={currentSlide === SLIDES.length - 1 ? onExit : next}
-            className="gap-1.5"
+            className="gap-2 min-w-[200px]"
           >
-            <span className="hidden sm:inline">
-              {currentSlide === SLIDES.length - 1 ? 'Exit Presentation' : SLIDES[currentSlide + 1]?.label}
-            </span>
             {currentSlide === SLIDES.length - 1 ? (
-              <X className="h-4 w-4" />
+              <>
+                Exit Presentation
+                <X className="h-4 w-4" />
+              </>
             ) : (
-              <ChevronRight className="h-4 w-4" />
+              <>
+                {SLIDES[currentSlide + 1]?.label}
+                <ChevronRight className="h-4 w-4" />
+              </>
             )}
           </Button>
         </div>
