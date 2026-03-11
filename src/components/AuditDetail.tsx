@@ -22,6 +22,10 @@ import { PayerExportDialog } from './spark/PayerExportDialog';
 import { PayerTemplateInfo } from './spark/PayerTemplateInfo';
 import { AIAnalysisLoadingState } from './spark/LoadingState';
 
+// Pre-Appeal Resolution
+import { PreAppealResolutionTab } from './pre-appeal/PreAppealResolutionTab';
+import { preAppealResolutions } from '@/lib/preAppealMockData';
+
 interface AuditDetailProps {
   auditCase: AuditCase;
   onBack: () => void;
