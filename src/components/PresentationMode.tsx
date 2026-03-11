@@ -70,6 +70,7 @@ const SLIDES = [
   { id: 'provider-revenue', label: 'New Revenue' },
   { id: 'flywheel', label: 'The Flywheel' },
   { id: 'ai-integration', label: 'Integration' },
+  { id: 'pilot', label: 'Pilot Program' },
   { id: 'exclusivity', label: 'The Offer' },
   { id: 'sources', label: 'Sources' },
 ];
