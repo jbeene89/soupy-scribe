@@ -70,6 +70,7 @@ const SLIDES = [
   { id: 'provider-revenue', label: 'New Revenue' },
   { id: 'flywheel', label: 'The Flywheel' },
   { id: 'ai-integration', label: 'Integration' },
+  { id: 'pilot', label: 'Pilot Program' },
   { id: 'exclusivity', label: 'The Offer' },
   { id: 'sources', label: 'Sources' },
 ];
@@ -854,8 +855,96 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 9: The Offer (was 8) */}
+        {/* SLIDE 9: Pilot Program */}
         {currentSlide === 8 && (
+          <Slide>
+            <div className="flex-1 flex flex-col justify-center space-y-8">
+              <div className="space-y-4">
+                <Badge variant="outline" className="text-xs">Low-Risk Entry</Badge>
+                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
+                  See it work on <span className="text-accent">your data</span>
+                  <br />
+                  <span className="text-muted-foreground">before you commit to anything.</span>
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
+                  30-day sandbox. No integration. No PHI. Just anonymized historical claims
+                  and a clear signal on whether SOUPY catches what got overturned.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {[
+                  {
+                    step: '01',
+                    icon: Database,
+                    title: 'Upload Historical Claims',
+                    desc: 'Send 500 anonymized denied claims — CSV or PDF. No integration, no PHI, no BAA needed for the pilot.',
+                    time: 'Day 1',
+                  },
+                  {
+                    step: '02',
+                    icon: Brain,
+                    title: 'Run SOUPY Analysis',
+                    desc: '4 adversarial AI models stress-test every determination. Each claim gets a consensus score, risk assessment, and appeal defense.',
+                    time: 'Days 2–14',
+                  },
+                  {
+                    step: '03',
+                    icon: BarChart3,
+                    title: 'Compare Against Outcomes',
+                    desc: 'Match SOUPY\'s flags against actual appeal outcomes. See exactly which overturned denials SOUPY would have caught.',
+                    time: 'Days 15–30',
+                  },
+                ].map((item, i) => (
+                  <Card key={i} className="border-2 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-accent" style={{ opacity: 0.3 + i * 0.3 }} />
+                    <CardContent className="p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-3xl font-bold font-mono text-accent/30">{item.step}</span>
+                        <Badge variant="outline" className="text-[10px]">{item.time}</Badge>
+                      </div>
+                      <item.icon className="h-6 w-6 text-accent" />
+                      <p className="font-semibold text-lg">{item.title}</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <Card className="border-2 border-dashed border-accent/30 bg-accent/5">
+                <CardContent className="p-5 text-center space-y-2">
+                  <p className="text-lg font-semibold">
+                    The go/no-go signal is simple:
+                  </p>
+                  <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+                    If SOUPY flags 40%+ of your overturned appeals as weak <span className="font-medium text-foreground">before they shipped</span>,
+                    the ROI speaks for itself. No integration risk. No long-term commitment. Just data.
+                  </p>
+                  <div className="flex items-center justify-center gap-4 pt-2">
+                    <div className="rounded-md border bg-card px-4 py-2 text-center">
+                      <p className="text-sm font-bold font-mono text-accent">0</p>
+                      <p className="text-[10px] text-muted-foreground">Integration required</p>
+                    </div>
+                    <div className="rounded-md border bg-card px-4 py-2 text-center">
+                      <p className="text-sm font-bold font-mono text-accent">30 days</p>
+                      <p className="text-[10px] text-muted-foreground">Time to proof of value</p>
+                    </div>
+                    <div className="rounded-md border bg-card px-4 py-2 text-center">
+                      <p className="text-sm font-bold font-mono text-consensus">500 claims</p>
+                      <p className="text-[10px] text-muted-foreground">Minimum sample size</p>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground italic pt-1">
+                    SOUPY rides on your existing certified infrastructure — no new BAA, no recertification, no change to your compliance posture.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </Slide>
+        )}
+
+        {/* SLIDE 10: The Offer */}
+        {currentSlide === 9 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8">
               <div className="space-y-2 text-center">
@@ -914,8 +1003,8 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 10: Sources (was 9) */}
-        {currentSlide === 9 && (
+        {/* SLIDE 11: Sources */}
+        {currentSlide === 10 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8 max-w-2xl mx-auto">
               <div className="space-y-2 text-center">
