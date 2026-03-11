@@ -100,10 +100,10 @@ const products: ProductData[] = [
       'Performance analytics',
     ],
     whatItDoesnt: [
-      'No appeal-resilience metrics',
-      'Can\'t measure AI disagreement rates',
-      'No provider-side intelligence',
-      'Doesn\'t track which determinations hold up',
+      'Opportunity to add appeal-resilience metrics',
+      'Opportunity to measure AI disagreement rates',
+      'Opportunity to add provider-side intelligence',
+      'Opportunity to track determination durability',
     ],
     soupyAdds: [
       'Appeal vulnerability scores per determination',
