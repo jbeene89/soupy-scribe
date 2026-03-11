@@ -83,6 +83,9 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
             <TabsTrigger value="analysis">AI Analysis</TabsTrigger>
             <TabsTrigger value="evidence">Evidence</TabsTrigger>
             <TabsTrigger value="appeals">Appeals & Export</TabsTrigger>
+            {preAppealResolutions[auditCase.id] && (
+              <TabsTrigger value="pre-appeal">Pre-Appeal Resolution</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="analysis" className="space-y-6">
