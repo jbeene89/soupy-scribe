@@ -29,6 +29,7 @@ import { AppModeToggle } from '@/components/provider/AppModeToggle';
 import { ProviderDashboard } from '@/components/provider/ProviderDashboard';
 import { ProviderCaseDetail } from '@/components/provider/ProviderCaseDetail';
 import { EducationInsights } from '@/components/provider/EducationInsights';
+import { ProviderCaseUpload } from '@/components/provider/ProviderCaseUpload';
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
