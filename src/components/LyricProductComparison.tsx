@@ -84,7 +84,7 @@ const products: ProductData[] = [
       'Pre-argues both sides before provider responds',
       'Confidence scores backed by multi-model agreement',
     ],
-    animMetric: { before: '38% overturn rate', after: '11% overturn rate', label: 'on appeal' },
+    animMetric: { before: '1 model per audit', after: '4 models per audit', label: 'depth increase' },
     color: 'text-accent',
     bgColor: 'bg-accent/10',
   },
