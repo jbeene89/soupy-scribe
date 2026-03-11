@@ -73,10 +73,10 @@ const products: ProductData[] = [
       'Boosts recovery savings',
     ],
     whatItDoesnt: [
-      'Single AI model per audit',
-      'No adversarial stress-testing of findings',
-      'Doesn\'t predict which findings get overturned',
-      'No pre-built appeal response',
+      'Opportunity to add multi-model analysis per audit',
+      'Opportunity to add adversarial stress-testing',
+      'Opportunity to predict which findings get overturned',
+      'Opportunity to pre-build appeal responses',
     ],
     soupyAdds: [
       'Builder + Red Team + Analyst + Breaker debate each finding',
