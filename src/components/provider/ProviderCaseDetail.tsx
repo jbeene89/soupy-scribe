@@ -97,6 +97,9 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
             <TabsTrigger value="review">Readiness Review</TabsTrigger>
             <TabsTrigger value="appeal">Appeal Assessment</TabsTrigger>
             <TabsTrigger value="evidence">Evidence Checklist</TabsTrigger>
+            {preAppealResolutions[auditCase.id] && (
+              <TabsTrigger value="pre-appeal">Pre-Appeal Resolution</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="review">
