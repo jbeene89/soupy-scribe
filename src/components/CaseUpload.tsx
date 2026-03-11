@@ -130,7 +130,6 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [batchRunning, setBatchRunning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const reset = useCallback(() => {
     setFiles([]);
