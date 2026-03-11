@@ -1003,8 +1003,8 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           </Slide>
         )}
 
-        {/* SLIDE 10: Sources (was 9) */}
-        {currentSlide === 9 && (
+        {/* SLIDE 11: Sources */}
+        {currentSlide === 10 && (
           <Slide>
             <div className="flex-1 flex flex-col justify-center space-y-8 max-w-2xl mx-auto">
               <div className="space-y-2 text-center">
