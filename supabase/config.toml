@@ -2,3 +2,6 @@ project_id = "jfhljwuywvjxyqzwbecd"
 
 [functions.analyze-case]
 verify_jwt = false
+
+[functions.provider-analyze]
+verify_jwt = false

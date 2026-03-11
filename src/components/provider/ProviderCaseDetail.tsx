@@ -9,7 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Brain, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { getStoredProviderReview, runProviderAnalysis } from '@/lib/providerService';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthGate } from '@/components/AuthGate';
+import { toast } from 'sonner';
 
 interface ProviderCaseDetailProps {
   auditCase: AuditCase;
@@ -17,7 +22,36 @@ interface ProviderCaseDetailProps {
 }
 
 export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProps) {
-  const review = providerReviews[auditCase.id];
+  const { isAuthenticated } = useAuth();
+  // Check mock reviews first, then live
+  const mockReview = providerReviews[auditCase.id];
+  const [liveReview, setLiveReview] = useState<ProviderCaseReviewType | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [loadingReview, setLoadingReview] = useState(false);
+
+  const review = mockReview || liveReview;
+
+  useEffect(() => {
+    if (mockReview) return; // skip if mock data exists
+    setLoadingReview(true);
+    getStoredProviderReview(auditCase.id)
+      .then(r => { if (r) setLiveReview(r); })
+      .catch(() => {})
+      .finally(() => setLoadingReview(false));
+  }, [auditCase.id, mockReview]);
+
+  const handleRunAnalysis = async () => {
+    setAnalyzing(true);
+    try {
+      const result = await runProviderAnalysis(auditCase.id);
+      setLiveReview(result);
+      toast.success('Compliance readiness analysis complete');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Analysis failed');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -30,6 +64,9 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-semibold">{auditCase.caseNumber}</h1>
             <Badge variant="outline" className="text-xs border-accent/40 text-accent bg-accent/10">Provider Readiness</Badge>
+            {liveReview && !mockReview && (
+              <Badge variant="outline" className="text-xs border-consensus/40 text-consensus bg-consensus/10">AI Analyzed</Badge>
+            )}
           </div>
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <span>DOS: {auditCase.dateOfService}</span>
@@ -47,7 +84,12 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
         </div>
       </div>
 
-      {review ? (
+      {loadingReview ? (
+        <div className="rounded-lg border bg-card p-8 text-center shadow-sm">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto text-accent mb-2" />
+          <p className="text-sm text-muted-foreground">Loading readiness review...</p>
+        </div>
+      ) : review ? (
         <Tabs defaultValue="review" className="space-y-4">
           <TabsList>
             <TabsTrigger value="review">Readiness Review</TabsTrigger>
@@ -68,9 +110,33 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
           </TabsContent>
         </Tabs>
       ) : (
-        <div className="rounded-lg border bg-card p-8 text-center shadow-sm">
-          <p className="text-muted-foreground">Provider readiness review not yet available for this case.</p>
-          <p className="text-xs text-muted-foreground mt-2">Submit this case for compliance readiness analysis to see documentation sufficiency, coding vulnerability, and appeal viability indicators.</p>
+        <div className="rounded-lg border bg-card p-8 text-center shadow-sm space-y-4">
+          <Brain className="h-10 w-10 mx-auto text-accent/50" />
+          <div>
+            <p className="text-sm font-medium">No readiness review yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Run AI-powered compliance readiness analysis to see documentation sufficiency, coding vulnerability, and appeal viability indicators.
+            </p>
+          </div>
+          <AuthGate>
+            <Button
+              onClick={handleRunAnalysis}
+              disabled={analyzing}
+              className="gap-2"
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Brain className="h-4 w-4" />
+                  Run Readiness Analysis
+                </>
+              )}
+            </Button>
+          </AuthGate>
         </div>
       )}
     </div>
