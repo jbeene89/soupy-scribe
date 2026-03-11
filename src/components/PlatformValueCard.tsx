@@ -226,7 +226,7 @@ export function PlatformValueCard() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-md border bg-muted/30 p-2 text-center">
                     <p className="text-sm font-bold font-mono text-consensus">72%</p>
-                    <p className="text-[10px] text-muted-foreground">Fewer overturned appeals</p>
+                    <p className="text-[10px] text-muted-foreground">Projected fewer overturned appeals*</p>
                   </div>
                   <div className="rounded-md border bg-muted/30 p-2 text-center">
                     <p className="text-sm font-bold font-mono text-primary">0 days</p>
