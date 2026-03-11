@@ -140,11 +140,11 @@ function SingleModelPanel({ auditCase }: { auditCase: AuditCase }) {
             </div>
             <ul className="space-y-2 text-sm text-muted-foreground">
               {[
-                'No adversarial challenge to assumptions',
-                'No regulatory framework cross-check',
-                'Missing systemic pattern analysis',
-                'No consensus divergence measurement',
-                'Single perspective = single point of failure',
+                'Opportunity to add adversarial challenge to assumptions',
+                'Opportunity to add regulatory framework cross-check',
+                'Opportunity to add systemic pattern analysis',
+                'Opportunity to add consensus divergence measurement',
+                'Single perspective — opportunity for multi-model depth',
               ].map((spot, i) => (
                 <li
                   key={i}
