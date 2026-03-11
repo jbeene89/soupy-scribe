@@ -773,7 +773,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                       <div className="flex items-center gap-2"><Shield className="h-3.5 w-3.5 shrink-0 text-primary" /><span>ClaimsXten fires deterministic edit rules</span></div>
                       <div className="flex items-center gap-2"><Eye className="h-3.5 w-3.5 shrink-0 text-primary" /><span>Replay pattern detection on historical data</span></div>
                     </div>
-                    <p className="text-[10px] text-muted-foreground italic mt-1">Today, this is where the decision gets made.</p>
+                    <p className="text-[10px] text-muted-foreground italic mt-1">Today, this is where the determination is made — a strong foundation.</p>
                   </CardContent>
                 </Card>
               </div>
