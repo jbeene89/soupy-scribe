@@ -409,15 +409,24 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
           </div>
         )}
 
-        {/* Drop zone */}
+        {/* File inputs */}
         <input
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept=".pdf,.txt,.csv,.hl7,.json,.xml"
+          accept=".pdf,.txt,.csv,.hl7,.json,.xml,.zip"
           className="hidden"
           multiple
         />
+        <input
+          type="file"
+          ref={folderInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+          {...{ webkitdirectory: '', directory: '', multiple: true } as any}
+        />
+
+        {/* Drop zone */}
         <div
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
@@ -430,8 +439,28 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
           }`}
         >
           <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-          <p className="text-sm font-medium">Drop multiple files here, or click to browse</p>
-          <p className="text-xs text-muted-foreground mt-1">PDF, TXT, CSV, HL7, JSON, XML — select multiple at once</p>
+          <p className="text-sm font-medium">Drop files, folders, or ZIP archives here</p>
+          <p className="text-xs text-muted-foreground mt-1">PDF, TXT, CSV, HL7, JSON, XML — or click to browse</p>
+          <div className="flex items-center justify-center gap-2 mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs gap-1.5"
+              onClick={(e) => { e.stopPropagation(); folderInputRef.current?.click(); }}
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+              Select Folder
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs gap-1.5"
+              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+            >
+              <FileArchive className="h-3.5 w-3.5" />
+              Select Files / ZIP
+            </Button>
+          </div>
         </div>
 
         {/* Paste text section */}
