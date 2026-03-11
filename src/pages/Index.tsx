@@ -173,6 +173,15 @@ const Index = () => {
                 Present
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => { exportPlatformSummaryPDF(); toast.success('PDF downloaded'); }}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              Export PDF
+            </Button>
             {/* Data source toggle */}
             <div className="flex items-center border rounded-md overflow-hidden">
               <button
