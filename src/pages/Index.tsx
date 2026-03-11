@@ -156,6 +156,11 @@ const Index = () => {
                 <CaseUpload onCaseCreated={handleCaseCreated} />
               </AuthGate>
             )}
+            {appMode === 'provider' && (
+              <AuthGate hide>
+                <ProviderCaseUpload onCaseCreated={handleCaseCreated} />
+              </AuthGate>
+            )}
             {appMode === 'payer' && (
               <Button
                 variant="outline"
