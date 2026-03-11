@@ -319,7 +319,7 @@ export function ComparisonView() {
               <Brain className="h-6 w-6 text-accent" />
             </div>
             <div className="space-y-3 flex-1">
-              <h3 className="font-semibold">The Value Gap</h3>
+              <h3 className="font-semibold">The Amplification Layer</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                   { value: `${auditCase.analyses.length}x`, label: 'More Perspectives', colorClass: 'text-accent' },
