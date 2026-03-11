@@ -46,10 +46,10 @@ const products: ProductData[] = [
       'High-volume automated processing',
     ],
     whatItDoesnt: [
-      'Can\'t explain WHY a flag matters',
-      'No adversarial challenge to its own logic',
-      'No appeal defense when providers push back',
-      'Single-perspective — no divergence mapping',
+      'Opportunity to explain WHY a flag matters',
+      'Opportunity to add adversarial challenge layer',
+      'Opportunity to pre-build appeal defense',
+      'Opportunity to add divergence mapping across perspectives',
     ],
     soupyAdds: [
       'Multi-model reasoning validates each edit',
