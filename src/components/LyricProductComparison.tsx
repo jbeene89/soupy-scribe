@@ -127,10 +127,10 @@ const products: ProductData[] = [
       'Newly acquired — expanding capabilities',
     ],
     whatItDoesnt: [
-      'No reasoning transparency (WHY, not just WHAT)',
-      'Can\'t show providers the logic behind flags',
-      'No dual-sided communication channel',
-      'No AI reasoning audit trail',
+      'Opportunity to add reasoning transparency (WHY, not just WHAT)',
+      'Opportunity to show providers the logic behind flags',
+      'Opportunity to add dual-sided communication channel',
+      'Opportunity to add AI reasoning audit trail',
     ],
     soupyAdds: [
       'Full reasoning chain visible to auditors',
