@@ -374,7 +374,7 @@ export function ComparisonView() {
               <ul className="space-y-1.5">
                 {[
                   'Defensible determinations with documented AI reasoning',
-                  '72% fewer overturned appeals',
+                  'Projected reduction in overturned appeals (modeled estimate)',
                   'Audit packages pre-built for each payer type',
                 ].map((item, i) => (
                   <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
