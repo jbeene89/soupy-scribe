@@ -260,11 +260,11 @@ export function PlatformValueCard() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-md border bg-muted/30 p-2 text-center">
                     <p className="text-sm font-bold font-mono text-accent">91%</p>
-                    <p className="text-[10px] text-muted-foreground">Clean claim rate</p>
+                    <p className="text-[10px] text-muted-foreground">Clean claim rate target*</p>
                   </div>
                   <div className="rounded-md border bg-muted/30 p-2 text-center">
                     <p className="text-sm font-bold font-mono text-consensus">$1.2M</p>
-                    <p className="text-[10px] text-muted-foreground">Admin savings/yr per facility</p>
+                    <p className="text-[10px] text-muted-foreground">Est. admin savings/yr (projected)*</p>
                   </div>
                 </div>
               </div>
