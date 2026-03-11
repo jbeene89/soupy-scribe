@@ -157,7 +157,7 @@ export function IntegrationArchitecture() {
                     4 models debate every determination — surfaces weaknesses before providers do
                   </p>
                   <Badge variant="outline" className="text-[9px] bg-accent/10 text-accent border-accent/30">
-                    Nobody Has This
+                    New Capability
                   </Badge>
                 </div>
                 <div className="rounded-lg border bg-card p-3 text-center space-y-1">
@@ -167,7 +167,7 @@ export function IntegrationArchitecture() {
                     Both sides argued at determination — appeal response ready before it's filed
                   </p>
                   <Badge variant="outline" className="text-[9px] bg-consensus/10 text-consensus border-consensus/30">
-                    Nobody Has This
+                    New Capability
                   </Badge>
                 </div>
                 <div className="rounded-lg border bg-card p-3 text-center space-y-1">
