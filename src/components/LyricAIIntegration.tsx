@@ -157,7 +157,7 @@ export function LyricAIIntegration() {
               />
             </div>
             <p className="text-[10px] text-muted-foreground mt-3 text-center italic">
-              Today, this is where the decision gets made — a single-perspective determination.
+              Today, this is where the determination is made — a strong foundation ready for enhancement.
             </p>
           </div>
 

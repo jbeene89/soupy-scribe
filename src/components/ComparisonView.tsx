@@ -136,22 +136,22 @@ function SingleModelPanel({ auditCase }: { auditCase: AuditCase }) {
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Eye className="h-4 w-4" />
-              <span className="text-xs font-semibold uppercase tracking-wider">Blind Spots</span>
+              <span className="text-xs font-semibold uppercase tracking-wider">Enhancement Opportunities</span>
             </div>
             <ul className="space-y-2 text-sm text-muted-foreground">
               {[
-                'No adversarial challenge to assumptions',
-                'No regulatory framework cross-check',
-                'Missing systemic pattern analysis',
-                'No consensus divergence measurement',
-                'Single perspective = single point of failure',
+                'Opportunity to add adversarial challenge to assumptions',
+                'Opportunity to add regulatory framework cross-check',
+                'Opportunity to add systemic pattern analysis',
+                'Opportunity to add consensus divergence measurement',
+                'Single perspective — opportunity for multi-model depth',
               ].map((spot, i) => (
                 <li
                   key={i}
                   className="flex gap-2 opacity-0 animate-slide-up"
                   style={{ animationDelay: `${1800 + i * 100}ms`, animationFillMode: 'forwards' }}
                 >
-                  <span className="text-destructive shrink-0">✗</span>
+                  <ArrowRight className="h-3 w-3 text-primary/50 shrink-0" />
                   <span>{spot}</span>
                 </li>
               ))}
@@ -319,7 +319,7 @@ export function ComparisonView() {
               <Brain className="h-6 w-6 text-accent" />
             </div>
             <div className="space-y-3 flex-1">
-              <h3 className="font-semibold">The Value Gap</h3>
+              <h3 className="font-semibold">The Amplification Layer</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                   { value: `${auditCase.analyses.length}x`, label: 'More Perspectives', colorClass: 'text-accent' },
@@ -374,7 +374,7 @@ export function ComparisonView() {
               <ul className="space-y-1.5">
                 {[
                   'Defensible determinations with documented AI reasoning',
-                  '72% fewer overturned appeals',
+                  'Projected reduction in overturned appeals (modeled estimate)',
                   'Audit packages pre-built for each payer type',
                 ].map((item, i) => (
                   <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">

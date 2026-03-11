@@ -245,25 +245,25 @@ const Index = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="rounded-md border bg-background p-3 text-center">
                     <p className="text-lg font-semibold text-consensus">68%</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">Projected Appeal Reduction</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Projected Appeal Reduction*</p>
                   </div>
                   <div className="rounded-md border bg-background p-3 text-center">
                     <p className="text-lg font-semibold text-accent">4.2hrs</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">Avg. Time Saved Per Case</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Est. Time Saved Per Case*</p>
                   </div>
                   <div className="rounded-md border bg-background p-3 text-center">
                     <p className="text-lg font-semibold text-foreground">$1.2M</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">Est. Annual Admin Savings</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Est. Annual Admin Savings*</p>
                   </div>
                   <div className="rounded-md border bg-background p-3 text-center">
                     <p className="text-lg font-semibold text-info-blue">91%</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">Clean Claim Rate Target</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Clean Claim Rate Target*</p>
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-3 italic">
-                  Providers who receive structured documentation guidance submit claims with sufficient evidence 
-                  upfront — eliminating the need for costly post-payment recovery and reducing litigation exposure. 
-                  Integrates with Lyric 42 for automated pre-submission validation.
+                   * All figures are modeled estimates based on platform architecture. Providers who receive structured 
+                   documentation guidance submit claims with sufficient evidence upfront — eliminating the need for 
+                   costly post-payment recovery and reducing litigation exposure.
                 </p>
               </div>
             </div>

@@ -46,10 +46,10 @@ const products: ProductData[] = [
       'High-volume automated processing',
     ],
     whatItDoesnt: [
-      'Can\'t explain WHY a flag matters',
-      'No adversarial challenge to its own logic',
-      'No appeal defense when providers push back',
-      'Single-perspective — no divergence mapping',
+      'Opportunity to explain WHY a flag matters',
+      'Opportunity to add adversarial challenge layer',
+      'Opportunity to pre-build appeal defense',
+      'Opportunity to add divergence mapping across perspectives',
     ],
     soupyAdds: [
       'Multi-model reasoning validates each edit',
@@ -73,10 +73,10 @@ const products: ProductData[] = [
       'Boosts recovery savings',
     ],
     whatItDoesnt: [
-      'Single AI model per audit',
-      'No adversarial stress-testing of findings',
-      'Doesn\'t predict which findings get overturned',
-      'No pre-built appeal response',
+      'Opportunity to add multi-model analysis per audit',
+      'Opportunity to add adversarial stress-testing',
+      'Opportunity to predict which findings get overturned',
+      'Opportunity to pre-build appeal responses',
     ],
     soupyAdds: [
       'Builder + Red Team + Analyst + Breaker debate each finding',
@@ -84,7 +84,7 @@ const products: ProductData[] = [
       'Pre-argues both sides before provider responds',
       'Confidence scores backed by multi-model agreement',
     ],
-    animMetric: { before: '38% overturn rate', after: '11% overturn rate', label: 'on appeal' },
+    animMetric: { before: '1 model per audit', after: '4 models per audit', label: 'depth increase' },
     color: 'text-accent',
     bgColor: 'bg-accent/10',
   },
@@ -100,10 +100,10 @@ const products: ProductData[] = [
       'Performance analytics',
     ],
     whatItDoesnt: [
-      'No appeal-resilience metrics',
-      'Can\'t measure AI disagreement rates',
-      'No provider-side intelligence',
-      'Doesn\'t track which determinations hold up',
+      'Opportunity to add appeal-resilience metrics',
+      'Opportunity to measure AI disagreement rates',
+      'Opportunity to add provider-side intelligence',
+      'Opportunity to track determination durability',
     ],
     soupyAdds: [
       'Appeal vulnerability scores per determination',
@@ -127,10 +127,10 @@ const products: ProductData[] = [
       'Newly acquired — expanding capabilities',
     ],
     whatItDoesnt: [
-      'No reasoning transparency (WHY, not just WHAT)',
-      'Can\'t show providers the logic behind flags',
-      'No dual-sided communication channel',
-      'No AI reasoning audit trail',
+      'Opportunity to add reasoning transparency (WHY, not just WHAT)',
+      'Opportunity to show providers the logic behind flags',
+      'Opportunity to add dual-sided communication channel',
+      'Opportunity to add AI reasoning audit trail',
     ],
     soupyAdds: [
       'Full reasoning chain visible to auditors',
@@ -272,15 +272,15 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
             </div>
             <div className="lg:hidden h-px bg-border mx-4" />
 
-            {/* What it doesn't — the gap */}
+            {/* What it doesn't — the opportunity */}
             <div className="p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-destructive/70 mb-2">
-                The Gap
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary/70 mb-2">
+                Opportunity
               </p>
               <ul className="space-y-1.5">
                 {product.whatItDoesnt.map((item, i) => (
                   <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
-                    <span className="text-destructive shrink-0 mt-0.5 text-[10px]">✗</span>
+                    <ArrowRight className="h-3 w-3 shrink-0 mt-0.5 text-primary/50" />
                     <span>{item}</span>
                   </li>
                 ))}

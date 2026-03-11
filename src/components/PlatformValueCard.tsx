@@ -226,7 +226,7 @@ export function PlatformValueCard() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-md border bg-muted/30 p-2 text-center">
                     <p className="text-sm font-bold font-mono text-consensus">72%</p>
-                    <p className="text-[10px] text-muted-foreground">Fewer overturned appeals</p>
+                    <p className="text-[10px] text-muted-foreground">Projected fewer overturned appeals*</p>
                   </div>
                   <div className="rounded-md border bg-muted/30 p-2 text-center">
                     <p className="text-sm font-bold font-mono text-primary">0 days</p>
@@ -260,11 +260,11 @@ export function PlatformValueCard() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-md border bg-muted/30 p-2 text-center">
                     <p className="text-sm font-bold font-mono text-accent">91%</p>
-                    <p className="text-[10px] text-muted-foreground">Clean claim rate</p>
+                    <p className="text-[10px] text-muted-foreground">Clean claim rate target*</p>
                   </div>
                   <div className="rounded-md border bg-muted/30 p-2 text-center">
                     <p className="text-sm font-bold font-mono text-consensus">$1.2M</p>
-                    <p className="text-[10px] text-muted-foreground">Admin savings/yr per facility</p>
+                    <p className="text-[10px] text-muted-foreground">Est. admin savings/yr (projected)*</p>
                   </div>
                 </div>
               </div>
@@ -274,12 +274,13 @@ export function PlatformValueCard() {
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-accent" />
                   <p className="text-[11px] font-medium text-foreground">
-                    Lyric doesn't sell to providers today.
+                    New provider-side opportunity.
                     <span className="text-muted-foreground font-normal ml-1">
-                      SOUPY turns every payer relationship into a two-sided revenue engine.
+                      SOUPY creates a provider revenue channel from existing payer relationships.
                     </span>
                   </p>
                 </div>
+                <p className="text-[9px] text-muted-foreground mt-1 italic">* All figures are modeled estimates based on platform architecture.</p>
               </div>
             </div>
           </div>
