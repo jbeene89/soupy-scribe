@@ -151,7 +151,7 @@ function SingleModelPanel({ auditCase }: { auditCase: AuditCase }) {
                   className="flex gap-2 opacity-0 animate-slide-up"
                   style={{ animationDelay: `${1800 + i * 100}ms`, animationFillMode: 'forwards' }}
                 >
-                  <span className="text-destructive shrink-0">✗</span>
+                  <ArrowRight className="h-3 w-3 text-primary/50 shrink-0" />
                   <span>{spot}</span>
                 </li>
               ))}
