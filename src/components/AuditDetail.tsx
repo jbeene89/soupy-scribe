@@ -22,6 +22,10 @@ import { PayerExportDialog } from './spark/PayerExportDialog';
 import { PayerTemplateInfo } from './spark/PayerTemplateInfo';
 import { AIAnalysisLoadingState } from './spark/LoadingState';
 
+// Pre-Appeal Resolution
+import { PreAppealResolutionTab } from './pre-appeal/PreAppealResolutionTab';
+import { preAppealResolutions } from '@/lib/preAppealMockData';
+
 interface AuditDetailProps {
   auditCase: AuditCase;
   onBack: () => void;
@@ -79,6 +83,9 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
             <TabsTrigger value="analysis">AI Analysis</TabsTrigger>
             <TabsTrigger value="evidence">Evidence</TabsTrigger>
             <TabsTrigger value="appeals">Appeals & Export</TabsTrigger>
+            {preAppealResolutions[auditCase.id] && (
+              <TabsTrigger value="pre-appeal">Pre-Appeal Resolution</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="analysis" className="space-y-6">
@@ -134,6 +141,16 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
               <PayerExportDialog auditCase={auditCase} />
             </div>
           </TabsContent>
+
+          {preAppealResolutions[auditCase.id] && (
+            <TabsContent value="pre-appeal">
+              <PreAppealResolutionTab
+                auditCase={auditCase}
+                resolution={preAppealResolutions[auditCase.id]}
+                viewMode="payer"
+              />
+            </TabsContent>
+          )}
         </Tabs>
       ) : (
         <div className="rounded-lg border bg-card p-8 text-center shadow-sm">

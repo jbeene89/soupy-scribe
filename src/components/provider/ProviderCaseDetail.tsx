@@ -15,6 +15,8 @@ import { getStoredProviderReview, runProviderAnalysis } from '@/lib/providerServ
 import { useAuth } from '@/hooks/useAuth';
 import { AuthGate } from '@/components/AuthGate';
 import { toast } from 'sonner';
+import { PreAppealResolutionTab } from '@/components/pre-appeal/PreAppealResolutionTab';
+import { preAppealResolutions } from '@/lib/preAppealMockData';
 
 interface ProviderCaseDetailProps {
   auditCase: AuditCase;
@@ -95,6 +97,9 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
             <TabsTrigger value="review">Readiness Review</TabsTrigger>
             <TabsTrigger value="appeal">Appeal Assessment</TabsTrigger>
             <TabsTrigger value="evidence">Evidence Checklist</TabsTrigger>
+            {preAppealResolutions[auditCase.id] && (
+              <TabsTrigger value="pre-appeal">Pre-Appeal Resolution</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="review">
@@ -108,6 +113,16 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
           <TabsContent value="evidence">
             <EvidenceReadinessChecklist items={review.evidenceReadiness} />
           </TabsContent>
+
+          {preAppealResolutions[auditCase.id] && (
+            <TabsContent value="pre-appeal">
+              <PreAppealResolutionTab
+                auditCase={auditCase}
+                resolution={preAppealResolutions[auditCase.id]}
+                viewMode="provider"
+              />
+            </TabsContent>
+          )}
         </Tabs>
       ) : (
         <div className="rounded-lg border bg-card p-8 text-center shadow-sm space-y-4">
