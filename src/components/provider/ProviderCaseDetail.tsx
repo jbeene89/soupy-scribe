@@ -15,6 +15,8 @@ import { getStoredProviderReview, runProviderAnalysis } from '@/lib/providerServ
 import { useAuth } from '@/hooks/useAuth';
 import { AuthGate } from '@/components/AuthGate';
 import { toast } from 'sonner';
+import { PreAppealResolutionTab } from '@/components/pre-appeal/PreAppealResolutionTab';
+import { preAppealResolutions } from '@/lib/preAppealMockData';
 
 interface ProviderCaseDetailProps {
   auditCase: AuditCase;
