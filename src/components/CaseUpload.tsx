@@ -152,18 +152,26 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
     return { name: file.name, text };
   };
 
-  const addFiles = async (fileList: FileList) => {
-    const newFiles: FileItem[] = [];
-    for (let i = 0; i < fileList.length; i++) {
-      const file = fileList[i];
-      const id = crypto.randomUUID();
-      newFiles.push({ id, name: file.name, text: '', status: 'parsing' });
+  const addFilesFromArray = async (fileArray: globalThis.File[]) => {
+    // Filter supported files only
+    const supported = fileArray.filter(f => isSupportedFile(f.name));
+    if (supported.length === 0) {
+      toast.error('No supported files found (PDF, TXT, CSV, HL7, JSON, XML)');
+      return;
     }
+    if (supported.length < fileArray.length) {
+      toast.info(`${fileArray.length - supported.length} unsupported file(s) skipped`);
+    }
+
+    const newFiles: FileItem[] = supported.map(f => ({
+      id: crypto.randomUUID(),
+      name: f.name,
+      text: '',
+      status: 'parsing' as FileItemStatus,
+    }));
     setFiles(prev => [...prev, ...newFiles]);
 
-    // Parse all in parallel
-    const fileArray = Array.from(fileList);
-    await Promise.all(fileArray.map(async (file, idx) => {
+    await Promise.all(supported.map(async (file, idx) => {
       const id = newFiles[idx].id;
       try {
         const { text } = await parseFile(file);
@@ -172,6 +180,31 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
         updateFile(id, { status: 'error', error: err instanceof Error ? err.message : 'Parse failed' });
       }
     }));
+  };
+
+  const addFiles = async (fileList: FileList) => {
+    const fileArray = Array.from(fileList);
+    
+    // Separate ZIPs from regular files
+    const zipFiles = fileArray.filter(isZipFile);
+    const regularFiles = fileArray.filter(f => !isZipFile(f));
+
+    // Extract files from ZIPs
+    if (zipFiles.length > 0) {
+      toast.info(`Extracting ${zipFiles.length} ZIP file(s)...`);
+      const extractedArrays = await Promise.all(zipFiles.map(extractFilesFromZip));
+      const allExtracted = extractedArrays.flat();
+      if (allExtracted.length > 0) {
+        toast.success(`Found ${allExtracted.length} file(s) in ZIP archive(s)`);
+        await addFilesFromArray(allExtracted);
+      } else {
+        toast.error('No supported files found in ZIP archive(s)');
+      }
+    }
+
+    if (regularFiles.length > 0) {
+      await addFilesFromArray(regularFiles);
+    }
   };
 
   const addPasteAsFile = () => {
@@ -199,9 +232,72 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
     if (e.target) e.target.value = '';
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    
+    // Check for folder drops via DataTransferItem API
+    const items = e.dataTransfer.items;
+    if (items && items.length > 0) {
+      const allFiles: globalThis.File[] = [];
+      const entries: FileSystemEntry[] = [];
+      
+      for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry?.();
+        if (entry) entries.push(entry);
+      }
+      
+      if (entries.some(e => e.isDirectory)) {
+        // Recursively read directories
+        const readEntry = async (entry: FileSystemEntry): Promise<globalThis.File[]> => {
+          if (entry.isFile) {
+            return new Promise((resolve) => {
+              (entry as FileSystemFileEntry).file(f => resolve([f]), () => resolve([]));
+            });
+          }
+          if (entry.isDirectory) {
+            const dirReader = (entry as FileSystemDirectoryEntry).createReader();
+            const entries = await new Promise<FileSystemEntry[]>((resolve) => {
+              const results: FileSystemEntry[] = [];
+              const readBatch = () => {
+                dirReader.readEntries((batch) => {
+                  if (batch.length === 0) { resolve(results); return; }
+                  results.push(...batch);
+                  readBatch();
+                });
+              };
+              readBatch();
+            });
+            const nested = await Promise.all(entries.map(readEntry));
+            return nested.flat();
+          }
+          return [];
+        };
+        
+        toast.info('Reading folder contents...');
+        const nestedFiles = await Promise.all(entries.map(readEntry));
+        allFiles.push(...nestedFiles.flat());
+        
+        // Separate ZIPs
+        const zipFiles = allFiles.filter(isZipFile);
+        const regularFiles = allFiles.filter(f => !isZipFile(f));
+        
+        if (zipFiles.length > 0) {
+          toast.info(`Extracting ${zipFiles.length} ZIP file(s) from folder...`);
+          const extractedArrays = await Promise.all(zipFiles.map(extractFilesFromZip));
+          regularFiles.push(...extractedArrays.flat());
+        }
+        
+        if (regularFiles.length > 0) {
+          toast.success(`Found ${regularFiles.length} file(s) in folder(s)`);
+          await addFilesFromArray(regularFiles);
+        } else {
+          toast.error('No supported files found in folder(s)');
+        }
+        return;
+      }
+    }
+    
     if (e.dataTransfer.files.length > 0) {
       addFiles(e.dataTransfer.files);
     }
