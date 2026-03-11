@@ -95,6 +95,34 @@ async function extractTextFromPDF(file: File): Promise<string> {
   return pages.join('\n\n--- Page Break ---\n\n');
 }
 
+  const SUPPORTED_EXTENSIONS = ['.pdf', '.txt', '.csv', '.hl7', '.json', '.xml'];
+
+  const isSupportedFile = (name: string) => {
+    const lower = name.toLowerCase();
+    return SUPPORTED_EXTENSIONS.some(ext => lower.endsWith(ext));
+  };
+
+  const isZipFile = (file: File) => {
+    return file.type === 'application/zip' || file.type === 'application/x-zip-compressed' || file.name.toLowerCase().endsWith('.zip');
+  };
+
+  const extractFilesFromZip = async (zipFile: File): Promise<File[]> => {
+    const zip = await JSZip.loadAsync(zipFile);
+    const extracted: File[] = [];
+
+    for (const [path, entry] of Object.entries(zip.files)) {
+      if (entry.dir) continue;
+      const fileName = path.split('/').pop() || path;
+      if (fileName.startsWith('.') || fileName.startsWith('__')) continue;
+      if (!isSupportedFile(fileName)) continue;
+
+      const blob = await entry.async('blob');
+      const file = new File([blob], fileName, { type: blob.type });
+      extracted.push(file);
+    }
+    return extracted;
+  };
+
 export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -102,6 +130,7 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [batchRunning, setBatchRunning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const reset = useCallback(() => {
     setFiles([]);
