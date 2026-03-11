@@ -113,6 +113,16 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
           <TabsContent value="evidence">
             <EvidenceReadinessChecklist items={review.evidenceReadiness} />
           </TabsContent>
+
+          {preAppealResolutions[auditCase.id] && (
+            <TabsContent value="pre-appeal">
+              <PreAppealResolutionTab
+                auditCase={auditCase}
+                resolution={preAppealResolutions[auditCase.id]}
+                viewMode="provider"
+              />
+            </TabsContent>
+          )}
         </Tabs>
       ) : (
         <div className="rounded-lg border bg-card p-8 text-center shadow-sm space-y-4">

@@ -141,6 +141,16 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
               <PayerExportDialog auditCase={auditCase} />
             </div>
           </TabsContent>
+
+          {preAppealResolutions[auditCase.id] && (
+            <TabsContent value="pre-appeal">
+              <PreAppealResolutionTab
+                auditCase={auditCase}
+                resolution={preAppealResolutions[auditCase.id]}
+                viewMode="payer"
+              />
+            </TabsContent>
+          )}
         </Tabs>
       ) : (
         <div className="rounded-lg border bg-card p-8 text-center shadow-sm">
