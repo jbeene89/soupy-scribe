@@ -130,7 +130,7 @@ export function PlatformValueCard() {
             <div>
               <h2 className="text-lg font-semibold tracking-tight">What SOUPY Adds to the Lyric Stack</h2>
               <p className="text-xs text-muted-foreground">
-                Three capabilities that don't exist in ClaimsXten, Replay, Virtuoso, or ClaimShark
+                Three new capabilities that extend ClaimsXten, Replay, Virtuoso, and ClaimShark
               </p>
             </div>
           </div>

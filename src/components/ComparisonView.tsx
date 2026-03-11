@@ -130,7 +130,7 @@ function SingleModelPanel({ auditCase }: { auditCase: AuditCase }) {
         </Card>
       </StaggerItem>
 
-      {/* Blind spots — animate after single model finishes */}
+      {/* Enhancement opportunities — animate after single model finishes */}
       <StaggerItem index={0} baseDelay={1600}>
         <Card className="border-dashed border-2 border-muted-foreground/20">
           <CardContent className="p-4 space-y-3">
