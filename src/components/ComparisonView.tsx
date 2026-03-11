@@ -136,7 +136,7 @@ function SingleModelPanel({ auditCase }: { auditCase: AuditCase }) {
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Eye className="h-4 w-4" />
-              <span className="text-xs font-semibold uppercase tracking-wider">Blind Spots</span>
+              <span className="text-xs font-semibold uppercase tracking-wider">Enhancement Opportunities</span>
             </div>
             <ul className="space-y-2 text-sm text-muted-foreground">
               {[
