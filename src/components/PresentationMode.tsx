@@ -31,7 +31,7 @@ import {
   Sparkles,
   Lock,
   Users,
-  GitCompare,
+  
   Cpu,
   Server,
   FileText,

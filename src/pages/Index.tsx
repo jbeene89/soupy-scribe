@@ -261,9 +261,9 @@ const Index = () => {
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-3 italic">
-                  Providers who receive structured documentation guidance submit claims with sufficient evidence 
-                  upfront — eliminating the need for costly post-payment recovery and reducing litigation exposure. 
-                  Integrates with Lyric 42 for automated pre-submission validation.
+                   * All figures are modeled estimates based on platform architecture. Providers who receive structured 
+                   documentation guidance submit claims with sufficient evidence upfront — eliminating the need for 
+                   costly post-payment recovery and reducing litigation exposure.
                 </p>
               </div>
             </div>

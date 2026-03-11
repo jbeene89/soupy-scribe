@@ -272,15 +272,15 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
             </div>
             <div className="lg:hidden h-px bg-border mx-4" />
 
-            {/* What it doesn't — the gap */}
+            {/* What it doesn't — the opportunity */}
             <div className="p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-destructive/70 mb-2">
-                The Gap
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary/70 mb-2">
+                Opportunity
               </p>
               <ul className="space-y-1.5">
                 {product.whatItDoesnt.map((item, i) => (
                   <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
-                    <span className="text-destructive shrink-0 mt-0.5 text-[10px]">✗</span>
+                    <ArrowRight className="h-3 w-3 shrink-0 mt-0.5 text-primary/50" />
                     <span>{item}</span>
                   </li>
                 ))}

@@ -274,12 +274,13 @@ export function PlatformValueCard() {
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-accent" />
                   <p className="text-[11px] font-medium text-foreground">
-                    Lyric doesn't sell to providers today.
+                    New provider-side opportunity.
                     <span className="text-muted-foreground font-normal ml-1">
-                      SOUPY turns every payer relationship into a two-sided revenue engine.
+                      SOUPY creates a provider revenue channel from existing payer relationships.
                     </span>
                   </p>
                 </div>
+                <p className="text-[9px] text-muted-foreground mt-1 italic">* All figures are modeled estimates based on platform architecture.</p>
               </div>
             </div>
           </div>

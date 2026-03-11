@@ -259,7 +259,7 @@ export const mockCases: AuditCase[] = [
     caseNumber: 'AUD-2024-005',
     patientId: 'PT-77443',
     physicianId: 'DR-4401',
-    physicianName: 'Dr. Sarah Mitchell',
+    physicianName: 'Dr. S. Mitchell (demo)',
     dateOfService: '2024-02-17',
     dateSubmitted: '2024-02-20',
     status: 'pending',
