@@ -7,9 +7,10 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, FileText, Brain, CheckCircle, AlertCircle, Loader2, File, X, Play, Trash2 } from 'lucide-react';
+import { Upload, FileText, Brain, CheckCircle, AlertCircle, Loader2, File, X, Play, FolderOpen, FileArchive } from 'lucide-react';
 import { toast } from 'sonner';
 import { submitCaseText, runSOUPYAnalysis } from '@/lib/caseService';
+import JSZip from 'jszip';
 
 interface CaseUploadProps {
   onCaseCreated: (caseId: string) => void;
@@ -94,6 +95,33 @@ async function extractTextFromPDF(file: File): Promise<string> {
   return pages.join('\n\n--- Page Break ---\n\n');
 }
 
+const SUPPORTED_EXTENSIONS = ['.pdf', '.txt', '.csv', '.hl7', '.json', '.xml'];
+
+const isSupportedFile = (name: string) => {
+  const lower = name.toLowerCase();
+  return SUPPORTED_EXTENSIONS.some(ext => lower.endsWith(ext));
+};
+
+const extractFilesFromZip = async (zipFile: globalThis.File): Promise<globalThis.File[]> => {
+  const zip = await JSZip.loadAsync(zipFile);
+  const extracted: globalThis.File[] = [];
+
+  for (const [path, entry] of Object.entries(zip.files)) {
+    if (entry.dir) continue;
+    const fileName = path.split('/').pop() || path;
+    if (fileName.startsWith('.') || fileName.startsWith('__')) continue;
+    if (!isSupportedFile(fileName)) continue;
+
+    const blob = await entry.async('blob');
+    extracted.push(new globalThis.File([blob], fileName));
+  }
+  return extracted;
+};
+
+const isZipFile = (file: globalThis.File) => {
+  return file.type === 'application/zip' || file.type === 'application/x-zip-compressed' || file.name.toLowerCase().endsWith('.zip');
+};
+
 export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -101,6 +129,7 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [batchRunning, setBatchRunning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const reset = useCallback(() => {
     setFiles([]);
@@ -123,18 +152,26 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
     return { name: file.name, text };
   };
 
-  const addFiles = async (fileList: FileList) => {
-    const newFiles: FileItem[] = [];
-    for (let i = 0; i < fileList.length; i++) {
-      const file = fileList[i];
-      const id = crypto.randomUUID();
-      newFiles.push({ id, name: file.name, text: '', status: 'parsing' });
+  const addFilesFromArray = async (fileArray: globalThis.File[]) => {
+    // Filter supported files only
+    const supported = fileArray.filter(f => isSupportedFile(f.name));
+    if (supported.length === 0) {
+      toast.error('No supported files found (PDF, TXT, CSV, HL7, JSON, XML)');
+      return;
     }
+    if (supported.length < fileArray.length) {
+      toast.info(`${fileArray.length - supported.length} unsupported file(s) skipped`);
+    }
+
+    const newFiles: FileItem[] = supported.map(f => ({
+      id: crypto.randomUUID(),
+      name: f.name,
+      text: '',
+      status: 'parsing' as FileItemStatus,
+    }));
     setFiles(prev => [...prev, ...newFiles]);
 
-    // Parse all in parallel
-    const fileArray = Array.from(fileList);
-    await Promise.all(fileArray.map(async (file, idx) => {
+    await Promise.all(supported.map(async (file, idx) => {
       const id = newFiles[idx].id;
       try {
         const { text } = await parseFile(file);
@@ -143,6 +180,31 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
         updateFile(id, { status: 'error', error: err instanceof Error ? err.message : 'Parse failed' });
       }
     }));
+  };
+
+  const addFiles = async (fileList: FileList) => {
+    const fileArray = Array.from(fileList);
+    
+    // Separate ZIPs from regular files
+    const zipFiles = fileArray.filter(isZipFile);
+    const regularFiles = fileArray.filter(f => !isZipFile(f));
+
+    // Extract files from ZIPs
+    if (zipFiles.length > 0) {
+      toast.info(`Extracting ${zipFiles.length} ZIP file(s)...`);
+      const extractedArrays = await Promise.all(zipFiles.map(extractFilesFromZip));
+      const allExtracted = extractedArrays.flat();
+      if (allExtracted.length > 0) {
+        toast.success(`Found ${allExtracted.length} file(s) in ZIP archive(s)`);
+        await addFilesFromArray(allExtracted);
+      } else {
+        toast.error('No supported files found in ZIP archive(s)');
+      }
+    }
+
+    if (regularFiles.length > 0) {
+      await addFilesFromArray(regularFiles);
+    }
   };
 
   const addPasteAsFile = () => {
@@ -170,9 +232,72 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
     if (e.target) e.target.value = '';
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    
+    // Check for folder drops via DataTransferItem API
+    const items = e.dataTransfer.items;
+    if (items && items.length > 0) {
+      const allFiles: globalThis.File[] = [];
+      const entries: FileSystemEntry[] = [];
+      
+      for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry?.();
+        if (entry) entries.push(entry);
+      }
+      
+      if (entries.some(e => e.isDirectory)) {
+        // Recursively read directories
+        const readEntry = async (entry: FileSystemEntry): Promise<globalThis.File[]> => {
+          if (entry.isFile) {
+            return new Promise((resolve) => {
+              (entry as FileSystemFileEntry).file(f => resolve([f]), () => resolve([]));
+            });
+          }
+          if (entry.isDirectory) {
+            const dirReader = (entry as FileSystemDirectoryEntry).createReader();
+            const entries = await new Promise<FileSystemEntry[]>((resolve) => {
+              const results: FileSystemEntry[] = [];
+              const readBatch = () => {
+                dirReader.readEntries((batch) => {
+                  if (batch.length === 0) { resolve(results); return; }
+                  results.push(...batch);
+                  readBatch();
+                });
+              };
+              readBatch();
+            });
+            const nested = await Promise.all(entries.map(readEntry));
+            return nested.flat();
+          }
+          return [];
+        };
+        
+        toast.info('Reading folder contents...');
+        const nestedFiles = await Promise.all(entries.map(readEntry));
+        allFiles.push(...nestedFiles.flat());
+        
+        // Separate ZIPs
+        const zipFiles = allFiles.filter(isZipFile);
+        const regularFiles = allFiles.filter(f => !isZipFile(f));
+        
+        if (zipFiles.length > 0) {
+          toast.info(`Extracting ${zipFiles.length} ZIP file(s) from folder...`);
+          const extractedArrays = await Promise.all(zipFiles.map(extractFilesFromZip));
+          regularFiles.push(...extractedArrays.flat());
+        }
+        
+        if (regularFiles.length > 0) {
+          toast.success(`Found ${regularFiles.length} file(s) in folder(s)`);
+          await addFilesFromArray(regularFiles);
+        } else {
+          toast.error('No supported files found in folder(s)');
+        }
+        return;
+      }
+    }
+    
     if (e.dataTransfer.files.length > 0) {
       addFiles(e.dataTransfer.files);
     }
@@ -284,15 +409,24 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
           </div>
         )}
 
-        {/* Drop zone */}
+        {/* File inputs */}
         <input
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept=".pdf,.txt,.csv,.hl7,.json,.xml"
+          accept=".pdf,.txt,.csv,.hl7,.json,.xml,.zip"
           className="hidden"
           multiple
         />
+        <input
+          type="file"
+          ref={folderInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+          {...{ webkitdirectory: '', directory: '', multiple: true } as any}
+        />
+
+        {/* Drop zone */}
         <div
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
@@ -305,8 +439,28 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
           }`}
         >
           <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-          <p className="text-sm font-medium">Drop multiple files here, or click to browse</p>
-          <p className="text-xs text-muted-foreground mt-1">PDF, TXT, CSV, HL7, JSON, XML — select multiple at once</p>
+          <p className="text-sm font-medium">Drop files, folders, or ZIP archives here</p>
+          <p className="text-xs text-muted-foreground mt-1">PDF, TXT, CSV, HL7, JSON, XML — or click to browse</p>
+          <div className="flex items-center justify-center gap-2 mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs gap-1.5"
+              onClick={(e) => { e.stopPropagation(); folderInputRef.current?.click(); }}
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+              Select Folder
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs gap-1.5"
+              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+            >
+              <FileArchive className="h-3.5 w-3.5" />
+              Select Files / ZIP
+            </Button>
+          </div>
         </div>
 
         {/* Paste text section */}
