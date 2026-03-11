@@ -19,7 +19,8 @@ import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
 import type { AppMode } from '@/lib/providerTypes';
-import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope, FileDown } from 'lucide-react';
+import { exportPlatformSummaryPDF } from '@/lib/exportPlatformSummary';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -172,6 +173,15 @@ const Index = () => {
                 Present
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => { exportPlatformSummaryPDF(); toast.success('PDF downloaded'); }}
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              Export PDF
+            </Button>
             {/* Data source toggle */}
             <div className="flex items-center border rounded-md overflow-hidden">
               <button
