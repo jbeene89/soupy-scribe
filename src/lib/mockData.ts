@@ -198,7 +198,7 @@ export const mockCases: AuditCase[] = [
     caseNumber: 'AUD-2024-003',
     patientId: 'PT-44290',
     physicianId: 'DR-7722',
-    physicianName: 'Dr. James Park',
+    physicianName: 'Dr. J. Park (demo)',
     dateOfService: '2024-02-03',
     dateSubmitted: '2024-02-06',
     status: 'approved',
