@@ -18,10 +18,17 @@ import { useAuth } from '@/hooks/useAuth';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
-import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut } from 'lucide-react';
+import type { AppMode } from '@/lib/providerTypes';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+
+// Provider components
+import { AppModeToggle } from '@/components/provider/AppModeToggle';
+import { ProviderDashboard } from '@/components/provider/ProviderDashboard';
+import { ProviderCaseDetail } from '@/components/provider/ProviderCaseDetail';
+import { EducationInsights } from '@/components/provider/EducationInsights';
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
@@ -31,6 +38,7 @@ const Index = () => {
   const [soupyConfig, setSoupyConfig] = useState<SOUPYConfig>(defaultSOUPYConfig);
   const [activeTab, setActiveTab] = useState('queue');
   const [presentationMode, setPresentationMode] = useState(false);
+  const [appMode, setAppMode] = useState<AppMode>('payer');
   
   // Live database cases
   const [liveCases, setLiveCases] = useState<AuditCase[]>([]);
@@ -56,7 +64,6 @@ const Index = () => {
   const allCases = dataSource === 'live' ? liveCases : [...mockCases, ...liveCases];
 
   const handleSelectCase = async (c: AuditCase) => {
-    // If it's a live case, refetch for latest data
     if (liveCases.some(lc => lc.id === c.id)) {
       const fresh = await fetchCase(c.id);
       if (fresh) {
@@ -71,8 +78,8 @@ const Index = () => {
 
   const handleBack = () => {
     setSelectedCase(null);
-    setActiveTab('queue');
-    loadLiveCases(); // Refresh
+    setActiveTab(appMode === 'provider' ? 'provider-dashboard' : 'queue');
+    loadLiveCases();
   };
 
   const handleDecisionMade = (outcome: 'approved' | 'rejected' | 'info-requested') => {
@@ -97,6 +104,12 @@ const Index = () => {
     }
   };
 
+  const handleModeChange = (mode: AppMode) => {
+    setAppMode(mode);
+    setSelectedCase(null);
+    setActiveTab(mode === 'provider' ? 'provider-dashboard' : 'queue');
+  };
+
   if (presentationMode) {
     return <PresentationMode onExit={() => setPresentationMode(false)} />;
   }
@@ -115,12 +128,20 @@ const Index = () => {
             </div>
             <div>
               <h1 className="text-lg font-semibold tracking-tight">Lyric AI</h1>
-              <p className="text-xs text-muted-foreground">Medical Code Audit Platform</p>
+              <p className="text-xs text-muted-foreground">
+                {appMode === 'provider' ? 'Provider Compliance Readiness' : 'Medical Code Audit Platform'}
+              </p>
             </div>
             <div className="flex items-center gap-1.5 ml-4 px-2.5 py-1 rounded-md border bg-accent/10">
               <Brain className="h-3.5 w-3.5 text-accent" />
               <span className="text-xs font-medium text-accent">SOUPY ThinkTank</span>
             </div>
+            {appMode === 'provider' && (
+              <div className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-info-blue/30 bg-info-blue/10">
+                <Stethoscope className="h-3.5 w-3.5 text-info-blue" />
+                <span className="text-xs font-medium text-info-blue">Provider Mode</span>
+              </div>
+            )}
             {liveCases.length > 0 && (
               <div className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-consensus/30 bg-consensus/10">
                 <Database className="h-3.5 w-3.5 text-consensus" />
@@ -129,18 +150,22 @@ const Index = () => {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <AuthGate hide>
-              <CaseUpload onCaseCreated={handleCaseCreated} />
-            </AuthGate>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 text-xs border-accent/40 text-accent hover:bg-accent/10"
-              onClick={() => setPresentationMode(true)}
-            >
-              <Presentation className="h-3.5 w-3.5" />
-              Present
-            </Button>
+            {appMode === 'payer' && (
+              <AuthGate hide>
+                <CaseUpload onCaseCreated={handleCaseCreated} />
+              </AuthGate>
+            )}
+            {appMode === 'payer' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs border-accent/40 text-accent hover:bg-accent/10"
+                onClick={() => setPresentationMode(true)}
+              >
+                <Presentation className="h-3.5 w-3.5" />
+                Present
+              </Button>
+            )}
             {/* Data source toggle */}
             <div className="flex items-center border rounded-md overflow-hidden">
               <button
@@ -162,8 +187,13 @@ const Index = () => {
                 Live
               </button>
             </div>
-            <AuditPostureToggle posture={posture} onChange={setPosture} />
-            <SOUPYConfigDialog config={soupyConfig} onSave={setSoupyConfig} />
+            <AppModeToggle mode={appMode} onChange={handleModeChange} />
+            {appMode === 'payer' && (
+              <>
+                <AuditPostureToggle posture={posture} onChange={setPosture} />
+                <SOUPYConfigDialog config={soupyConfig} onSave={setSoupyConfig} />
+              </>
+            )}
             {isAuthenticated ? (
               <Button
                 variant="outline"
@@ -192,8 +222,8 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-8 py-6 space-y-6">
-        {/* Claim Accuracy Program value banner */}
-        {posture === 'compliance-coaching' && !selectedCase && (
+        {/* Payer mode: Claim Accuracy Program value banner */}
+        {appMode === 'payer' && posture === 'compliance-coaching' && !selectedCase && (
           <div className="rounded-lg border bg-card p-5 shadow-sm">
             <div className="flex items-start gap-4">
               <div className="p-2 rounded-lg bg-consensus/10 shrink-0">
@@ -233,9 +263,52 @@ const Index = () => {
             </div>
           </div>
         )}
+
+        {/* Case Detail Views */}
         {selectedCase && activeTab === 'audit' ? (
-          <AuditDetail auditCase={selectedCase} onBack={handleBack} posture={posture} onDecisionMade={handleDecisionMade} />
+          appMode === 'provider' ? (
+            <ProviderCaseDetail auditCase={selectedCase} onBack={handleBack} />
+          ) : (
+            <AuditDetail auditCase={selectedCase} onBack={handleBack} posture={posture} onDecisionMade={handleDecisionMade} />
+          )
+        ) : appMode === 'provider' ? (
+          /* ═══════════════ PROVIDER MODE TABS ═══════════════ */
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="provider-dashboard" className="gap-1.5">
+                <Stethoscope className="h-3.5 w-3.5" />
+                Dashboard
+              </TabsTrigger>
+              <TabsTrigger value="provider-cases">
+                Case Reviews
+                {allCases.length > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">{allCases.length}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="provider-education" className="gap-1.5">
+                <GraduationCap className="h-3.5 w-3.5" />
+                Education Insights
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="provider-dashboard">
+              <ProviderDashboard />
+            </TabsContent>
+
+            <TabsContent value="provider-cases">
+              <CaseQueue
+                cases={allCases}
+                onSelectCase={handleSelectCase}
+                selectedCaseId={selectedCase?.id}
+              />
+            </TabsContent>
+
+            <TabsContent value="provider-education">
+              <EducationInsights />
+            </TabsContent>
+          </Tabs>
         ) : (
+          /* ═══════════════ PAYER MODE TABS ═══════════════ */
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
               <TabsTrigger value="queue">
