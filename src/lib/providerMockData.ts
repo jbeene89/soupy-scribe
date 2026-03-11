@@ -180,7 +180,7 @@ export const recurringIssues: RecurringIssue[] = [
     id: 'ri4',
     category: 'modifier-misuse',
     title: 'Modifier 59 Applied Without Distinct Service Documentation',
-    description: 'Modifier 59 used to bypass NCCI edits but the underlying operative documentation does not support distinct procedural services.',
+    description: 'Modifier 59 used to override NCCI edits but the underlying operative documentation does not support distinct procedural services.',
     frequency: 2,
     impact: 'high',
     educationOpportunity: 'Train surgeons on modifier 59 requirements. Document distinct incisions, separate operative steps, and independent medical necessity for each procedure. Use XE/XS/XP/XU modifiers when more specific.',

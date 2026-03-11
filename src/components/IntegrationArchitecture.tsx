@@ -235,7 +235,7 @@ export function IntegrationArchitecture() {
             Additive, not disruptive.
             <span className="text-muted-foreground font-normal ml-1">
               SOUPY consumes output from your existing products and adds adversarial intelligence,
-              appeal defense, and provider revenue — capabilities that don't exist in the current portfolio.
+              appeal defense, and provider revenue — new capabilities that extend the current portfolio.
             </span>
           </p>
         </div>

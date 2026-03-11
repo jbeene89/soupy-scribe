@@ -861,7 +861,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
               <div className="space-y-2 text-center">
                 <Badge variant="outline" className="text-xs">The Offer</Badge>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  Three things no one else can offer you.
+                  Three capabilities that amplify what you've built.
                 </h2>
               </div>
 
