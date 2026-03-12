@@ -152,7 +152,7 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading }: Case
                   <TableCell>
                     <div>
                       <p className="text-sm text-muted-foreground">{c.dateSubmitted}</p>
-                      <p className="text-xs text-muted-foreground/60">{getRelativeTime(c.dateSubmitted)}</p>
+                      <p className="text-xs text-muted-foreground/60">{getRelativeTime(c.createdAt || c.dateSubmitted)}</p>
                     </div>
                   </TableCell>
                 </TableRow>

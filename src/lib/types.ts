@@ -72,6 +72,7 @@ export interface AuditCase {
   physicianName: string;
   dateOfService: string;
   dateSubmitted: string;
+  createdAt?: string;
   status: CaseStatus;
   assignedTo?: string;
   cptCodes: string[];

@@ -33,6 +33,7 @@ function dbCaseToAuditCase(row: any): AuditCase {
     physicianName: row.physician_name,
     dateOfService: row.date_of_service,
     dateSubmitted: row.date_submitted,
+    createdAt: row.created_at,
     status: row.status,
     assignedTo: row.assigned_to || undefined,
     cptCodes: row.cpt_codes || [],
