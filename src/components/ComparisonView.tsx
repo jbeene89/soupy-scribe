@@ -349,7 +349,7 @@ export function ComparisonView() {
 
       {/* Strategic positioning — what this means for the business */}
       <Card
-        className="border border-primary/20 bg-primary/3 opacity-0 animate-slide-up"
+        className="border border-primary/20 bg-primary/5 opacity-0 animate-slide-up"
         style={{ animationDelay: '2800ms', animationFillMode: 'forwards' }}
       >
         <CardContent className="p-6 space-y-4">
