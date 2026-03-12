@@ -11,6 +11,21 @@ import { CaseCardSkeleton } from './spark/LoadingState';
 import { cn } from '@/lib/utils';
 import { Clock, CheckCircle, XCircle, Search, FileText, LayoutGrid, List } from 'lucide-react';
 
+function getRelativeTime(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays}d ago`;
+  const diffMonths = Math.floor(diffDays / 30);
+  return `${diffMonths}mo ago`;
+}
+
 const statusConfig: Record<CaseStatus, { label: string; icon: React.ElementType; className: string }> = {
   pending: { label: 'Pending', icon: Clock, className: 'bg-disagreement/15 text-disagreement border-disagreement/30' },
   'in-review': { label: 'In Review', icon: Search, className: 'bg-info-blue/15 text-info-blue border-info-blue/30' },
