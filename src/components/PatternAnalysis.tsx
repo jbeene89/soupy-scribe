@@ -13,10 +13,10 @@ type ChartMetric = 'errorsFound' | 'upchargeAmount' | 'claimAmount' | 'procedure
 type GroupBy = 'dayOfWeek' | 'timeOfDay' | 'anesthesiaType' | 'patientObesity' | 'understaffing';
 
 const METRIC_COLORS: Record<ChartMetric, string> = {
-  errorsFound: '#dc2626',
-  upchargeAmount: '#f59e0b',
-  claimAmount: '#3b82f6',
-  procedureDuration: '#8b5cf6',
+  errorsFound: 'hsl(var(--violation))',
+  upchargeAmount: 'hsl(var(--disagreement))',
+  claimAmount: 'hsl(var(--info-blue))',
+  procedureDuration: 'hsl(var(--role-analyst))',
 };
 
 const METRIC_LABELS: Record<ChartMetric, string> = {

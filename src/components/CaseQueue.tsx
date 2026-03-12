@@ -72,7 +72,13 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading }: Case
         </div>
       </div>
 
-      {viewMode === 'cards' ? (
+      {cases.length === 0 ? (
+        <div className="p-12 text-center">
+          <Search className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">No cases found</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">Cases will appear here when they're available.</p>
+        </div>
+      ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
           {cases.map(c => (
             <CaseCard key={c.id} auditCase={c} onClick={() => onSelectCase(c)} />
