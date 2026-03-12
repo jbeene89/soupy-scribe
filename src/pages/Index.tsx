@@ -122,36 +122,69 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-8 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary">
-              <Scale className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight">Lyric AI</h1>
-              <p className="text-xs text-muted-foreground">
-                {appMode === 'provider' ? 'Provider Compliance Readiness' : 'Medical Code Audit Platform'}
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 ml-4 px-2.5 py-1 rounded-md border bg-accent/10">
-              <Brain className="h-3.5 w-3.5 text-accent" />
-              <span className="text-xs font-medium text-accent">SOUPY ThinkTank</span>
-            </div>
-            {appMode === 'provider' && (
-              <div className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-info-blue/30 bg-info-blue/10">
-                <Stethoscope className="h-3.5 w-3.5 text-info-blue" />
-                <span className="text-xs font-medium text-info-blue">Provider Mode</span>
+      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur-md shadow-sm">
+        {/* Top bar — brand + auth */}
+        <div className="container mx-auto px-8">
+          <div className="flex items-center justify-between h-14">
+            {/* Brand */}
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 rounded-md bg-primary/90">
+                <Scale className="h-5 w-5 text-primary-foreground" />
               </div>
-            )}
-            {liveCases.length > 0 && (
-              <div className="flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-md border border-consensus/30 bg-consensus/10">
-                <Database className="h-3.5 w-3.5 text-consensus" />
-                <span className="text-xs font-medium text-consensus">{liveCases.length} Live</span>
+              <div className="flex items-baseline gap-2">
+                <h1 className="text-base font-semibold tracking-tight text-foreground">Lyric AI</h1>
+                <span className="hidden sm:inline text-[11px] text-muted-foreground font-medium tracking-wide uppercase">
+                  {appMode === 'provider' ? 'Provider Readiness' : 'Payment Integrity'}
+                </span>
               </div>
-            )}
+            </div>
+
+            {/* Right — status pills + auth */}
+            <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded border bg-accent/5 text-accent">
+                <Brain className="h-3 w-3" />
+                <span className="text-[10px] font-semibold tracking-wide uppercase">SOUPY</span>
+              </div>
+              {appMode === 'provider' && (
+                <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded border border-info-blue/20 bg-info-blue/5 text-info-blue">
+                  <Stethoscope className="h-3 w-3" />
+                  <span className="text-[10px] font-semibold tracking-wide uppercase">Provider</span>
+                </div>
+              )}
+              {liveCases.length > 0 && (
+                <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded border border-consensus/20 bg-consensus/5 text-consensus">
+                  <Database className="h-3 w-3" />
+                  <span className="text-[10px] font-semibold">{liveCases.length} Live</span>
+                </div>
+              )}
+              <div className="w-px h-5 bg-border mx-1 hidden md:block" />
+              {isAuthenticated ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => supabase.auth.signOut()}
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sign Out
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => setShowSignIn(true)}
+                >
+                  <LogIn className="h-3.5 w-3.5" />
+                  Sign In
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+
+          {/* Bottom toolbar — actions */}
+          <div className="flex items-center gap-1.5 pb-2 -mt-1 overflow-x-auto scrollbar-none">
+            <AppModeToggle mode={appMode} onChange={handleModeChange} />
+            <div className="w-px h-4 bg-border mx-0.5" />
             {appMode === 'payer' && (
               <AuthGate hide>
                 <CaseUpload onCaseCreated={handleCaseCreated} />
@@ -164,9 +197,9 @@ const Index = () => {
             )}
             {appMode === 'payer' && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="gap-1.5 text-xs border-accent/40 text-accent hover:bg-accent/10"
+                className="gap-1.5 text-xs text-muted-foreground hover:text-accent"
                 onClick={() => setPresentationMode(true)}
               >
                 <Presentation className="h-3.5 w-3.5" />
@@ -174,19 +207,20 @@ const Index = () => {
               </Button>
             )}
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="gap-1.5 text-xs"
+              className="gap-1.5 text-xs text-muted-foreground"
               onClick={() => { exportPlatformSummaryPDF(); toast.success('PDF downloaded'); }}
             >
               <FileDown className="h-3.5 w-3.5" />
-              Export PDF
+              Export
             </Button>
+            <div className="w-px h-4 bg-border mx-0.5" />
             {/* Data source toggle */}
-            <div className="flex items-center border rounded-md overflow-hidden">
+            <div className="flex items-center rounded-md border overflow-hidden">
               <button
                 onClick={() => setDataSource('mock')}
-                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                className={`px-2 py-1 text-[11px] font-medium transition-colors ${
                   dataSource === 'mock' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
                 }`}
               >
@@ -195,7 +229,7 @@ const Index = () => {
               </button>
               <button
                 onClick={() => { setDataSource('live'); loadLiveCases(); }}
-                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                className={`px-2 py-1 text-[11px] font-medium transition-colors ${
                   dataSource === 'live' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
                 }`}
               >
@@ -203,32 +237,12 @@ const Index = () => {
                 Live
               </button>
             </div>
-            <AppModeToggle mode={appMode} onChange={handleModeChange} />
             {appMode === 'payer' && (
               <>
+                <div className="w-px h-4 bg-border mx-0.5" />
                 <AuditPostureToggle posture={posture} onChange={setPosture} />
                 <SOUPYConfigDialog config={soupyConfig} onSave={setSoupyConfig} />
               </>
-            )}
-            {isAuthenticated ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs"
-                onClick={() => supabase.auth.signOut()}
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Sign Out
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                className="gap-1.5 text-xs"
-                onClick={() => setShowSignIn(true)}
-              >
-                <LogIn className="h-3.5 w-3.5" />
-                Sign In
-              </Button>
             )}
           </div>
         </div>
