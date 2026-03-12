@@ -94,7 +94,8 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading }: Case
               <TableHead className="text-right">Claim</TableHead>
               <TableHead>Risk</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead>DOS</TableHead>
+              <TableHead>Submitted</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
