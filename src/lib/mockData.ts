@@ -391,7 +391,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'breaker',
-        model: 'GPT-4o Mini',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 60,
         perspectiveStatement: 'Before labeling this as fraud, consider that complex orthopedic cases in osteoporotic patients genuinely require additional procedures. The billing may reflect real clinical complexity.',
