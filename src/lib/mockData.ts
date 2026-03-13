@@ -139,7 +139,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'breaker',
-        model: 'GPT-4o Mini',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 65,
         perspectiveStatement: 'The traditional audit lens may be missing the forest for the trees. This billing pattern is clinically appropriate — the question is whether documentation practices match clinical reality.',
