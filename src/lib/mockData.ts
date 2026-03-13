@@ -47,7 +47,7 @@ export const mockCases: AuditCase[] = [
     analyses: [
       {
         role: 'builder',
-        model: 'GPT-4o',
+        model: 'Gemini 2.5 Flash',
         status: 'complete',
         confidence: 72,
         perspectiveStatement: 'The code combination is defensible if documentation supports a genuine clinical escalation from emergency evaluation to critical care management.',
