@@ -14,9 +14,9 @@ export function ConsensusMeter({ score, className }: ConsensusMeterProps) {
   };
 
   const getLabel = () => {
-    if (score >= 90) return '4/4 Agree';
-    if (score >= 75) return '3/4 Agree';
-    if (score >= 50) return '2/4 Split';
+    if (score >= 90) return 'Strong Agreement';
+    if (score >= 75) return 'Majority Agreement';
+    if (score >= 50) return 'Split Opinion';
     return 'High Divergence';
   };
 

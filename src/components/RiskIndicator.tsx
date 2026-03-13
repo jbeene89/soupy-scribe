@@ -21,6 +21,10 @@ export function RiskIndicator({ riskScore, compact }: RiskIndicatorProps) {
 
   const config = levelConfig[riskScore.level];
 
+  const confidenceLabel = riskScore.confidence >= 85 ? 'High' :
+    riskScore.confidence >= 65 ? 'Moderate' :
+    riskScore.confidence >= 45 ? 'Low' : 'Very Low';
+
   if (compact) {
     return (
       <Badge variant="outline" className={cn('text-xs font-semibold', config.className)}>
@@ -42,7 +46,7 @@ export function RiskIndicator({ riskScore, compact }: RiskIndicatorProps) {
             <span className="text-xs text-muted-foreground">({riskScore.percentile}th percentile)</span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-muted-foreground">Confidence: {riskScore.confidence}%</span>
+            <span className="text-xs text-muted-foreground">Confidence: {confidenceLabel} ({riskScore.confidence}%)</span>
             <span className="text-xs text-muted-foreground">•</span>
             <span className="text-xs text-muted-foreground">Data: {riskScore.dataCompleteness.score}%</span>
           </div>
@@ -55,9 +59,9 @@ export function RiskIndicator({ riskScore, compact }: RiskIndicatorProps) {
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active Risk Factors</p>
           {riskScore.factors.filter(f => f.triggered).map(factor => (
-            <div key={factor.id} className="rounded-md border bg-card p-3 space-y-1">
+            <div key={factor.id} className="rounded-md border bg-card p-2.5 space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">{factor.title}</span>
+                <span className="text-xs font-medium">{factor.title}</span>
                 {factor.isDeterminative ? (
                   <Badge variant="outline" className="text-[10px] bg-violation/10 text-violation border-violation/30">Determinative</Badge>
                 ) : (
@@ -76,7 +80,7 @@ export function RiskIndicator({ riskScore, compact }: RiskIndicatorProps) {
         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
       >
         <Info className="h-3 w-3" />
-        <span>View Debug Data</span>
+        <span>Score Details</span>
         {showDebug ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
       </button>
 
@@ -85,7 +89,7 @@ export function RiskIndicator({ riskScore, compact }: RiskIndicatorProps) {
           <div className="flex justify-between"><span>Raw Score:</span><span>{riskScore.rawScore}</span></div>
           <div className="flex justify-between"><span>Normalized:</span><span>{riskScore.score}</span></div>
           <div className="flex justify-between"><span>Percentile:</span><span>{riskScore.percentile}th</span></div>
-          <div className="flex justify-between"><span>Confidence:</span><span>{riskScore.confidence}%</span></div>
+          <div className="flex justify-between"><span>Confidence:</span><span>{confidenceLabel} ({riskScore.confidence}%)</span></div>
           <div className="mt-2">
             <p className="text-muted-foreground mb-1">Present: {riskScore.dataCompleteness.present.join(', ')}</p>
             <p className="text-muted-foreground">Missing: {riskScore.dataCompleteness.missing.join(', ')}</p>
