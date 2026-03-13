@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { AuditCase, CodeViolation, RoleDefense } from '@/lib/types';
-import type { ExportReadinessResult } from '@/lib/caseIntelligence';
-import { Shield, Download, ChevronDown, AlertTriangle, CheckCircle, FileText, Copy, XCircle } from 'lucide-react';
+import { type ExportReadinessResult, deriveCaseSignals, buildStructuredExportPackage, deriveActionPath, evaluateExportReadiness } from '@/lib/caseIntelligence';
+import { Shield, Download, ChevronDown, AlertTriangle, CheckCircle, FileText, Copy, XCircle, Braces } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
