@@ -349,7 +349,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'redteam',
-        model: 'Claude 3.5',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 90,
         perspectiveStatement: 'This is a classic unbundling pattern. The surgeon added extra codes to inflate the claim — both add-ons are typically included in TKA reimbursement.',
