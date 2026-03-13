@@ -107,8 +107,33 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
     contradictions,
   }), [auditCase, evidenceSuff, contradictions]);
 
-  const handleDecision = (outcome: 'approved' | 'rejected' | 'info-requested', reasoning: string) => {
-    toast.success(`Case ${outcome === 'info-requested' ? 'info requested' : outcome}`);
+  const { user } = useAuth();
+
+  // Dynamic evidence checklist from case data
+  const dynamicEvidence = useMemo(() => generateDynamicEvidenceChecklist(auditCase), [auditCase]);
+
+  const handleDecision = async (outcome: 'approved' | 'rejected' | 'info-requested', reasoning: string) => {
+    const decision: AuditDecision = {
+      outcome: outcome === 'info-requested' ? 'in-review' : outcome as any,
+      reasoning,
+      auditor: user?.email || 'Unknown',
+      timestamp: new Date().toISOString(),
+      overrides: [],
+    };
+
+    // Persist to database for live cases
+    if (isLiveCase) {
+      try {
+        await saveDecision(auditCase.id, decision);
+        toast.success(`Decision saved: ${outcome === 'info-requested' ? 'Information Requested' : outcome}`);
+      } catch (err) {
+        toast.error('Failed to save decision to database');
+        console.error(err);
+        return;
+      }
+    } else {
+      toast.success(`Case ${outcome === 'info-requested' ? 'info requested' : outcome} (demo mode — not persisted)`);
+    }
     onDecisionMade?.(outcome);
   };
 
