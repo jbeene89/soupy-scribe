@@ -148,7 +148,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
   // Dead code removed — contradiction count now derived from signals module
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className={cn("space-y-4 animate-fade-in", !auditCase.decision && hasAnalyses && "pb-32")}>
       {/* ═══ Case Header ═══ */}
       <div className="flex items-start gap-4">
         <Button variant="ghost" size="icon" onClick={onBack} className="mt-1">

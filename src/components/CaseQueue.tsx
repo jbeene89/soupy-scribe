@@ -159,7 +159,11 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading }: Case
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">${c.claimAmount.toLocaleString()}</TableCell>
                   <TableCell>
-                    <RiskIndicator riskScore={c.riskScore} compact />
+                    {c.riskScore ? (
+                      <RiskIndicator riskScore={c.riskScore} compact />
+                    ) : (
+                      <Badge variant="outline" className="text-xs text-muted-foreground">Unscored</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className={cn('flex items-center gap-1.5', complexity.colorClass)}>

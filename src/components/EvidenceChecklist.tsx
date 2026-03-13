@@ -108,8 +108,12 @@ export function EvidenceChecklist({ items: initialItems }: EvidenceChecklistProp
 
               <div className="space-y-1.5">
                 {tierItems.sort((a, b) => {
-                  const prio = { high: 0, medium: 1, low: 2 };
-                  return prio[a.priority] - prio[b.priority];
+                  // Missing items always sort before received/na; then by priority
+                  const statusOrder: Record<string, number> = { missing: 0, requested: 1, received: 2, na: 3 };
+                  const statusDiff = (statusOrder[a.status] ?? 2) - (statusOrder[b.status] ?? 2);
+                  if (statusDiff !== 0) return statusDiff;
+                  const prio: Record<string, number> = { high: 0, medium: 1, low: 2 };
+                  return (prio[a.priority] ?? 2) - (prio[b.priority] ?? 2);
                 }).map(item => {
                   const status = statusConfig[item.status];
                   const StatusIcon = status.icon;
