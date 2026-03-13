@@ -85,7 +85,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'redteam',
-        model: 'Claude 3.5',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 85,
         perspectiveStatement: 'Multiple documentation gaps create significant audit exposure. The billing pattern raises questions that require explicit documentation to resolve.',
