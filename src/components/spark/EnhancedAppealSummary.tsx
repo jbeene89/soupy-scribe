@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { AuditCase, CodeViolation, RoleDefense } from '@/lib/types';
-import type { ExportReadinessResult } from '@/lib/caseIntelligence';
-import { Shield, Download, ChevronDown, AlertTriangle, CheckCircle, FileText, Copy, XCircle } from 'lucide-react';
+import { type ExportReadinessResult, deriveCaseSignals, buildStructuredExportPackage, deriveActionPath, evaluateExportReadiness } from '@/lib/caseIntelligence';
+import { Shield, Download, ChevronDown, AlertTriangle, CheckCircle, FileText, Copy, XCircle, Braces } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -22,8 +22,8 @@ interface EnhancedAppealSummaryProps {
   exportReadiness?: ExportReadinessResult;
 }
 
-function downloadTextFile(content: string, filename: string) {
-  const blob = new Blob([content], { type: 'text/plain' });
+function downloadFile(content: string, filename: string, type = 'text/plain') {
+  const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -157,13 +157,22 @@ ${bestDefense.weaknesses.map((w, i) => `  ${i + 1}. ${w}`).join('\n') || '  None
   };
 
   const downloadMemo = () => {
-    downloadTextFile(generateDecisionMemo(), `Decision_Memo_${auditCase.caseNumber}_${Date.now()}.txt`);
+    downloadFile(generateDecisionMemo(), `Decision_Memo_${auditCase.caseNumber}_${Date.now()}.txt`);
     toast.success('Decision memo downloaded');
   };
 
   const downloadDualVoice = () => {
-    downloadTextFile(generateDualVoicePackage(), `Dual_Voice_Appeal_${auditCase.caseNumber}_${Date.now()}.txt`);
+    downloadFile(generateDualVoicePackage(), `Dual_Voice_Appeal_${auditCase.caseNumber}_${Date.now()}.txt`);
     toast.success('Dual-voice appeal package downloaded');
+  };
+
+  const downloadJSON = () => {
+    const signals = deriveCaseSignals(auditCase);
+    const readiness = exportReadiness || evaluateExportReadiness(auditCase);
+    const actionPath = deriveActionPath(auditCase);
+    const pkg = buildStructuredExportPackage(auditCase, signals, readiness, actionPath);
+    downloadFile(JSON.stringify(pkg, null, 2), `Structured_Package_${auditCase.caseNumber}_${Date.now()}.json`, 'application/json');
+    toast.success('Structured JSON package downloaded');
   };
 
   const copyMemo = () => {
@@ -326,6 +335,14 @@ ${bestDefense.weaknesses.map((w, i) => `  ${i + 1}. ${w}`).join('\n') || '  None
                 <div className="flex flex-col">
                   <span className="font-medium">Decision Memo</span>
                   <span className="text-xs text-muted-foreground">Summary with evidence status</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={downloadJSON}>
+                <Braces className="h-4 w-4 mr-2" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Structured JSON Package</span>
+                  <span className="text-xs text-muted-foreground">Machine-readable, all fields</span>
                 </div>
               </DropdownMenuItem>
               <DropdownMenuSeparator />

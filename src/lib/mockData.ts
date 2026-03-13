@@ -47,7 +47,7 @@ export const mockCases: AuditCase[] = [
     analyses: [
       {
         role: 'builder',
-        model: 'GPT-4o',
+        model: 'Gemini 2.5 Flash',
         status: 'complete',
         confidence: 72,
         perspectiveStatement: 'The code combination is defensible if documentation supports a genuine clinical escalation from emergency evaluation to critical care management.',
@@ -85,7 +85,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'redteam',
-        model: 'Claude 3.5',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 85,
         perspectiveStatement: 'Multiple documentation gaps create significant audit exposure. The billing pattern raises questions that require explicit documentation to resolve.',
@@ -112,7 +112,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'analyst',
-        model: 'Gemini Pro',
+        model: 'Gemini 2.5 Pro',
         status: 'complete',
         confidence: 79,
         perspectiveStatement: 'Regulatory framework analysis indicates this code combination requires specific documentation elements that are partially present in the available record.',
@@ -139,7 +139,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'breaker',
-        model: 'GPT-4o Mini',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 65,
         perspectiveStatement: 'The traditional audit lens may be missing the forest for the trees. This billing pattern is clinically appropriate — the question is whether documentation practices match clinical reality.',
@@ -322,7 +322,7 @@ export const mockCases: AuditCase[] = [
     analyses: [
       {
         role: 'builder',
-        model: 'GPT-4o',
+        model: 'Gemini 2.5 Flash',
         status: 'complete',
         confidence: 55,
         perspectiveStatement: 'The additional codes may be justified if the patient had pre-existing bone deficiency requiring structural grafting and documented tendon pathology separate from the arthroplasty.',
@@ -349,7 +349,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'redteam',
-        model: 'Claude 3.5',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 90,
         perspectiveStatement: 'This is a classic unbundling pattern. The surgeon added extra codes to inflate the claim — both add-ons are typically included in TKA reimbursement.',
@@ -376,7 +376,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'analyst',
-        model: 'Gemini Pro',
+        model: 'Gemini 2.5 Pro',
         status: 'complete',
         confidence: 75,
         perspectiveStatement: 'NCCI edits are clear — both add-on codes have column 1/column 2 relationships with TKA. However, modifier pathways exist if documentation supports distinct services.',
@@ -391,7 +391,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'breaker',
-        model: 'GPT-4o Mini',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 60,
         perspectiveStatement: 'Before labeling this as fraud, consider that complex orthopedic cases in osteoporotic patients genuinely require additional procedures. The billing may reflect real clinical complexity.',
@@ -442,7 +442,7 @@ export const mockCases: AuditCase[] = [
     analyses: [
       {
         role: 'builder',
-        model: 'GPT-4o',
+        model: 'Gemini 2.5 Flash',
         status: 'complete',
         confidence: 48,
         perspectiveStatement: 'Multi-level spine fusion with decompression is a legitimate procedure combination for spondylolisthesis with stenosis, but every code must stand on its own documentation.',
@@ -469,7 +469,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'redteam',
-        model: 'Claude 3.5',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 88,
         perspectiveStatement: 'This $42K claim is exactly the type of case that generates recovery dollars. Multiple bundling vulnerabilities and incomplete documentation make this highly actionable.',
@@ -496,7 +496,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'analyst',
-        model: 'Gemini Pro',
+        model: 'Gemini 2.5 Pro',
         status: 'complete',
         confidence: 72,
         perspectiveStatement: 'Complex spine cases legitimately generate high code counts. The issue is not the number of codes but whether each is independently documented.',
@@ -511,7 +511,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'breaker',
-        model: 'GPT-4o Mini',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 55,
         perspectiveStatement: 'Spine surgery billing complexity is a systemic problem — the coding rules don\'t match how surgeons actually work. This case may be a documentation failure, not a billing failure.',
@@ -561,7 +561,7 @@ export const mockCases: AuditCase[] = [
     analyses: [
       {
         role: 'builder',
-        model: 'GPT-4o',
+        model: 'Gemini 2.5 Flash',
         status: 'complete',
         confidence: 62,
         perspectiveStatement: 'Emergency laparoscopic colectomy with Hartmann\'s procedure (colostomy) is clinically appropriate for perforated diverticulitis with peritonitis.',
@@ -576,7 +576,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'redteam',
-        model: 'Claude 3.5',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 82,
         perspectiveStatement: 'The anesthesia record tells a different story than the CPT codes. 4.5-hour anesthesia time for a laparoscopic procedure that typically takes 2-3 hours suggests conversion to open.',
@@ -603,7 +603,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'analyst',
-        model: 'Gemini Pro',
+        model: 'Gemini 2.5 Pro',
         status: 'complete',
         confidence: 70,
         perspectiveStatement: 'The anesthesia time anomaly is the central question. Everything else in this case is clinically coherent.',
@@ -618,7 +618,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'breaker',
-        model: 'GPT-4o Mini',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 58,
         perspectiveStatement: 'We\'re so focused on the conversion question that we\'re missing the real issue: was the colostomy truly a separate procedure or part of the colectomy?',
@@ -667,7 +667,7 @@ export const mockCases: AuditCase[] = [
     analyses: [
       {
         role: 'builder',
-        model: 'GPT-4o',
+        model: 'Gemini 2.5 Flash',
         status: 'complete',
         confidence: 60,
         perspectiveStatement: 'A periprosthetic-pattern fracture in an osteoporotic patient may genuinely require both ORIF of the fracture and THA for the destroyed joint — these are distinct procedures.',
@@ -682,7 +682,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'redteam',
-        model: 'Claude 3.5',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 84,
         perspectiveStatement: 'THA for femoral neck fracture IS the treatment — billing ORIF separately suggests the surgeon is double-billing for a single procedure.',
@@ -709,7 +709,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'analyst',
-        model: 'Gemini Pro',
+        model: 'Gemini 2.5 Pro',
         status: 'complete',
         confidence: 68,
         perspectiveStatement: 'The clinical scenario determines everything here. Simple femoral neck fracture → THA alone. Complex multi-fragment fracture → both codes may be justified.',
@@ -724,7 +724,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'breaker',
-        model: 'GPT-4o Mini',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 52,
         perspectiveStatement: 'This case highlights a fundamental problem in orthopedic coding — the billing system was designed for elective procedures, not trauma. Trauma cases don\'t fit neatly into single CPT codes.',

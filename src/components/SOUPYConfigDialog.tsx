@@ -8,7 +8,7 @@ import { ROLE_META } from '@/lib/types';
 import { defaultSOUPYConfig } from '@/lib/mockData';
 import { toast } from 'sonner';
 
-const AI_MODELS: AIModel[] = ['GPT-4o', 'GPT-4o Mini', 'Claude 3.5', 'Gemini Pro'];
+const AI_MODELS: AIModel[] = ['Gemini 2.5 Flash', 'GPT-5 Mini', 'Gemini 2.5 Pro', 'GPT-5', 'Gemini 2.5 Flash Lite'];
 
 interface SOUPYConfigDialogProps {
   config: SOUPYConfig;
