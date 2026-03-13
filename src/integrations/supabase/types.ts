@@ -14,6 +14,103 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_pathways: {
+        Row: {
+          action_rationale: string
+          alternative_actions: Json | null
+          case_id: string
+          confidence_in_recommendation: number | null
+          created_at: string
+          id: string
+          input_factors: Json
+          is_human_review_required: boolean | null
+          recommended_action: string
+        }
+        Insert: {
+          action_rationale: string
+          alternative_actions?: Json | null
+          case_id: string
+          confidence_in_recommendation?: number | null
+          created_at?: string
+          id?: string
+          input_factors?: Json
+          is_human_review_required?: boolean | null
+          recommended_action: string
+        }
+        Update: {
+          action_rationale?: string
+          alternative_actions?: Json | null
+          case_id?: string
+          confidence_in_recommendation?: number | null
+          created_at?: string
+          id?: string
+          input_factors?: Json
+          is_human_review_required?: boolean | null
+          recommended_action?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_pathways_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appeal_outcomes: {
+        Row: {
+          appeal_strategy: string | null
+          case_id: string | null
+          cpt_codes: string[] | null
+          created_at: string
+          denial_type: string | null
+          evidence_package: Json | null
+          failure_factors: Json | null
+          id: string
+          notes: string | null
+          outcome: string
+          payer_code: string | null
+          success_factors: Json | null
+        }
+        Insert: {
+          appeal_strategy?: string | null
+          case_id?: string | null
+          cpt_codes?: string[] | null
+          created_at?: string
+          denial_type?: string | null
+          evidence_package?: Json | null
+          failure_factors?: Json | null
+          id?: string
+          notes?: string | null
+          outcome: string
+          payer_code?: string | null
+          success_factors?: Json | null
+        }
+        Update: {
+          appeal_strategy?: string | null
+          case_id?: string | null
+          cpt_codes?: string[] | null
+          created_at?: string
+          denial_type?: string | null
+          evidence_package?: Json | null
+          failure_factors?: Json | null
+          id?: string
+          notes?: string | null
+          outcome?: string
+          payer_code?: string | null
+          success_factors?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appeal_outcomes_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_cases: {
         Row: {
           assigned_to: string | null
@@ -272,6 +369,135 @@ export type Database = {
           },
         ]
       }
+      confidence_floor_events: {
+        Row: {
+          actual_value: number
+          case_id: string
+          created_at: string
+          explanation: string | null
+          floor_type: string
+          id: string
+          routed_to_human: boolean
+          threshold_value: number
+          uncertainty_drivers: Json
+        }
+        Insert: {
+          actual_value?: number
+          case_id: string
+          created_at?: string
+          explanation?: string | null
+          floor_type: string
+          id?: string
+          routed_to_human?: boolean
+          threshold_value?: number
+          uncertainty_drivers?: Json
+        }
+        Update: {
+          actual_value?: number
+          case_id?: string
+          created_at?: string
+          explanation?: string | null
+          floor_type?: string
+          id?: string
+          routed_to_human?: boolean
+          threshold_value?: number
+          uncertainty_drivers?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "confidence_floor_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contradictions: {
+        Row: {
+          case_id: string
+          contradiction_type: string
+          created_at: string
+          description: string
+          explanation: string | null
+          id: string
+          severity: string
+          source_a: string | null
+          source_b: string | null
+        }
+        Insert: {
+          case_id: string
+          contradiction_type: string
+          created_at?: string
+          description: string
+          explanation?: string | null
+          id?: string
+          severity?: string
+          source_a?: string | null
+          source_b?: string | null
+        }
+        Update: {
+          case_id?: string
+          contradiction_type?: string
+          created_at?: string
+          description?: string
+          explanation?: string | null
+          id?: string
+          severity?: string
+          source_a?: string | null
+          source_b?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contradictions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decision_traces: {
+        Row: {
+          case_id: string
+          confidence_at_completion: number | null
+          consensus_integrity_grade: string | null
+          created_at: string
+          final_recommendation: string | null
+          id: string
+          recommendation_rationale: string | null
+          trace_entries: Json
+        }
+        Insert: {
+          case_id: string
+          confidence_at_completion?: number | null
+          consensus_integrity_grade?: string | null
+          created_at?: string
+          final_recommendation?: string | null
+          id?: string
+          recommendation_rationale?: string | null
+          trace_entries?: Json
+        }
+        Update: {
+          case_id?: string
+          confidence_at_completion?: number | null
+          consensus_integrity_grade?: string | null
+          created_at?: string
+          final_recommendation?: string | null
+          id?: string
+          recommendation_rationale?: string | null
+          trace_entries?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_traces_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       devils_advocate_results: {
         Row: {
           attack_vectors: Json | null
@@ -356,6 +582,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "engine_calibration_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_sufficiency: {
+        Row: {
+          case_id: string
+          created_at: string
+          id: string
+          is_defensible: boolean | null
+          is_under_supported: boolean | null
+          missing_evidence: Json
+          overall_score: number
+          source_weights_applied: Json | null
+          sufficiency_for_appeal_defense: number | null
+          sufficiency_for_appeal_not_recommended: number | null
+          sufficiency_for_approve: number | null
+          sufficiency_for_deny: number | null
+          sufficiency_for_info_request: number | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          id?: string
+          is_defensible?: boolean | null
+          is_under_supported?: boolean | null
+          missing_evidence?: Json
+          overall_score?: number
+          source_weights_applied?: Json | null
+          sufficiency_for_appeal_defense?: number | null
+          sufficiency_for_appeal_not_recommended?: number | null
+          sufficiency_for_approve?: number | null
+          sufficiency_for_deny?: number | null
+          sufficiency_for_info_request?: number | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          id?: string
+          is_defensible?: boolean | null
+          is_under_supported?: boolean | null
+          missing_evidence?: Json
+          overall_score?: number
+          source_weights_applied?: Json | null
+          sufficiency_for_appeal_defense?: number | null
+          sufficiency_for_appeal_not_recommended?: number | null
+          sufficiency_for_approve?: number | null
+          sufficiency_for_deny?: number | null
+          sufficiency_for_info_request?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_sufficiency_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "audit_cases"
@@ -452,6 +734,86 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      gold_set_cases: {
+        Row: {
+          accuracy_rate: number | null
+          case_label: string
+          case_template: Json
+          category: string
+          created_at: string
+          id: string
+          is_locked: boolean
+          known_outcome: Json
+          last_replayed_at: string | null
+          total_correct: number | null
+          total_replays: number | null
+        }
+        Insert: {
+          accuracy_rate?: number | null
+          case_label: string
+          case_template: Json
+          category?: string
+          created_at?: string
+          id?: string
+          is_locked?: boolean
+          known_outcome: Json
+          last_replayed_at?: string | null
+          total_correct?: number | null
+          total_replays?: number | null
+        }
+        Update: {
+          accuracy_rate?: number | null
+          case_label?: string
+          case_template?: Json
+          category?: string
+          created_at?: string
+          id?: string
+          is_locked?: boolean
+          known_outcome?: Json
+          last_replayed_at?: string | null
+          total_correct?: number | null
+          total_replays?: number | null
+        }
+        Relationships: []
+      }
+      minimal_winning_packets: {
+        Row: {
+          case_id: string
+          checklist: Json
+          created_at: string
+          estimated_curable_count: number | null
+          estimated_not_worth_chasing: number | null
+          id: string
+          top_priority_item: string | null
+        }
+        Insert: {
+          case_id: string
+          checklist?: Json
+          created_at?: string
+          estimated_curable_count?: number | null
+          estimated_not_worth_chasing?: number | null
+          id?: string
+          top_priority_item?: string | null
+        }
+        Update: {
+          case_id?: string
+          checklist?: Json
+          created_at?: string
+          estimated_curable_count?: number | null
+          estimated_not_worth_chasing?: number | null
+          id?: string
+          top_priority_item?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "minimal_winning_packets_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payer_profiles: {
         Row: {
@@ -592,6 +954,86 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      regulatory_flags: {
+        Row: {
+          case_id: string | null
+          created_at: string
+          description: string
+          effective_date: string | null
+          flag_type: string
+          id: string
+          is_active: boolean
+          severity: string
+          source_reference: string | null
+          updated_at: string
+        }
+        Insert: {
+          case_id?: string | null
+          created_at?: string
+          description: string
+          effective_date?: string | null
+          flag_type: string
+          id?: string
+          is_active?: boolean
+          severity?: string
+          source_reference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          case_id?: string | null
+          created_at?: string
+          description?: string
+          effective_date?: string | null
+          flag_type?: string
+          id?: string
+          is_active?: boolean
+          severity?: string
+          source_reference?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regulatory_flags_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      source_weights: {
+        Row: {
+          base_weight: number
+          created_at: string
+          description: string | null
+          id: string
+          is_primary_clinical: boolean
+          recency_decay_days: number | null
+          source_type: string
+          updated_at: string
+        }
+        Insert: {
+          base_weight?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_primary_clinical?: boolean
+          recency_decay_days?: number | null
+          source_type: string
+          updated_at?: string
+        }
+        Update: {
+          base_weight?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_primary_clinical?: boolean
+          recency_decay_days?: number | null
+          source_type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       stability_checks: {
         Row: {
