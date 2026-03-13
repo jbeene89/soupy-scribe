@@ -392,9 +392,11 @@ serve(async (req) => {
         { type: "function", function: { name: "extract_case_data" } }
       );
 
+      const caseNumber = `AUD-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
       const { data: newCase, error: caseError } = await supabase
         .from("audit_cases")
         .insert({
+          case_number: caseNumber,
           patient_id: extracted.patient_id,
           physician_id: extracted.physician_id,
           physician_name: extracted.physician_name,
