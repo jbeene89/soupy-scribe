@@ -392,9 +392,11 @@ serve(async (req) => {
         { type: "function", function: { name: "extract_case_data" } }
       );
 
+      const caseNumber = `AUD-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
       const { data: newCase, error: caseError } = await supabase
         .from("audit_cases")
         .insert({
+          case_number: caseNumber,
           patient_id: extracted.patient_id,
           physician_id: extracted.physician_id,
           physician_name: extracted.physician_name,
@@ -578,61 +580,67 @@ serve(async (req) => {
       const allEvidenceSufficiency: any[] = [];
       const roleOrder = SOUPY_ROLES.map(r => r.role);
 
-      for (let i = 0; i < SOUPY_ROLES.length; i++) {
-        const soupyRole = SOUPY_ROLES[i];
-        console.log(`[Primary] ${soupyRole.role} analysis...`);
+      // ── Run all 4 SOUPY roles IN PARALLEL for speed ──
+      const basePrompt = ANALYSIS_PROMPT
+        .replace("{cpt_codes}", (auditCase.cpt_codes || []).join(", "))
+        .replace("{claim_amount}", String(auditCase.claim_amount))
+        .replace("{icd_codes}", (auditCase.icd_codes || []).join(", "))
+        .replace("{summary}", summary)
+        .replace("{source_text}", sourceTextTrunc)
+        .replace("{payer_context}", payerContext + crossCaseContext + appealMemoryContext);
 
-        await supabase.from("processing_queue").update({
-          current_step: `analyzing_${soupyRole.role}`, progress: 10 + (i + 1) * 12,
-        }).eq("case_id", caseId);
+      console.log(`[Parallel] Running all 4 SOUPY roles simultaneously...`);
+      await supabase.from("processing_queue").update({
+        current_step: "soupy_parallel_analysis", progress: 15,
+      }).eq("case_id", caseId);
 
+      const rolePromises = SOUPY_ROLES.map(async (soupyRole) => {
         let roleSystemPrompt = soupyRole.systemPrompt;
         if (soupyRole.role === "redteam" && payerProfile) {
           roleSystemPrompt += `\n\n${payerProfile.adversarial_prompt_additions}`;
         }
-
-        const prompt = ANALYSIS_PROMPT
-          .replace("{cpt_codes}", (auditCase.cpt_codes || []).join(", "))
-          .replace("{claim_amount}", String(auditCase.claim_amount))
-          .replace("{icd_codes}", (auditCase.icd_codes || []).join(", "))
-          .replace("{summary}", summary)
-          .replace("{source_text}", sourceTextTrunc)
-          .replace("{payer_context}", payerContext + crossCaseContext + appealMemoryContext);
-
         try {
           const { result: analysis, latencyMs, tokenCount } = await callAI(
-            LOVABLE_API_KEY, soupyRole.model, roleSystemPrompt, prompt,
+            LOVABLE_API_KEY, soupyRole.model, roleSystemPrompt, basePrompt,
             [analysisToolSchema],
             { type: "function", function: { name: "submit_analysis" } }
           );
+          console.log(`[Parallel] ${soupyRole.role} complete (${latencyMs}ms)`);
+          return { success: true, analysis, role: soupyRole.role, model: soupyRole.model, latencyMs, tokenCount };
+        } catch (roleErr: any) {
+          console.error(`Error in ${soupyRole.role}:`, roleErr);
+          return { success: false, role: soupyRole.role, model: soupyRole.model, error: roleErr?.message || "Analysis error" };
+        }
+      });
 
-          analysisResults.push({ ...analysis, role: soupyRole.role });
+      const roleResults = await Promise.all(rolePromises);
 
-          // Collect decision trace entries
+      await supabase.from("processing_queue").update({
+        current_step: "storing_results", progress: 50,
+      }).eq("case_id", caseId);
+
+      // Process results and store to DB
+      for (const result of roleResults) {
+        if (result.success) {
+          const analysis = result.analysis;
+          analysisResults.push({ ...analysis, role: result.role });
+
           if (analysis.decisionTraceEntries) {
             for (const entry of analysis.decisionTraceEntries) {
-              allDecisionTraceEntries.push({ ...entry, sourceRole: soupyRole.role });
+              allDecisionTraceEntries.push({ ...entry, sourceRole: result.role });
             }
           }
-
-          // Collect contradictions
           if (analysis.contradictions) {
             for (const c of analysis.contradictions) {
-              allContradictions.push({ ...c, detectedBy: soupyRole.role });
+              allContradictions.push({ ...c, detectedBy: result.role });
             }
           }
-
-          // Collect evidence sufficiency
           if (analysis.evidenceSufficiency) {
-            allEvidenceSufficiency.push({ role: soupyRole.role, ...analysis.evidenceSufficiency });
+            allEvidenceSufficiency.push({ role: result.role, ...analysis.evidenceSufficiency });
           }
 
-          // Store analysis
           const { data: analysisRow } = await supabase.from("case_analyses").insert({
-            case_id: caseId,
-            role: soupyRole.role,
-            model: soupyRole.model,
-            status: "complete",
+            case_id: caseId, role: result.role, model: result.model, status: "complete",
             confidence: analysis.confidence,
             perspective_statement: analysis.perspectiveStatement,
             key_insights: analysis.keyInsights,
@@ -641,25 +649,19 @@ serve(async (req) => {
             overall_assessment: analysis.overallAssessment,
           }).select("id").single();
 
-          // Store reasoning chain metadata (NOT raw chain-of-thought, just structured metadata)
           if (analysisRow) {
             await supabase.from("reasoning_chains").insert({
-              case_id: caseId,
-              analysis_id: analysisRow.data?.id || analysisRow.id,
-              role: soupyRole.role,
-              model: soupyRole.model,
-              raw_reasoning: null, // v3: no raw reasoning stored
+              case_id: caseId, analysis_id: analysisRow.data?.id || analysisRow.id,
+              role: result.role, model: result.model,
+              raw_reasoning: null,
               structured_steps: analysis.decisionTraceEntries || [],
-              token_count: tokenCount,
-              latency_ms: latencyMs,
+              token_count: result.tokenCount, latency_ms: result.latencyMs,
             });
           }
-
-        } catch (roleErr: any) {
-          console.error(`Error in ${soupyRole.role}:`, roleErr);
+        } else {
           await supabase.from("case_analyses").insert({
-            case_id: caseId, role: soupyRole.role, model: soupyRole.model, status: "error",
-            overall_assessment: roleErr?.message || "Analysis encountered an error",
+            case_id: caseId, role: result.role, model: result.model, status: "error",
+            overall_assessment: result.error || "Analysis encountered an error",
           });
         }
       }
