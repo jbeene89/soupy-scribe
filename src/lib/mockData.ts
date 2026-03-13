@@ -112,7 +112,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'analyst',
-        model: 'Gemini Pro',
+        model: 'Gemini 2.5 Pro',
         status: 'complete',
         confidence: 79,
         perspectiveStatement: 'Regulatory framework analysis indicates this code combination requires specific documentation elements that are partially present in the available record.',
