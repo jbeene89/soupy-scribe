@@ -576,7 +576,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'redteam',
-        model: 'Claude 3.5',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 82,
         perspectiveStatement: 'The anesthesia record tells a different story than the CPT codes. 4.5-hour anesthesia time for a laparoscopic procedure that typically takes 2-3 hours suggests conversion to open.',
