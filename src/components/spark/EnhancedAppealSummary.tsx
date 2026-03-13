@@ -22,8 +22,8 @@ interface EnhancedAppealSummaryProps {
   exportReadiness?: ExportReadinessResult;
 }
 
-function downloadTextFile(content: string, filename: string) {
-  const blob = new Blob([content], { type: 'text/plain' });
+function downloadFile(content: string, filename: string, type = 'text/plain') {
+  const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
