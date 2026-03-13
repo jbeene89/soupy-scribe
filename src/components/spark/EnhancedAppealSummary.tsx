@@ -338,6 +338,14 @@ ${bestDefense.weaknesses.map((w, i) => `  ${i + 1}. ${w}`).join('\n') || '  None
                 </div>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={downloadJSON}>
+                <Braces className="h-4 w-4 mr-2" />
+                <div className="flex flex-col">
+                  <span className="font-medium">Structured JSON Package</span>
+                  <span className="text-xs text-muted-foreground">Machine-readable, all fields</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={copyMemo}>
                 <Copy className="h-4 w-4 mr-2" />
                 <div className="flex flex-col">
