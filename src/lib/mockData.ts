@@ -709,7 +709,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'analyst',
-        model: 'Gemini Pro',
+        model: 'Gemini 2.5 Pro',
         status: 'complete',
         confidence: 68,
         perspectiveStatement: 'The clinical scenario determines everything here. Simple femoral neck fracture → THA alone. Complex multi-fragment fracture → both codes may be justified.',
