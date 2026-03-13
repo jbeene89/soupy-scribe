@@ -376,7 +376,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'analyst',
-        model: 'Gemini Pro',
+        model: 'Gemini 2.5 Pro',
         status: 'complete',
         confidence: 75,
         perspectiveStatement: 'NCCI edits are clear — both add-on codes have column 1/column 2 relationships with TKA. However, modifier pathways exist if documentation supports distinct services.',
