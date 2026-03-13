@@ -3,7 +3,7 @@ export type AuditPosture = 'payment-integrity' | 'compliance-coaching';
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type SeverityLevel = 'critical' | 'warning' | 'info';
 export type SOUPYRole = 'builder' | 'redteam' | 'analyst' | 'breaker';
-export type AIModel = 'GPT-4o' | 'GPT-4o Mini' | 'Claude 3.5' | 'Gemini Pro';
+export type AIModel = 'GPT-4o' | 'GPT-4o Mini' | 'Claude 3.5' | 'Gemini Pro' | 'Gemini 2.5 Flash' | 'GPT-5 Mini' | 'Gemini 2.5 Pro';
 export type EvidenceStatus = 'missing' | 'requested' | 'received' | 'na';
 
 export interface RiskFactor {
