@@ -682,7 +682,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'redteam',
-        model: 'Claude 3.5',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 84,
         perspectiveStatement: 'THA for femoral neck fracture IS the treatment — billing ORIF separately suggests the surgeon is double-billing for a single procedure.',
