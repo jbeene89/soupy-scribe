@@ -667,7 +667,7 @@ export const mockCases: AuditCase[] = [
     analyses: [
       {
         role: 'builder',
-        model: 'GPT-4o',
+        model: 'Gemini 2.5 Flash',
         status: 'complete',
         confidence: 60,
         perspectiveStatement: 'A periprosthetic-pattern fracture in an osteoporotic patient may genuinely require both ORIF of the fracture and THA for the destroyed joint — these are distinct procedures.',
