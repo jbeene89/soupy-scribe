@@ -107,7 +107,8 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
     contradictions,
   }), [auditCase, evidenceSuff, contradictions]);
 
-  const { user } = useAuth();
+  const { session } = useAuth();
+  const userEmail = session?.user?.email || 'Unknown';
 
   // Dynamic evidence checklist from case data
   const dynamicEvidence = useMemo(() => generateDynamicEvidenceChecklist(auditCase), [auditCase]);
