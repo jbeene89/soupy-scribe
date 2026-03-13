@@ -724,7 +724,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'breaker',
-        model: 'GPT-4o Mini',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 52,
         perspectiveStatement: 'This case highlights a fundamental problem in orthopedic coding — the billing system was designed for elective procedures, not trauma. Trauma cases don\'t fit neatly into single CPT codes.',
