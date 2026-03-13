@@ -603,7 +603,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'analyst',
-        model: 'Gemini Pro',
+        model: 'Gemini 2.5 Pro',
         status: 'complete',
         confidence: 70,
         perspectiveStatement: 'The anesthesia time anomaly is the central question. Everything else in this case is clinically coherent.',
