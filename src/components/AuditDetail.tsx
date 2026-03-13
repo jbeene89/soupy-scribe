@@ -544,7 +544,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
 
           <TabsContent value="evidence">
             <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <EvidenceChecklist items={mockEvidenceChecklist} />
+              <EvidenceChecklist items={dynamicEvidence} />
             </div>
           </TabsContent>
 
