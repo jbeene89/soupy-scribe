@@ -42,8 +42,10 @@ import {
 import {
   deriveCaseSignals, classifyDisposition, evaluateHumanReviewGating,
   evaluateExportReadiness, deriveActionPath, ACTION_PATH_CONFIG,
+  generateDynamicEvidenceChecklist, buildStructuredExportPackage,
   type CaseSummarySignals,
 } from '@/lib/caseIntelligence';
+import { saveDecision, type AuditDecision } from '@/lib/caseService';
 
 interface AuditDetailProps {
   auditCase: AuditCase;
