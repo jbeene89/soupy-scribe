@@ -564,11 +564,35 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
           )}
         </Tabs>
       ) : (
-        <div className="rounded-lg border bg-card p-6 text-center shadow-sm">
-          <Shield className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-sm font-medium text-muted-foreground">No AI analysis available for this case.</p>
-          <p className="text-xs text-muted-foreground mt-1">Run SOUPY analysis to generate risk assessment, evidence review, and action recommendations.</p>
-          <Button className="mt-4" size="sm">Run SOUPY Analysis</Button>
+        <div className="rounded-lg border bg-card p-6 shadow-sm">
+          <div className="text-center">
+            <Shield className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-sm font-medium text-muted-foreground">AI analysis has not been run on this case.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              The risk score and data shown above are from initial intake screening. 
+              Run the full SOUPY multi-model analysis to generate comprehensive evidence review, violation assessment, and action recommendations.
+            </p>
+            <Button className="mt-4" size="sm">Run SOUPY Analysis</Button>
+          </div>
+          {auditCase.riskScore && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2">Intake Screening Summary</p>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-sm font-semibold">{auditCase.riskScore.score}/100</p>
+                  <p className="text-[10px] text-muted-foreground">Initial Risk</p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{auditCase.riskScore.dataCompleteness.score}%</p>
+                  <p className="text-[10px] text-muted-foreground">Data Completeness</p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{auditCase.riskScore.factors.filter(f => f.triggered).length}</p>
+                  <p className="text-[10px] text-muted-foreground">Active Flags</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
