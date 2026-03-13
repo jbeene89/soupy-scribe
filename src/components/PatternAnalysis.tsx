@@ -149,16 +149,19 @@ export function PatternAnalysis({ patterns, onSelectCase }: PatternAnalysisProps
               {selectedPattern.dateRange.start} — {selectedPattern.dateRange.end}
             </p>
 
-            {/* Insights */}
+            {/* Observed Billing & Documentation Patterns */}
             {selectedPattern.insights.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Insights</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Observed Patterns</p>
                 {selectedPattern.insights.map((insight, i) => (
-                  <div key={i} className="flex gap-2 text-xs rounded-md border bg-disagreement/5 border-disagreement/20 p-2">
-                    <AlertTriangle className="h-3.5 w-3.5 text-disagreement shrink-0 mt-0.5" />
+                  <div key={i} className="flex gap-2 text-xs rounded-md border bg-muted/50 border-muted p-2">
+                    <TrendingUp className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                     <span>{insight}</span>
                   </div>
                 ))}
+                <p className="text-[10px] text-muted-foreground italic">
+                  Observed billing and documentation patterns — not assertions of intent. For education and workflow improvement.
+                </p>
               </div>
             )}
           </div>

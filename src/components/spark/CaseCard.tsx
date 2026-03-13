@@ -105,13 +105,16 @@ export function CaseCard({ auditCase, onClick }: CaseCardProps) {
           </div>
         </div>
 
-        {/* Synchronized disposition + signals */}
+        {/* Synchronized disposition + signals (preliminary — v3 data loads on detail view) */}
         {signals.hasAnalyses && (
           <div className="pt-2 border-t border-border space-y-1.5">
             <div className="flex items-center justify-between">
-              <Badge variant="outline" className={cn("text-[10px]", signals.disposition.borderClass, signals.disposition.colorClass)}>
-                {signals.disposition.label}
-              </Badge>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="outline" className={cn("text-[10px]", signals.disposition.borderClass, signals.disposition.colorClass)}>
+                  {signals.disposition.label}
+                </Badge>
+                <span className="text-[9px] text-muted-foreground italic">Preliminary</span>
+              </div>
               {signals.humanReview.triggered && (
                 <div className="flex items-center gap-1 text-violation">
                   <ShieldAlert className="h-3 w-3" />

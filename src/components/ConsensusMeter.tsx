@@ -6,10 +6,11 @@ interface ConsensusMeterProps {
 }
 
 export function ConsensusMeter({ score, className }: ConsensusMeterProps) {
+  // Thresholds synchronized with caseIntelligence.deriveCaseSignals
   const getColor = () => {
-    if (score >= 80) return 'bg-consensus';
-    if (score >= 60) return 'bg-info-blue';
-    if (score >= 40) return 'bg-disagreement';
+    if (score >= 90) return 'bg-consensus';
+    if (score >= 75) return 'bg-info-blue';
+    if (score >= 50) return 'bg-disagreement';
     return 'bg-violation';
   };
 
@@ -21,9 +22,9 @@ export function ConsensusMeter({ score, className }: ConsensusMeterProps) {
   };
 
   const getTextColor = () => {
-    if (score >= 80) return 'text-consensus';
-    if (score >= 60) return 'text-info-blue';
-    if (score >= 40) return 'text-disagreement';
+    if (score >= 90) return 'text-consensus';
+    if (score >= 75) return 'text-info-blue';
+    if (score >= 50) return 'text-disagreement';
     return 'text-violation';
   };
 

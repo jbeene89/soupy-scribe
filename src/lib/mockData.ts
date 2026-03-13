@@ -2,10 +2,10 @@ import type { AuditCase, PhysicianPattern, SOUPYConfig, EvidenceChecklistItem, C
 
 export const defaultSOUPYConfig: SOUPYConfig = {
   roles: {
-    builder: 'GPT-4o',
-    redteam: 'Claude 3.5',
-    analyst: 'Gemini Pro',
-    breaker: 'GPT-4o Mini',
+    builder: 'Gemini 2.5 Flash',
+    redteam: 'GPT-5 Mini',
+    analyst: 'Gemini 2.5 Pro',
+    breaker: 'GPT-5 Mini',
   },
   executionOrder: ['builder', 'redteam', 'analyst', 'breaker'],
 };
