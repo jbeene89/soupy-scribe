@@ -79,7 +79,7 @@ export function DecisionPanel({ auditCase, onDecision, humanReviewRequired, disp
   return (
     <AuthGate>
       <>
-        <Card className="sticky bottom-0 left-0 right-0 p-4 border-t-2 border-accent bg-card shadow-lg">
+        <Card className="fixed bottom-0 left-0 right-0 z-50 p-4 border-t-2 border-accent bg-card shadow-[0_-4px_20px_-4px_hsl(var(--foreground)/0.1)] rounded-none">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center gap-3 mb-3">
               <h3 className="font-semibold text-sm">Audit Decision</h3>
