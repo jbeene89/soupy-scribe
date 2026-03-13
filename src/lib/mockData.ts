@@ -561,7 +561,7 @@ export const mockCases: AuditCase[] = [
     analyses: [
       {
         role: 'builder',
-        model: 'GPT-4o',
+        model: 'Gemini 2.5 Flash',
         status: 'complete',
         confidence: 62,
         perspectiveStatement: 'Emergency laparoscopic colectomy with Hartmann\'s procedure (colostomy) is clinically appropriate for perforated diverticulitis with peritonitis.',
