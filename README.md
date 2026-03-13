@@ -1,73 +1,73 @@
-# Welcome to your Lovable project
+# Lyric AI — Payment Integrity & Provider Readiness Platform
 
-## Project info
+A dual-sided healthcare SaaS platform for medical code auditing, payment integrity analysis, and provider claim readiness — powered by the **SOUPY ThinkTank Protocol** for multi-perspective AI reasoning.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Overview
 
-## How can I edit this code?
+Lyric AI enables **payers** and **providers** to collaboratively improve claim accuracy, reduce audit friction, and streamline the payment integrity lifecycle.
 
-There are several ways of editing your application.
+### Payer Mode
+- **Case Queue** — Triage and review flagged claims with AI-generated risk scores and consensus metrics
+- **Audit Detail** — Deep-dive into individual cases with CPT/ICD code analysis, evidence checklists, and multi-agent AI perspectives
+- **Pattern Analysis** — Identify billing trends, anomalies, and systemic documentation gaps
+- **SOUPY ThinkTank** — Configurable multi-AI panel (Auditor, Coder, Clinician, Compliance, Appeals) that debates each case to surface balanced decisions
+- **Presentation Mode** — Executive-ready slides for stakeholder demos
 
-**Use Lovable**
+### Provider Mode
+- **Provider Dashboard** — At-a-glance view of claim readiness, submission quality, and education metrics
+- **Case Reviews** — Review flagged cases from the provider perspective with appeal-ready evidence building
+- **Education Insights** — Targeted guidance to improve documentation and reduce future denials
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Frontend:** React · TypeScript · Vite · Tailwind CSS · shadcn/ui
+- **Backend:** Lovable Cloud (database, auth, edge functions, file storage)
+- **AI Analysis:** Multi-model orchestration via backend functions
+- **PDF Processing:** Client-side text extraction with pdfjs-dist
+- **Charts:** Recharts
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Getting Started
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# Navigate to the project
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the dev server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Key Concepts
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Concept | Description |
+|---------|-------------|
+| **SOUPY Protocol** | Multi-agent AI consensus framework — each "role" analyzes a case independently, then results are synthesized into a consensus score |
+| **Audit Posture** | Toggle between *Payment Integrity* (flag & recover) and *Compliance Coaching* (educate & prevent) modes |
+| **Consensus Score** | Weighted agreement metric across AI perspectives indicating confidence in a billing determination |
+| **Risk Score** | Composite indicator combining code combination flags, documentation gaps, and historical patterns |
 
-**Use GitHub Codespaces**
+## Project Structure
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```
+src/
+├── components/
+│   ├── spark/          # Core case analysis UI (decision panel, appeal summary, exports)
+│   ├── provider/       # Provider-mode components (dashboard, case review, education)
+│   ├── pre-appeal/     # Pre-appeal resolution workflow
+│   └── ui/             # shadcn/ui primitives
+├── hooks/              # Auth, toast, mobile detection
+├── lib/                # Services, types, mock data, utilities
+├── pages/              # Route-level pages (Index, Auth, NotFound)
+└── integrations/       # Backend client & types
+supabase/
+└── functions/          # Edge functions (analyze-case, provider-analyze)
+```
 
-## What technologies are used for this project?
+## License
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Proprietary — All rights reserved.
