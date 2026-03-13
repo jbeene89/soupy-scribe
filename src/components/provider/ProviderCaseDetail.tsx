@@ -9,14 +9,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Brain, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { ArrowLeft, Brain, Loader2, CheckCircle, Clock, FileText, ShieldAlert, XCircle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
 import { getStoredProviderReview, runProviderAnalysis } from '@/lib/providerService';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthGate } from '@/components/AuthGate';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { PreAppealResolutionTab } from '@/components/pre-appeal/PreAppealResolutionTab';
 import { preAppealResolutions } from '@/lib/preAppealMockData';
+import { deriveCaseSignals } from '@/lib/caseIntelligence';
 
 interface ProviderCaseDetailProps {
   auditCase: AuditCase;
@@ -55,6 +58,9 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
     }
   };
 
+  // Centralized case intelligence — same module as payer mode
+  const signals = useMemo(() => deriveCaseSignals(auditCase), [auditCase]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -85,6 +91,32 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
           </div>
         </div>
       </div>
+
+      {/* Disposition Banner — synced with payer mode via caseIntelligence */}
+      {signals.hasAnalyses && (
+        <Card className={cn('border-l-4', signals.disposition.borderClass, signals.disposition.bgClass)}>
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                {signals.disposition.disposition === 'defensible_now' && <CheckCircle className="h-4 w-4 text-consensus" />}
+                {signals.disposition.disposition === 'curable_with_documentation' && <Clock className="h-4 w-4 text-disagreement" />}
+                {signals.disposition.disposition === 'admin_fix_only' && <FileText className="h-4 w-4 text-info-blue" />}
+                {signals.disposition.disposition === 'human_review_required' && <ShieldAlert className="h-4 w-4 text-violation" />}
+                {signals.disposition.disposition === 'not_defensible' && <XCircle className="h-4 w-4 text-destructive" />}
+                <div>
+                  <p className={cn('text-sm font-semibold', signals.disposition.colorClass)}>{signals.disposition.label}</p>
+                  <p className="text-xs text-muted-foreground">{signals.disposition.description}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span>Risk: <span className="font-semibold text-foreground">{signals.riskScore}</span>/100</span>
+                <span>•</span>
+                <span>{signals.consensusLabel} <span className="font-mono">({signals.consensusScore}%)</span></span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {loadingReview ? (
         <div className="rounded-lg border bg-card p-8 text-center shadow-sm">

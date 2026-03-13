@@ -9,11 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockEvidenceChecklist, mockCodeCombinations } from '@/lib/mockData';
+import { mockCodeCombinations } from '@/lib/mockData';
 import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight, ShieldAlert, Eye } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 // Spark integrations
 import { DecisionPanel } from './spark/DecisionPanel';
@@ -41,8 +42,10 @@ import {
 import {
   deriveCaseSignals, classifyDisposition, evaluateHumanReviewGating,
   evaluateExportReadiness, deriveActionPath, ACTION_PATH_CONFIG,
+  generateDynamicEvidenceChecklist, buildStructuredExportPackage,
   type CaseSummarySignals,
 } from '@/lib/caseIntelligence';
+import { saveDecision, type AuditDecision } from '@/lib/caseService';
 
 interface AuditDetailProps {
   auditCase: AuditCase;
@@ -104,8 +107,34 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
     contradictions,
   }), [auditCase, evidenceSuff, contradictions]);
 
-  const handleDecision = (outcome: 'approved' | 'rejected' | 'info-requested', reasoning: string) => {
-    toast.success(`Case ${outcome === 'info-requested' ? 'info requested' : outcome}`);
+  const { session } = useAuth();
+  const userEmail = session?.user?.email || 'Unknown';
+
+  // Dynamic evidence checklist from case data
+  const dynamicEvidence = useMemo(() => generateDynamicEvidenceChecklist(auditCase), [auditCase]);
+
+  const handleDecision = async (outcome: 'approved' | 'rejected' | 'info-requested', reasoning: string) => {
+    const decision: AuditDecision = {
+      outcome: outcome === 'info-requested' ? 'in-review' : outcome as any,
+      reasoning,
+      auditor: userEmail,
+      timestamp: new Date().toISOString(),
+      overrides: [],
+    };
+
+    // Persist to database for live cases
+    if (isLiveCase) {
+      try {
+        await saveDecision(auditCase.id, decision);
+        toast.success(`Decision saved: ${outcome === 'info-requested' ? 'Information Requested' : outcome}`);
+      } catch (err) {
+        toast.error('Failed to save decision to database');
+        console.error(err);
+        return;
+      }
+    } else {
+      toast.success(`Case ${outcome === 'info-requested' ? 'info requested' : outcome} (demo mode — not persisted)`);
+    }
     onDecisionMade?.(outcome);
   };
 
@@ -516,7 +545,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
 
           <TabsContent value="evidence">
             <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <EvidenceChecklist items={mockEvidenceChecklist} />
+              <EvidenceChecklist items={dynamicEvidence} />
             </div>
           </TabsContent>
 
