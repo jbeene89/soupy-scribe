@@ -442,7 +442,7 @@ export const mockCases: AuditCase[] = [
     analyses: [
       {
         role: 'builder',
-        model: 'GPT-4o',
+        model: 'Gemini 2.5 Flash',
         status: 'complete',
         confidence: 48,
         perspectiveStatement: 'Multi-level spine fusion with decompression is a legitimate procedure combination for spondylolisthesis with stenosis, but every code must stand on its own documentation.',
