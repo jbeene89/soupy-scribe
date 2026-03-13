@@ -1,1 +1,10 @@
 project_id = "kxhqiapthyxjaforjlnf"
+
+[functions.analyze-case]
+verify_jwt = false
+
+[functions.provider-analyze]
+verify_jwt = false
+
+[functions.soupy-engine]
+verify_jwt = false
