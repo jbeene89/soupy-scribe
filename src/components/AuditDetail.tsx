@@ -117,7 +117,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
     const decision: AuditDecision = {
       outcome: outcome === 'info-requested' ? 'in-review' : outcome as any,
       reasoning,
-      auditor: user?.email || 'Unknown',
+      auditor: userEmail,
       timestamp: new Date().toISOString(),
       overrides: [],
     };
