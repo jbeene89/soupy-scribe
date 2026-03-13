@@ -618,7 +618,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'breaker',
-        model: 'GPT-4o Mini',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 58,
         perspectiveStatement: 'We\'re so focused on the conversion question that we\'re missing the real issue: was the colostomy truly a separate procedure or part of the colectomy?',
