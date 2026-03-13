@@ -1,11 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { AuditCase, AIRoleAnalysis, RiskScore } from "@/lib/types";
+import type { AuditCase, AIRoleAnalysis, RiskScore, CaseStatus } from "@/lib/types";
 
 // Transform DB row to app type
 function dbCaseToAuditCase(row: any): AuditCase {
   const riskScore: RiskScore = row.risk_score && Object.keys(row.risk_score).length > 0
     ? {
-        level: row.risk_score.level || 'low',
+        level: row.risk_score.level || 'medium',
         score: row.risk_score.score || 0,
         rawScore: row.risk_score.rawScore || 0,
         percentile: row.risk_score.percentile || 0,
@@ -15,12 +15,14 @@ function dbCaseToAuditCase(row: any): AuditCase {
         factors: row.risk_score.factors || [],
       }
     : {
-        level: 'low',
+        // Default for cases without a computed risk score — use "medium" not "low"
+        // to avoid misleading Low(0) in queue for unscored cases
+        level: 'medium',
         score: 0,
         rawScore: 0,
         percentile: 0,
         confidence: 0,
-        recommendation: 'Awaiting analysis',
+        recommendation: 'Risk score pending — run SOUPY analysis for full assessment.',
         dataCompleteness: { score: 0, present: [], missing: [] },
         factors: [],
       };
@@ -56,7 +58,7 @@ function dbAnalysisToRoleAnalysis(row: any): AIRoleAnalysis {
     severity: v.severity,
     description: v.description,
     regulationRef: v.regulationRef,
-    defenses: [],
+    defenses: v.defenses || [],
   }));
 
   return {
@@ -157,4 +159,33 @@ export async function getProcessingStatus(caseId: string) {
     .single();
 
   return data;
+}
+
+// ─── Decision Persistence ───
+
+export interface AuditDecision {
+  outcome: CaseStatus;
+  reasoning: string;
+  auditor: string;
+  timestamp: string;
+  overrides: string[];
+}
+
+export async function saveDecision(
+  caseId: string,
+  decision: AuditDecision
+): Promise<void> {
+  const newStatus = decision.outcome === 'approved' ? 'approved'
+    : decision.outcome === 'rejected' ? 'rejected'
+    : 'in-review'; // info-requested keeps it in review
+
+  const { error } = await supabase
+    .from("audit_cases")
+    .update({
+      decision: decision as any,
+      status: newStatus,
+    })
+    .eq("id", caseId);
+
+  if (error) throw new Error(`Failed to save decision: ${error.message}`);
 }

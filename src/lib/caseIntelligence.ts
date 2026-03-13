@@ -218,6 +218,8 @@ export interface CaseSummarySignals {
   humanReview: HumanReviewTrigger;
   hasAnalyses: boolean;
   isAnalyzing: boolean;
+  /** Composite review complexity for queue display — never shows "Low" when analyses indicate issues */
+  reviewComplexity: { level: 'routine' | 'moderate' | 'complex' | 'critical'; label: string; colorClass: string };
 }
 
 export function deriveCaseSignals(
@@ -249,6 +251,15 @@ export function deriveCaseSignals(
   else if (confidence >= 45) confidenceLabel = 'Low Confidence';
   else confidenceLabel = 'Very Low Confidence';
 
+  // ─── Review Complexity ───
+  // Composite metric that never shows "routine" when real issues exist
+  const reviewComplexity = computeReviewComplexity(auditCase, {
+    violationCount: allViolations.length,
+    criticalViolationCount: criticalViolations.length,
+    humanReviewTriggered: humanReview.triggered,
+    disposition: disposition.disposition,
+  });
+
   return {
     riskLevel: auditCase.riskScore?.level || 'medium',
     riskScore: auditCase.riskScore?.score || 0,
@@ -263,7 +274,43 @@ export function deriveCaseSignals(
     humanReview,
     hasAnalyses: auditCase.analyses.length > 0,
     isAnalyzing: auditCase.analyses.some(a => a.status === 'analyzing'),
+    reviewComplexity,
   };
+}
+
+function computeReviewComplexity(
+  auditCase: AuditCase,
+  ctx: {
+    violationCount: number;
+    criticalViolationCount: number;
+    humanReviewTriggered: boolean;
+    disposition: CaseDisposition;
+  }
+): CaseSummarySignals['reviewComplexity'] {
+  const riskScore = auditCase.riskScore?.score || 0;
+  const hasAnalyses = auditCase.analyses.length > 0;
+
+  // Critical: human review required OR not defensible OR critical risk w/ critical violations
+  if (ctx.humanReviewTriggered || ctx.disposition === 'not_defensible') {
+    return { level: 'critical', label: 'Critical', colorClass: 'text-violation' };
+  }
+  if (riskScore >= 80 && ctx.criticalViolationCount > 0) {
+    return { level: 'critical', label: 'Critical', colorClass: 'text-violation' };
+  }
+
+  // Complex: high risk, or multiple violations, or low consensus w/ analyses
+  if (riskScore >= 65 || (ctx.violationCount >= 2 && hasAnalyses) || 
+      (auditCase.consensusScore < 60 && hasAnalyses)) {
+    return { level: 'complex', label: 'Complex', colorClass: 'text-disagreement' };
+  }
+
+  // Moderate: medium risk or has some violations
+  if (riskScore >= 40 || ctx.violationCount > 0) {
+    return { level: 'moderate', label: 'Moderate', colorClass: 'text-info-blue' };
+  }
+
+  // Routine: only if genuinely low risk with no issues
+  return { level: 'routine', label: 'Routine', colorClass: 'text-consensus' };
 }
 
 // ─── Export Readiness ───
@@ -329,7 +376,7 @@ export function evaluateExportReadiness(
   return { status: 'not_ready', label: 'Not Ready for Submission', description: 'Package has critical gaps that must be resolved before export.', colorClass: 'text-destructive', missingItems };
 }
 
-// ─── Evidence Impact Tiers ───
+// ─── Dynamic Evidence Checklist Generation ───
 
 export type EvidenceImpactTier = 'critical' | 'supporting' | 'low_value';
 
@@ -340,10 +387,217 @@ export function classifyEvidenceImpact(item: EvidenceChecklistItem): EvidenceImp
 }
 
 export function isEvidenceLikelyCurable(item: EvidenceChecklistItem): boolean {
-  // Records that are typically obtainable
   const curableCategories = ['documentation', 'authorization'];
   const curablePriorities = ['high', 'medium'];
   return curableCategories.includes(item.category) && curablePriorities.includes(item.priority);
+}
+
+/**
+ * Generates a dynamic evidence checklist from case-specific data instead of
+ * static mock arrays. Uses violations, risk factors, and missing documentation
+ * to build a contextual, prioritized evidence list.
+ */
+export function generateDynamicEvidenceChecklist(auditCase: AuditCase): EvidenceChecklistItem[] {
+  const items: EvidenceChecklistItem[] = [];
+  let idx = 0;
+
+  // 1. From missing documentation in riskScore.dataCompleteness
+  const missingDocs = auditCase.riskScore?.dataCompleteness.missing || [];
+  const presentDocs = auditCase.riskScore?.dataCompleteness.present || [];
+
+  missingDocs.forEach(doc => {
+    const isCriticalDoc = doc.toLowerCase().includes('operative note') ||
+      doc.toLowerCase().includes('time log') || doc.toLowerCase().includes('time documentation') ||
+      doc.toLowerCase().includes('medical necessity');
+    items.push({
+      id: `dyn-miss-${idx++}`,
+      description: doc,
+      category: 'documentation',
+      priority: isCriticalDoc ? 'high' : 'medium',
+      status: 'missing',
+      relatedCodes: [],
+      impactOnRisk: isCriticalDoc ? 20 : 10,
+    });
+  });
+
+  // 2. From risk factors — extract evidenceToConfirm
+  const factors = auditCase.riskScore?.factors.filter(f => f.triggered) || [];
+  factors.forEach(factor => {
+    factor.evidenceToConfirm.forEach(ev => {
+      // Avoid duplicating items already from missing docs
+      if (items.some(i => i.description.toLowerCase() === ev.toLowerCase())) return;
+      items.push({
+        id: `dyn-factor-${idx++}`,
+        description: ev,
+        category: factor.isDeterminative ? 'clinical' : 'documentation',
+        priority: factor.isDeterminative ? 'high' : 'medium',
+        status: 'missing',
+        relatedCodes: auditCase.cptCodes.slice(0, 2),
+        impactOnRisk: factor.isDeterminative ? factor.weight : Math.min(factor.weight, 10),
+      });
+    });
+  });
+
+  // 3. From violations — specific evidence needed
+  const violations = auditCase.analyses.flatMap(a => a.violations);
+  violations.forEach(v => {
+    const description = `Documentation supporting ${v.code} — ${v.type.replace(/-/g, ' ')} defense`;
+    if (items.some(i => i.description === description)) return;
+    items.push({
+      id: `dyn-viol-${idx++}`,
+      description,
+      category: 'coding',
+      priority: v.severity === 'critical' ? 'high' : 'medium',
+      status: 'missing',
+      relatedCodes: [v.code],
+      impactOnRisk: v.severity === 'critical' ? 25 : 12,
+    });
+  });
+
+  // 4. Mark present items
+  presentDocs.forEach(doc => {
+    items.push({
+      id: `dyn-pres-${idx++}`,
+      description: doc,
+      category: 'documentation',
+      priority: 'low',
+      status: 'received',
+      relatedCodes: [],
+      impactOnRisk: 2,
+    });
+  });
+
+  // Sort: missing critical first, then supporting, then received
+  items.sort((a, b) => {
+    const statusOrder = { missing: 0, requested: 1, received: 2, na: 3 };
+    const prioOrder = { high: 0, medium: 1, low: 2 };
+    if (statusOrder[a.status] !== statusOrder[b.status]) return statusOrder[a.status] - statusOrder[b.status];
+    return prioOrder[a.priority] - prioOrder[b.priority];
+  });
+
+  return items;
+}
+
+// ─── Structured Export Package ───
+
+export interface StructuredExportPackage {
+  meta: {
+    caseNumber: string;
+    physicianName: string;
+    physicianId: string;
+    patientId: string;
+    dateOfService: string;
+    claimAmount: number;
+    cptCodes: string[];
+    icdCodes: string[];
+    exportDate: string;
+    packageStatus: string;
+  };
+  riskAssessment: {
+    score: number;
+    level: string;
+    confidence: number;
+    dataCompleteness: number;
+    recommendation: string;
+  };
+  consensusAnalysis: {
+    score: number;
+    label: string;
+    dispositionLabel: string;
+    dispositionCategory: string;
+    humanReviewRequired: boolean;
+    humanReviewReasons: string[];
+  };
+  violations: {
+    code: string;
+    type: string;
+    severity: string;
+    description: string;
+    regulationRef: string;
+    bestDefenseStrength: number;
+    bestDefenseStrategy: string;
+    defenseStrengths: string[];
+    failurePoints: string[];
+  }[];
+  evidenceStatus: {
+    present: string[];
+    missing: string[];
+    completenessScore: number;
+  };
+  actionRecommendation: {
+    action: string;
+    rationale: string;
+    confidence: number;
+  };
+  exportReadiness: {
+    status: string;
+    label: string;
+    missingItems: string[];
+  };
+}
+
+export function buildStructuredExportPackage(
+  auditCase: AuditCase,
+  signals: CaseSummarySignals,
+  exportReadiness: ExportReadinessResult,
+  actionPath?: { action: string; rationale: string; confidence: number } | null,
+): StructuredExportPackage {
+  const violations = auditCase.analyses.flatMap(a => a.violations);
+
+  return {
+    meta: {
+      caseNumber: auditCase.caseNumber,
+      physicianName: auditCase.physicianName,
+      physicianId: auditCase.physicianId,
+      patientId: auditCase.patientId,
+      dateOfService: auditCase.dateOfService,
+      claimAmount: auditCase.claimAmount,
+      cptCodes: auditCase.cptCodes,
+      icdCodes: auditCase.icdCodes,
+      exportDate: new Date().toISOString(),
+      packageStatus: exportReadiness.label,
+    },
+    riskAssessment: {
+      score: signals.riskScore,
+      level: signals.riskLevel,
+      confidence: signals.confidence,
+      dataCompleteness: signals.dataCompleteness,
+      recommendation: auditCase.riskScore?.recommendation || '',
+    },
+    consensusAnalysis: {
+      score: signals.consensusScore,
+      label: signals.consensusLabel,
+      dispositionLabel: signals.disposition.label,
+      dispositionCategory: signals.disposition.disposition,
+      humanReviewRequired: signals.humanReview.triggered,
+      humanReviewReasons: signals.humanReview.reasons,
+    },
+    violations: violations.map(v => {
+      const best = v.defenses?.reduce((b, d) => d.strength > b.strength ? d : b, { strength: 0, strategy: '', strengths: [] as string[], weaknesses: [] as string[] });
+      return {
+        code: v.code,
+        type: v.type,
+        severity: v.severity,
+        description: v.description,
+        regulationRef: v.regulationRef,
+        bestDefenseStrength: best?.strength || 0,
+        bestDefenseStrategy: best?.strategy || '',
+        defenseStrengths: best?.strengths || [],
+        failurePoints: best?.weaknesses || [],
+      };
+    }),
+    evidenceStatus: {
+      present: auditCase.riskScore?.dataCompleteness.present || [],
+      missing: auditCase.riskScore?.dataCompleteness.missing || [],
+      completenessScore: signals.dataCompleteness,
+    },
+    actionRecommendation: actionPath || { action: 'pending', rationale: 'Action recommendation pending analysis.', confidence: 0 },
+    exportReadiness: {
+      status: exportReadiness.status,
+      label: exportReadiness.label,
+      missingItems: exportReadiness.missingItems,
+    },
+  };
 }
 
 // ─── Action Path Display ───
