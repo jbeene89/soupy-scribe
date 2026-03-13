@@ -469,7 +469,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'redteam',
-        model: 'Claude 3.5',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 88,
         perspectiveStatement: 'This $42K claim is exactly the type of case that generates recovery dollars. Multiple bundling vulnerabilities and incomplete documentation make this highly actionable.',
