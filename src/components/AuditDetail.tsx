@@ -116,10 +116,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
   const metadata = auditCase.metadata as any;
   const hasV3Data = decisionTrace || evidenceSuff || actionPathway || contradictions.length > 0;
 
-  // Count mock contradictions from analyses for non-live cases
-  const effectiveContradictionCount = contradictions.length > 0
-    ? contradictions.length
-    : (auditCase.riskScore?.factors.filter(f => f.triggered && f.isDeterminative).length || 0);
+  // Dead code removed — contradiction count now derived from signals module
 
   return (
     <div className="space-y-4 animate-fade-in">
