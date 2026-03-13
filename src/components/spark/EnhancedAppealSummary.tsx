@@ -157,13 +157,22 @@ ${bestDefense.weaknesses.map((w, i) => `  ${i + 1}. ${w}`).join('\n') || '  None
   };
 
   const downloadMemo = () => {
-    downloadTextFile(generateDecisionMemo(), `Decision_Memo_${auditCase.caseNumber}_${Date.now()}.txt`);
+    downloadFile(generateDecisionMemo(), `Decision_Memo_${auditCase.caseNumber}_${Date.now()}.txt`);
     toast.success('Decision memo downloaded');
   };
 
   const downloadDualVoice = () => {
-    downloadTextFile(generateDualVoicePackage(), `Dual_Voice_Appeal_${auditCase.caseNumber}_${Date.now()}.txt`);
+    downloadFile(generateDualVoicePackage(), `Dual_Voice_Appeal_${auditCase.caseNumber}_${Date.now()}.txt`);
     toast.success('Dual-voice appeal package downloaded');
+  };
+
+  const downloadJSON = () => {
+    const signals = deriveCaseSignals(auditCase);
+    const readiness = exportReadiness || evaluateExportReadiness(auditCase);
+    const actionPath = deriveActionPath(auditCase);
+    const pkg = buildStructuredExportPackage(auditCase, signals, readiness, actionPath);
+    downloadFile(JSON.stringify(pkg, null, 2), `Structured_Package_${auditCase.caseNumber}_${Date.now()}.json`, 'application/json');
+    toast.success('Structured JSON package downloaded');
   };
 
   const copyMemo = () => {
