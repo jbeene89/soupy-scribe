@@ -295,14 +295,13 @@ async function authenticateRequest(req: Request, supabaseUrl: string, supabaseAn
   const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } },
   });
-  const token = authHeader.replace("Bearer ", "");
-  const { data, error } = await supabaseAuth.auth.getClaims(token);
-  if (error || !data?.claims) {
+  const { data: { user }, error } = await supabaseAuth.auth.getUser();
+  if (error || !user) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  return { userId: data.claims.sub as string };
+  return { userId: user.id };
 }
 
 async function callAI(apiKey: string, model: string, systemPrompt: string, userPrompt: string, tools: any[], toolChoice: any) {
