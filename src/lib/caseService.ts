@@ -137,6 +137,7 @@ export async function submitCaseText(sourceText: string): Promise<{ caseId: stri
 }
 
 export async function runSOUPYAnalysis(caseId: string): Promise<{ consensusScore: number; riskScore: number }> {
+  // Phase 1: Run primary 4-role analysis
   const response = await supabase.functions.invoke("analyze-case", {
     body: { action: "analyze", caseId },
   });
@@ -145,6 +146,25 @@ export async function runSOUPYAnalysis(caseId: string): Promise<{ consensusScore
   
   const data = response.data;
   if (!data?.success) throw new Error(data?.error || "Analysis failed");
+
+  // Phase 2: Run v3 modules (drift, consensus integrity, evidence sufficiency, etc.)
+  try {
+    const v3Response = await supabase.functions.invoke("analyze-v3", {
+      body: { caseId },
+    });
+
+    if (v3Response.error) {
+      console.error("V3 modules failed (non-fatal):", v3Response.error.message);
+    } else if (v3Response.data?.success) {
+      // Use updated scores from v3 if available
+      return {
+        consensusScore: v3Response.data.consensusScore ?? data.consensusScore,
+        riskScore: v3Response.data.riskScore ?? data.riskScore,
+      };
+    }
+  } catch (v3Err) {
+    console.error("V3 module chain failed (non-fatal):", v3Err);
+  }
 
   return { consensusScore: data.consensusScore, riskScore: data.riskScore };
 }

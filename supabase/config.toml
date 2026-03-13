@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.soupy-engine]
 verify_jwt = false
+
+[functions.analyze-v3]
+verify_jwt = false
