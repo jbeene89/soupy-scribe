@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,9 @@ import { ConsensusMeter } from './ConsensusMeter';
 import { CPTCodeBadge } from './CPTCodeBadge';
 import { CaseCard } from './spark/CaseCard';
 import { CaseCardSkeleton } from './spark/LoadingState';
+import { deriveCaseSignals } from '@/lib/caseIntelligence';
 import { cn } from '@/lib/utils';
-import { Clock, CheckCircle, XCircle, Search, FileText, LayoutGrid, List } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Search, FileText, LayoutGrid, List, AlertTriangle, AlertCircle, ShieldAlert } from 'lucide-react';
 
 function getRelativeTime(dateStr: string): string {
   const now = new Date();
@@ -34,6 +35,13 @@ const statusConfig: Record<CaseStatus, { label: string; icon: React.ElementType;
   appealed: { label: 'Appealed', icon: FileText, className: 'bg-role-analyst/15 text-role-analyst border-role-analyst/30' },
 };
 
+const complexityIcons: Record<string, React.ElementType> = {
+  routine: CheckCircle,
+  moderate: AlertCircle,
+  complex: AlertTriangle,
+  critical: ShieldAlert,
+};
+
 interface CaseQueueProps {
   cases: AuditCase[];
   onSelectCase: (caseData: AuditCase) => void;
@@ -43,6 +51,13 @@ interface CaseQueueProps {
 
 export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading }: CaseQueueProps) {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+
+  // Pre-compute signals for all cases for truthful queue display
+  const caseSignals = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof deriveCaseSignals>>();
+    cases.forEach(c => map.set(c.id, deriveCaseSignals(c)));
+    return map;
+  }, [cases]);
 
   if (loading) {
     return (
@@ -108,15 +123,18 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading }: Case
               <TableHead>CPT Codes</TableHead>
               <TableHead className="text-right">Claim</TableHead>
               <TableHead>Risk</TableHead>
+              <TableHead>Complexity</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>DOS</TableHead>
-              <TableHead>Submitted</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {cases.map(c => {
               const status = statusConfig[c.status];
               const StatusIcon = status.icon;
+              const signals = caseSignals.get(c.id);
+              const complexity = signals?.reviewComplexity || { level: 'routine', label: 'Routine', colorClass: 'text-consensus' };
+              const ComplexityIcon = complexityIcons[complexity.level] || AlertCircle;
               return (
                 <TableRow
                   key={c.id}
@@ -135,12 +153,19 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading }: Case
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1 flex-wrap">
-                      {c.cptCodes.map(code => <CPTCodeBadge key={code} code={code} />)}
+                      {c.cptCodes.slice(0, 3).map(code => <CPTCodeBadge key={code} code={code} />)}
+                      {c.cptCodes.length > 3 && <span className="text-xs text-muted-foreground">+{c.cptCodes.length - 3}</span>}
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">${c.claimAmount.toLocaleString()}</TableCell>
                   <TableCell>
                     <RiskIndicator riskScore={c.riskScore} compact />
+                  </TableCell>
+                  <TableCell>
+                    <div className={cn('flex items-center gap-1.5', complexity.colorClass)}>
+                      <ComplexityIcon className="h-3.5 w-3.5" />
+                      <span className="text-xs font-medium">{complexity.label}</span>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={cn('text-xs gap-1', status.className)}>
@@ -149,12 +174,6 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading }: Case
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{c.dateOfService}</TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="text-sm text-muted-foreground">{c.dateSubmitted}</p>
-                      <p className="text-xs text-muted-foreground/60">{getRelativeTime(c.createdAt || c.dateSubmitted)}</p>
-                    </div>
-                  </TableCell>
                 </TableRow>
               );
             })}

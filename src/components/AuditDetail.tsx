@@ -9,11 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockEvidenceChecklist, mockCodeCombinations } from '@/lib/mockData';
+import { mockCodeCombinations } from '@/lib/mockData';
 import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight, ShieldAlert, Eye } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 // Spark integrations
 import { DecisionPanel } from './spark/DecisionPanel';
