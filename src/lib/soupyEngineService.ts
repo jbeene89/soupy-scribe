@@ -1,82 +1,48 @@
 import { supabase } from "@/integrations/supabase/client";
 
 // ═══════════════════════════════════════════════════════════════
-// SOUPY Engine Service — Client-side interface for all 12 engine features
+// SOUPY Engine v3 — Client Service Layer
 // ═══════════════════════════════════════════════════════════════
+
+// ─── Engine Health ───
 
 export interface EngineHealth {
   engineVersion: string;
   health: {
     ghostCaseAccuracy: number | null;
     ghostCasesConfigured: number;
+    goldSetAccuracy: number | null;
+    goldSetCasesConfigured: number;
     calibrationAccuracy: number | null;
     calibrationSamples: number;
     stabilityRate: number | null;
     avgDriftScore: number | null;
     stabilityChecks: number;
-    devilsAdvocate: {
+    consensusIntegrity: {
       totalRuns: number;
       consensusSurvivedRate: number;
       reanalysisRate: number;
     } | null;
-    reasoningChains: {
-      totalChains: number;
-      avgTokens: number;
-      avgLatencyMs: number;
-    } | null;
+    confidenceFloorEvents: number;
+    contradictionFrequency: number;
+    decisionTracesStored: number;
     payerProfilesLoaded: number;
     caseGraphEdges: number;
+    regulatoryFlagsActive: number;
+    appealOutcomesTracked: number;
   };
-  features: string[];
+  modules: string[];
 }
 
-export interface GhostCaseValidation {
-  accuracyScore: number;
-  isCorrect: boolean;
-  deviations: Array<{
-    type: string;
-    expected: any;
-    actual: any;
-    penalty: number;
-  }>;
-  keyTest: string;
+export async function getEngineHealth(): Promise<EngineHealth> {
+  const response = await supabase.functions.invoke("soupy-engine", {
+    body: { action: "engine-health" },
+  });
+  if (response.error) throw new Error(response.error.message || "Failed to get engine health");
+  return response.data;
 }
 
-export interface CalibrationResult {
-  predicted: string;
-  actual: string;
-  deviationScore: number;
-  wasCorrect: boolean;
-}
-
-export interface PhysicianProfile {
-  physicianId: string;
-  physicianName: string;
-  totalCases: number;
-  statusBreakdown: {
-    pending: number;
-    inReview: number;
-    approved: number;
-    rejected: number;
-  };
-  topCodes: [string, number][];
-  avgRiskScore: number;
-  avgConsensusScore: number;
-  rejectionRate: number;
-  graphConnections: number;
-  predictionAccuracy: number | null;
-  riskTrend: number[];
-}
-
-export interface PayerProfile {
-  id: string;
-  payer_name: string;
-  payer_code: string;
-  denial_patterns: any[];
-  appeal_success_rates: Record<string, number>;
-  behavioral_notes: string;
-  last_updated: string;
-}
+// ─── Ghost Cases ───
 
 export interface GhostCase {
   id: string;
@@ -89,53 +55,6 @@ export interface GhostCase {
   times_correct: number;
   accuracy_rate: number;
 }
-
-export interface ReasoningChain {
-  id: string;
-  case_id: string;
-  analysis_id: string;
-  role: string;
-  model: string;
-  raw_reasoning: string;
-  token_count: number;
-  latency_ms: number;
-  created_at: string;
-}
-
-export interface StabilityCheck {
-  id: string;
-  case_id: string;
-  run_a_output: any;
-  run_b_output: any;
-  drift_score: number;
-  unstable_roles: string[];
-  is_stable: boolean;
-  created_at: string;
-}
-
-export interface DevilsAdvocateResult {
-  id: string;
-  case_id: string;
-  consensus_before: number;
-  consensus_after: number | null;
-  attack_vectors: any[];
-  consensus_survived: boolean;
-  vulnerabilities_found: any[];
-  reanalysis_triggered: boolean;
-  created_at: string;
-}
-
-// ─── Engine Health Dashboard ───
-
-export async function getEngineHealth(): Promise<EngineHealth> {
-  const response = await supabase.functions.invoke("soupy-engine", {
-    body: { action: "engine-health" },
-  });
-  if (response.error) throw new Error(response.error.message || "Failed to get engine health");
-  return response.data;
-}
-
-// ─── Ghost Case Operations ───
 
 export async function listGhostCases(): Promise<GhostCase[]> {
   const response = await supabase.functions.invoke("soupy-engine", {
@@ -153,6 +72,13 @@ export async function injectGhostCase(ghostCaseId: string): Promise<{ caseId: st
   return response.data;
 }
 
+export interface GhostCaseValidation {
+  accuracyScore: number;
+  isCorrect: boolean;
+  deviations: Array<{ type: string; expected: any; actual: any; penalty: number }>;
+  keyTest: string;
+}
+
 export async function validateGhostCase(caseId: string, ghostCaseId: string): Promise<GhostCaseValidation> {
   const response = await supabase.functions.invoke("soupy-engine", {
     body: { action: "validate-ghost", caseId, ghostCaseId },
@@ -161,7 +87,45 @@ export async function validateGhostCase(caseId: string, ghostCaseId: string): Pr
   return response.data;
 }
 
+// ─── Gold Set Cases ───
+
+export interface GoldSetCase {
+  id: string;
+  case_label: string;
+  case_template: any;
+  known_outcome: any;
+  category: string;
+  is_locked: boolean;
+  last_replayed_at: string | null;
+  total_replays: number;
+  total_correct: number;
+  accuracy_rate: number;
+}
+
+export async function listGoldSetCases(): Promise<GoldSetCase[]> {
+  const response = await supabase.functions.invoke("soupy-engine", {
+    body: { action: "list-gold-set-cases" },
+  });
+  if (response.error) throw new Error(response.error.message);
+  return response.data.goldCases;
+}
+
+export async function replayGoldSetCase(goldCaseId: string): Promise<{ caseId: string }> {
+  const response = await supabase.functions.invoke("soupy-engine", {
+    body: { action: "replay-gold-set", goldCaseId },
+  });
+  if (response.error) throw new Error(response.error.message);
+  return response.data;
+}
+
 // ─── Calibration ───
+
+export interface CalibrationResult {
+  predicted: string;
+  actual: string;
+  deviationScore: number;
+  wasCorrect: boolean;
+}
 
 export async function submitCalibration(caseId: string, actualOutcome: string): Promise<CalibrationResult> {
   const response = await supabase.functions.invoke("soupy-engine", {
@@ -173,6 +137,20 @@ export async function submitCalibration(caseId: string, actualOutcome: string): 
 
 // ─── Physician Profiles ───
 
+export interface PhysicianProfile {
+  physicianId: string;
+  physicianName: string;
+  totalCases: number;
+  statusBreakdown: { pending: number; inReview: number; approved: number; rejected: number };
+  topCodes: [string, number][];
+  avgRiskScore: number;
+  avgConsensusScore: number;
+  rejectionRate: number;
+  graphConnections: number;
+  predictionAccuracy: number | null;
+  riskTrend: number[];
+}
+
 export async function getPhysicianProfile(physicianId: string): Promise<PhysicianProfile> {
   const response = await supabase.functions.invoke("soupy-engine", {
     body: { action: "physician-profile", physicianId },
@@ -183,6 +161,16 @@ export async function getPhysicianProfile(physicianId: string): Promise<Physicia
 
 // ─── Payer Profiles ───
 
+export interface PayerProfile {
+  id: string;
+  payer_name: string;
+  payer_code: string;
+  denial_patterns: any[];
+  appeal_success_rates: Record<string, number>;
+  behavioral_notes: string;
+  last_updated: string;
+}
+
 export async function listPayerProfiles(): Promise<PayerProfile[]> {
   const response = await supabase.functions.invoke("soupy-engine", {
     body: { action: "list-payer-profiles" },
@@ -191,20 +179,252 @@ export async function listPayerProfiles(): Promise<PayerProfile[]> {
   return response.data.profiles;
 }
 
-// ─── Reasoning Chains (direct DB query) ───
+// ─── Decision Traces (direct DB query) ───
 
-export async function getReasoningChains(caseId: string): Promise<ReasoningChain[]> {
+export interface DecisionTrace {
+  id: string;
+  case_id: string;
+  trace_entries: Array<{
+    trigger: string;
+    documentationGap?: string;
+    counterargumentConsidered?: string;
+    evidenceSupporting?: string;
+    regulationReferenced?: string;
+    confidenceImpact?: string;
+    sourceRole?: string;
+  }>;
+  final_recommendation: string;
+  recommendation_rationale: string;
+  confidence_at_completion: number;
+  consensus_integrity_grade: string;
+  created_at: string;
+}
+
+export async function getDecisionTrace(caseId: string): Promise<DecisionTrace | null> {
   const { data, error } = await supabase
-    .from("reasoning_chains")
+    .from("decision_traces")
+    .select("*")
+    .eq("case_id", caseId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+  if (error) return null;
+  return data as unknown as DecisionTrace;
+}
+
+// ─── Evidence Sufficiency (direct DB query) ───
+
+export interface EvidenceSufficiency {
+  id: string;
+  case_id: string;
+  overall_score: number;
+  sufficiency_for_approve: number;
+  sufficiency_for_deny: number;
+  sufficiency_for_info_request: number;
+  sufficiency_for_appeal_defense: number;
+  sufficiency_for_appeal_not_recommended: number;
+  missing_evidence: Array<{ item: string; impact: string; obtainable?: boolean }>;
+  is_defensible: boolean;
+  is_under_supported: boolean;
+  source_weights_applied: Record<string, number>;
+  created_at: string;
+}
+
+export async function getEvidenceSufficiency(caseId: string): Promise<EvidenceSufficiency | null> {
+  const { data, error } = await supabase
+    .from("evidence_sufficiency")
+    .select("*")
+    .eq("case_id", caseId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+  if (error) return null;
+  return data as unknown as EvidenceSufficiency;
+}
+
+// ─── Contradictions (direct DB query) ───
+
+export interface Contradiction {
+  id: string;
+  case_id: string;
+  contradiction_type: string;
+  description: string;
+  explanation: string | null;
+  severity: string;
+  source_a: string | null;
+  source_b: string | null;
+  created_at: string;
+}
+
+export async function getContradictions(caseId: string): Promise<Contradiction[]> {
+  const { data, error } = await supabase
+    .from("contradictions")
     .select("*")
     .eq("case_id", caseId)
     .order("created_at");
-  
   if (error) throw error;
-  return (data || []) as unknown as ReasoningChain[];
+  return (data || []) as unknown as Contradiction[];
+}
+
+// ─── Action Pathways (direct DB query) ───
+
+export interface ActionPathway {
+  id: string;
+  case_id: string;
+  recommended_action: string;
+  action_rationale: string;
+  confidence_in_recommendation: number;
+  input_factors: Record<string, any>;
+  alternative_actions: Array<{ action: string; rationale: string }>;
+  is_human_review_required: boolean;
+  created_at: string;
+}
+
+export async function getActionPathway(caseId: string): Promise<ActionPathway | null> {
+  const { data, error } = await supabase
+    .from("action_pathways")
+    .select("*")
+    .eq("case_id", caseId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+  if (error) return null;
+  return data as unknown as ActionPathway;
+}
+
+// ─── Minimal Winning Packet (direct DB query) ───
+
+export interface MinimalWinningPacket {
+  id: string;
+  case_id: string;
+  checklist: Array<{
+    item: string;
+    category: string;
+    priority: string;
+    isMissing: boolean;
+    isCurable: boolean;
+    effort: string;
+    impactIfObtained: string;
+  }>;
+  top_priority_item: string | null;
+  estimated_curable_count: number;
+  estimated_not_worth_chasing: number;
+  created_at: string;
+}
+
+export async function getMinimalWinningPacket(caseId: string): Promise<MinimalWinningPacket | null> {
+  const { data, error } = await supabase
+    .from("minimal_winning_packets")
+    .select("*")
+    .eq("case_id", caseId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+  if (error) return null;
+  return data as unknown as MinimalWinningPacket;
+}
+
+// ─── Confidence Floor Events (direct DB query) ───
+
+export interface ConfidenceFloorEvent {
+  id: string;
+  case_id: string;
+  floor_type: string;
+  threshold_value: number;
+  actual_value: number;
+  uncertainty_drivers: any[];
+  routed_to_human: boolean;
+  explanation: string;
+  created_at: string;
+}
+
+export async function getConfidenceFloorEvents(caseId: string): Promise<ConfidenceFloorEvent[]> {
+  const { data, error } = await supabase
+    .from("confidence_floor_events")
+    .select("*")
+    .eq("case_id", caseId)
+    .order("created_at");
+  if (error) throw error;
+  return (data || []) as unknown as ConfidenceFloorEvent[];
+}
+
+// ─── Regulatory Flags ───
+
+export interface RegulatoryFlag {
+  id: string;
+  case_id: string | null;
+  flag_type: string;
+  description: string;
+  effective_date: string | null;
+  source_reference: string | null;
+  severity: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export async function getRegulatoryFlags(caseId?: string): Promise<RegulatoryFlag[]> {
+  let query = supabase.from("regulatory_flags").select("*").eq("is_active", true);
+  if (caseId) {
+    query = query.eq("case_id", caseId);
+  }
+  const { data, error } = await query.order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []) as unknown as RegulatoryFlag[];
+}
+
+export async function listAllRegulatoryFlags(): Promise<RegulatoryFlag[]> {
+  const response = await supabase.functions.invoke("soupy-engine", {
+    body: { action: "list-regulatory-flags" },
+  });
+  if (response.error) throw new Error(response.error.message);
+  return response.data.flags;
+}
+
+// ─── Appeal Outcomes ───
+
+export interface AppealOutcome {
+  id: string;
+  payer_code: string | null;
+  denial_type: string | null;
+  cpt_codes: string[];
+  appeal_strategy: string;
+  outcome: string;
+  success_factors: any[];
+  failure_factors: any[];
+  notes: string | null;
+  case_id: string | null;
+  created_at: string;
+}
+
+export async function recordAppealOutcome(data: {
+  caseId?: string;
+  payerCode?: string;
+  denialType?: string;
+  appealStrategy: string;
+  outcome: string;
+  successFactors?: any[];
+  failureFactors?: any[];
+  notes?: string;
+  cptCodes?: string[];
+}): Promise<void> {
+  const response = await supabase.functions.invoke("soupy-engine", {
+    body: { action: "record-appeal-outcome", ...data },
+  });
+  if (response.error) throw new Error(response.error.message);
 }
 
 // ─── Stability Checks (direct DB query) ───
+
+export interface StabilityCheck {
+  id: string;
+  case_id: string;
+  run_a_output: any;
+  run_b_output: any;
+  drift_score: number;
+  unstable_roles: string[];
+  is_stable: boolean;
+  created_at: string;
+}
 
 export async function getStabilityCheck(caseId: string): Promise<StabilityCheck | null> {
   const { data, error } = await supabase
@@ -214,24 +434,8 @@ export async function getStabilityCheck(caseId: string): Promise<StabilityCheck 
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
-  
   if (error) return null;
   return data as unknown as StabilityCheck;
-}
-
-// ─── Devil's Advocate Results (direct DB query) ───
-
-export async function getDevilsAdvocateResult(caseId: string): Promise<DevilsAdvocateResult | null> {
-  const { data, error } = await supabase
-    .from("devils_advocate_results")
-    .select("*")
-    .eq("case_id", caseId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-  
-  if (error) return null;
-  return data as unknown as DevilsAdvocateResult;
 }
 
 // ─── Enhanced Analysis (with payer support) ───
