@@ -1,9 +1,10 @@
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import type { AuditCase, CaseStatus } from '@/lib/types';
-import { Clock, CheckCircle, XCircle, Search, FileText, AlertTriangle, AlertCircle } from 'lucide-react';
+import { deriveCaseSignals } from '@/lib/caseIntelligence';
+import { Clock, CheckCircle, XCircle, Search, FileText, AlertTriangle, AlertCircle, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMemo } from 'react';
 
 interface CaseCardProps {
   auditCase: AuditCase;
@@ -20,6 +21,7 @@ const statusConfig: Record<CaseStatus, { icon: React.ElementType; color: string;
 
 export function CaseCard({ auditCase, onClick }: CaseCardProps) {
   const StatusIcon = statusConfig[auditCase.status].icon;
+  const signals = useMemo(() => deriveCaseSignals(auditCase), [auditCase]);
 
   const getRiskIndicator = () => {
     if (!auditCase.riskScore) return null;
@@ -68,7 +70,7 @@ export function CaseCard({ auditCase, onClick }: CaseCardProps) {
       className={cn('p-4 cursor-pointer hover:border-accent transition-all duration-200 hover:shadow-md', cardBorderClass)}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <code className="font-mono font-semibold text-sm">{auditCase.caseNumber}</code>
@@ -103,14 +105,37 @@ export function CaseCard({ auditCase, onClick }: CaseCardProps) {
           </div>
         </div>
 
-        {auditCase.analyses.length > 0 && (
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">AI Analysis:</span>
-              <span className="text-xs font-medium">
-                {auditCase.analyses.filter(a => a.status === 'complete').length} / {auditCase.analyses.length} complete
-              </span>
+        {/* Synchronized disposition + signals */}
+        {signals.hasAnalyses && (
+          <div className="pt-2 border-t border-border space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Badge variant="outline" className={cn("text-[10px]", signals.disposition.borderClass, signals.disposition.colorClass)}>
+                {signals.disposition.label}
+              </Badge>
+              {signals.humanReview.triggered && (
+                <div className="flex items-center gap-1 text-violation">
+                  <ShieldAlert className="h-3 w-3" />
+                  <span className="text-[10px] font-medium">Human Review</span>
+                </div>
+              )}
             </div>
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+              <span>Consensus: {signals.consensusScore}%</span>
+              <span>•</span>
+              <span>{signals.violationCount} violation{signals.violationCount !== 1 ? 's' : ''}</span>
+              {signals.criticalViolationCount > 0 && (
+                <>
+                  <span>•</span>
+                  <span className="text-violation">{signals.criticalViolationCount} critical</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!signals.hasAnalyses && auditCase.analyses.length === 0 && (
+          <div className="pt-2 border-t border-border">
+            <p className="text-[10px] text-muted-foreground">Awaiting AI analysis</p>
           </div>
         )}
       </div>
