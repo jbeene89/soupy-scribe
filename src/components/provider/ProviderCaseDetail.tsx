@@ -9,14 +9,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Brain, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { ArrowLeft, Brain, Loader2, CheckCircle, Clock, FileText, ShieldAlert, XCircle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
 import { getStoredProviderReview, runProviderAnalysis } from '@/lib/providerService';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthGate } from '@/components/AuthGate';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { PreAppealResolutionTab } from '@/components/pre-appeal/PreAppealResolutionTab';
 import { preAppealResolutions } from '@/lib/preAppealMockData';
+import { deriveCaseSignals } from '@/lib/caseIntelligence';
 
 interface ProviderCaseDetailProps {
   auditCase: AuditCase;
