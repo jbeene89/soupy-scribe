@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { mockEvidenceChecklist, mockCodeCombinations } from '@/lib/mockData';
-import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +27,16 @@ import { AIAnalysisLoadingState } from './spark/LoadingState';
 import { PreAppealResolutionTab } from './pre-appeal/PreAppealResolutionTab';
 import { preAppealResolutions } from '@/lib/preAppealMockData';
 
+// Engine v3 services
+import {
+  getDecisionTrace, getEvidenceSufficiency, getContradictions,
+  getActionPathway, getMinimalWinningPacket, getConfidenceFloorEvents,
+  getRegulatoryFlags,
+  type DecisionTrace, type EvidenceSufficiency, type Contradiction,
+  type ActionPathway, type MinimalWinningPacket, type ConfidenceFloorEvent,
+  type RegulatoryFlag,
+} from '@/lib/soupyEngineService';
+
 interface AuditDetailProps {
   auditCase: AuditCase;
   onBack: () => void;
@@ -33,19 +44,55 @@ interface AuditDetailProps {
   onDecisionMade?: (outcome: 'approved' | 'rejected' | 'info-requested') => void;
 }
 
+const ACTION_LABELS: Record<string, { label: string; color: string }> = {
+  approve: { label: 'Approve Claim', color: 'text-consensus' },
+  pend_for_records: { label: 'Pend for Additional Records', color: 'text-disagreement' },
+  modifier_clarification: { label: 'Request Modifier Clarification', color: 'text-info-blue' },
+  admin_correction: { label: 'Administrative Correction Only', color: 'text-muted-foreground' },
+  route_to_human: { label: 'Route to Human Audit', color: 'text-violation' },
+  build_pre_appeal: { label: 'Build Pre-Appeal Packet', color: 'text-accent' },
+  not_recommended_for_appeal: { label: 'Not Recommended for Appeal', color: 'text-violation' },
+};
+
 export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: AuditDetailProps) {
   const hasAnalyses = auditCase.analyses.length > 0;
   const isAnalyzing = auditCase.analyses.some(a => a.status === 'analyzing');
+  const isLiveCase = !!auditCase.createdAt;
+
+  // v3 engine data
+  const [decisionTrace, setDecisionTrace] = useState<DecisionTrace | null>(null);
+  const [evidenceSuff, setEvidenceSuff] = useState<EvidenceSufficiency | null>(null);
+  const [contradictions, setContradictions] = useState<Contradiction[]>([]);
+  const [actionPathway, setActionPathway] = useState<ActionPathway | null>(null);
+  const [winningPacket, setWinningPacket] = useState<MinimalWinningPacket | null>(null);
+  const [floorEvents, setFloorEvents] = useState<ConfidenceFloorEvent[]>([]);
+  const [regFlags, setRegFlags] = useState<RegulatoryFlag[]>([]);
+
+  useEffect(() => {
+    if (!isLiveCase || !hasAnalyses) return;
+    // Load v3 engine data in parallel
+    Promise.allSettled([
+      getDecisionTrace(auditCase.id).then(setDecisionTrace),
+      getEvidenceSufficiency(auditCase.id).then(setEvidenceSuff),
+      getContradictions(auditCase.id).then(setContradictions),
+      getActionPathway(auditCase.id).then(setActionPathway),
+      getMinimalWinningPacket(auditCase.id).then(setWinningPacket),
+      getConfidenceFloorEvents(auditCase.id).then(setFloorEvents),
+      getRegulatoryFlags(auditCase.id).then(setRegFlags),
+    ]);
+  }, [auditCase.id, isLiveCase, hasAnalyses]);
 
   const handleDecision = (outcome: 'approved' | 'rejected' | 'info-requested', reasoning: string) => {
     toast.success(`Case ${outcome === 'info-requested' ? 'info requested' : outcome}`);
     onDecisionMade?.(outcome);
   };
 
-  // Find matching code combinations for this case
   const matchingCombinations = mockCodeCombinations.filter(cc =>
     cc.codes.every(c => auditCase.cptCodes.includes(c))
   );
+
+  const metadata = auditCase.metadata as any;
+  const hasV3Data = decisionTrace || evidenceSuff || actionPathway || contradictions.length > 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -59,6 +106,9 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
             <h1 className="text-2xl font-semibold">{auditCase.caseNumber}</h1>
             <Badge variant="outline" className="font-mono text-xs">{auditCase.physicianId}</Badge>
             <span className="text-muted-foreground">{auditCase.physicianName}</span>
+            {metadata?.engineVersion === "SOUPY-v3" && (
+              <Badge variant="secondary" className="text-[10px]">SOUPY v3</Badge>
+            )}
           </div>
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <span>DOS: {auditCase.dateOfService}</span>
@@ -77,10 +127,60 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
         </div>
       </div>
 
+      {/* Confidence Floor Alert */}
+      {floorEvents.length > 0 && (
+        <Card className="border-violation/30 bg-violation/5">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-violation shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-violation">Confidence Floor Breached — Human Review Required</p>
+                <div className="mt-2 space-y-1">
+                  {floorEvents.map((e, i) => (
+                    <p key={i} className="text-xs text-muted-foreground">{e.explanation}</p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Action Pathway Banner */}
+      {actionPathway && (
+        <Card className={cn(
+          'border-l-4',
+          actionPathway.recommended_action === 'approve' ? 'border-l-consensus' :
+          actionPathway.recommended_action === 'route_to_human' ? 'border-l-violation' :
+          'border-l-disagreement'
+        )}>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Suggested Action Path</p>
+                  <p className={cn("text-sm font-semibold mt-0.5", ACTION_LABELS[actionPathway.recommended_action]?.color || 'text-foreground')}>
+                    {ACTION_LABELS[actionPathway.recommended_action]?.label || actionPathway.recommended_action}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{actionPathway.action_rationale}</p>
+                  <p className="text-[10px] text-muted-foreground mt-2 italic">Operational guidance only — not legal advice, not autonomous decision-making.</p>
+                </div>
+              </div>
+              <div className="text-center shrink-0">
+                <p className="text-lg font-semibold text-muted-foreground">{actionPathway.confidence_in_recommendation}%</p>
+                <p className="text-[10px] text-muted-foreground">Confidence</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {hasAnalyses ? (
         <Tabs defaultValue="analysis" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="analysis">AI Analysis</TabsTrigger>
+            {hasV3Data && <TabsTrigger value="engine">Engine Intelligence</TabsTrigger>}
             <TabsTrigger value="evidence">Evidence</TabsTrigger>
             <TabsTrigger value="appeals">Appeals & Export</TabsTrigger>
             {preAppealResolutions[auditCase.id] && (
@@ -91,23 +191,130 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
           <TabsContent value="analysis" className="space-y-6">
             {isAnalyzing && <AIAnalysisLoadingState />}
 
-            {/* Risk + Consensus */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Risk + Consensus + Evidence Sufficiency */}
+            <div className={cn("grid gap-6", evidenceSuff ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2")}>
               <div className="rounded-lg border bg-card p-4 shadow-sm">
                 <RiskIndicator riskScore={auditCase.riskScore} />
               </div>
               <div className="rounded-lg border bg-card p-4 shadow-sm flex flex-col justify-center">
                 <ConsensusMeter score={auditCase.consensusScore} />
+                {metadata?.consensusIntegrityGrade && (
+                  <div className={cn(
+                    "mt-2 rounded-md border p-2 text-center",
+                    metadata.consensusIntegrityGrade === "strong" ? "border-consensus/30 bg-consensus/5" :
+                    metadata.consensusIntegrityGrade === "adequate" ? "border-muted bg-muted/30" :
+                    "border-violation/30 bg-violation/5"
+                  )}>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Consensus Integrity</p>
+                    <p className={cn("text-xs font-semibold capitalize",
+                      metadata.consensusIntegrityGrade === "strong" ? "text-consensus" :
+                      metadata.consensusIntegrityGrade === "adequate" ? "text-muted-foreground" :
+                      "text-violation"
+                    )}>{metadata.consensusIntegrityGrade}</p>
+                  </div>
+                )}
                 {auditCase.consensusScore < 60 && (
-                  <div className="mt-3 rounded-md border border-disagreement/30 bg-disagreement/5 p-3">
+                  <div className="mt-2 rounded-md border border-disagreement/30 bg-disagreement/5 p-2">
                     <p className="text-xs font-medium text-disagreement">⚠ High Complexity — Human Review Required</p>
-                    <p className="text-xs text-muted-foreground mt-1">AI models show significant disagreement. All perspectives shown below for your evaluation.</p>
                   </div>
                 )}
               </div>
+              {evidenceSuff && (
+                <div className="rounded-lg border bg-card p-4 shadow-sm">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-2">Evidence Sufficiency</p>
+                  <div className="flex items-end gap-2 mb-3">
+                    <p className={cn("text-3xl font-semibold",
+                      evidenceSuff.overall_score >= 70 ? "text-consensus" :
+                      evidenceSuff.overall_score >= 40 ? "text-disagreement" : "text-violation"
+                    )}>{Math.round(evidenceSuff.overall_score)}</p>
+                    <p className="text-xs text-muted-foreground mb-1">/ 100</p>
+                  </div>
+                  <div className="flex gap-2 mb-2">
+                    <Badge variant={evidenceSuff.is_defensible ? "default" : "destructive"} className="text-[10px]">
+                      {evidenceSuff.is_defensible ? "Defensible" : "Under-supported"}
+                    </Badge>
+                  </div>
+                  {evidenceSuff.missing_evidence.length > 0 && (
+                    <div className="space-y-1 mt-2">
+                      <p className="text-[10px] text-muted-foreground font-medium">Missing:</p>
+                      {evidenceSuff.missing_evidence.slice(0, 3).map((m, i) => (
+                        <p key={i} className="text-[11px] text-muted-foreground">• {m.item}</p>
+                      ))}
+                      {evidenceSuff.missing_evidence.length > 3 && (
+                        <p className="text-[10px] text-muted-foreground">+{evidenceSuff.missing_evidence.length - 3} more</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Code Combination Analysis - using Spark component */}
+            {/* Contradictions */}
+            {contradictions.length > 0 && (
+              <Card className="border-violation/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-violation" />
+                    Contradictions Found ({contradictions.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {contradictions.map((c, i) => (
+                      <div key={i} className={cn(
+                        "rounded-md border p-3",
+                        c.severity === "critical" ? "border-violation/30 bg-violation/5" : "border-disagreement/20 bg-disagreement/5"
+                      )}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant={c.severity === "critical" ? "destructive" : "outline"} className="text-[10px]">
+                            {c.severity}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground capitalize">{c.contradiction_type.replace(/_/g, ' ')}</span>
+                        </div>
+                        <p className="text-xs text-foreground">{c.description}</p>
+                        {(c.source_a || c.source_b) && (
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {c.source_a && <span>Source: {c.source_a}</span>}
+                            {c.source_a && c.source_b && <span> ↔ </span>}
+                            {c.source_b && <span>{c.source_b}</span>}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Regulatory Flags */}
+            {regFlags.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-disagreement" />
+                    Regulatory Currency Flags ({regFlags.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {regFlags.map((f, i) => (
+                      <div key={i} className="flex items-start gap-2 p-2 rounded-md border bg-disagreement/5 border-disagreement/15">
+                        <Badge variant="outline" className="text-[10px] shrink-0">{f.severity}</Badge>
+                        <div>
+                          <p className="text-xs text-foreground">{f.description}</p>
+                          {f.source_reference && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">Ref: {f.source_reference}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2 italic">Regulatory awareness flag — not a guarantee of legal completeness.</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Code Combination Analysis */}
             {matchingCombinations.map((combo, i) => (
               <CodeCombinationAnalysisCard key={i} analysis={combo} />
             ))}
@@ -123,6 +330,129 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
             </div>
           </TabsContent>
 
+          {/* Engine Intelligence Tab */}
+          {hasV3Data && (
+            <TabsContent value="engine" className="space-y-6">
+              {/* Decision Trace */}
+              {decisionTrace && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-accent" />
+                      Decision Trace
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Structured audit-ready reasoning. Integrity: <span className="font-semibold capitalize">{decisionTrace.consensus_integrity_grade}</span>
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {(decisionTrace.trace_entries as any[]).map((entry, i) => (
+                        <div key={i} className="rounded-md border p-3 bg-muted/30">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className="text-[10px]">{entry.sourceRole || 'engine'}</Badge>
+                            <p className="text-xs font-medium text-foreground">{entry.trigger}</p>
+                          </div>
+                          {entry.documentationGap && (
+                            <p className="text-[11px] text-muted-foreground"><span className="font-medium">Gap:</span> {entry.documentationGap}</p>
+                          )}
+                          {entry.counterargumentConsidered && (
+                            <p className="text-[11px] text-muted-foreground"><span className="font-medium">Counterpoint:</span> {entry.counterargumentConsidered}</p>
+                          )}
+                          {entry.evidenceSupporting && (
+                            <p className="text-[11px] text-muted-foreground"><span className="font-medium">Evidence:</span> {entry.evidenceSupporting}</p>
+                          )}
+                          {entry.regulationReferenced && (
+                            <p className="text-[11px] text-muted-foreground"><span className="font-medium">Regulation:</span> {entry.regulationReferenced}</p>
+                          )}
+                          {entry.confidenceImpact && (
+                            <p className="text-[11px] text-muted-foreground"><span className="font-medium">Impact:</span> {entry.confidenceImpact}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {decisionTrace.recommendation_rationale && (
+                      <div className="mt-4 rounded-md border bg-card p-3">
+                        <p className="text-xs font-medium text-foreground">Final Recommendation</p>
+                        <p className="text-xs text-muted-foreground mt-1">{decisionTrace.recommendation_rationale}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Minimal Winning Packet */}
+              {winningPacket && winningPacket.checklist.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Scale className="h-4 w-4 text-consensus" />
+                      Minimal Winning Packet
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      {winningPacket.estimated_curable_count} curable items · {winningPacket.estimated_not_worth_chasing} not worth chasing
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {(winningPacket.checklist as any[]).map((item, i) => (
+                        <div key={i} className={cn(
+                          "flex items-start gap-2 p-2 rounded-md border",
+                          item.isCurable ? "bg-consensus/5 border-consensus/15" : "bg-muted/30 border-muted"
+                        )}>
+                          {item.isCurable ? (
+                            <CheckCircle className="h-3.5 w-3.5 text-consensus shrink-0 mt-0.5" />
+                          ) : (
+                            <XCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                          )}
+                          <div>
+                            <p className="text-xs text-foreground">{item.item}</p>
+                            <div className="flex gap-2 mt-0.5">
+                              <Badge variant="outline" className="text-[9px]">{item.priority} priority</Badge>
+                              <Badge variant="outline" className="text-[9px]">{item.impactIfObtained} impact</Badge>
+                              {!item.isCurable && <Badge variant="outline" className="text-[9px] text-muted-foreground">not worth chasing</Badge>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Evidence Sufficiency Breakdown */}
+              {evidenceSuff && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-info-blue" />
+                      Evidence Sufficiency Breakdown
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      {[
+                        { label: 'Approve', value: evidenceSuff.sufficiency_for_approve },
+                        { label: 'Deny', value: evidenceSuff.sufficiency_for_deny },
+                        { label: 'Info Request', value: evidenceSuff.sufficiency_for_info_request },
+                        { label: 'Appeal Defense', value: evidenceSuff.sufficiency_for_appeal_defense },
+                        { label: 'Appeal Not Rec.', value: evidenceSuff.sufficiency_for_appeal_not_recommended },
+                      ].map((s, i) => (
+                        <div key={i} className="rounded-md border bg-background p-3 text-center">
+                          <p className={cn("text-lg font-semibold",
+                            Number(s.value) >= 70 ? "text-consensus" :
+                            Number(s.value) >= 40 ? "text-disagreement" : "text-violation"
+                          )}>{Math.round(Number(s.value))}%</p>
+                          <p className="text-[10px] text-muted-foreground leading-tight">{s.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          )}
+
           <TabsContent value="evidence">
             <div className="rounded-lg border bg-card p-6 shadow-sm">
               <EvidenceChecklist items={mockEvidenceChecklist} />
@@ -130,13 +460,8 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
           </TabsContent>
 
           <TabsContent value="appeals" className="space-y-6">
-            {/* Enhanced Appeal Summary with dual-voice analysis */}
             <EnhancedAppealSummary auditCase={auditCase} />
-
-            {/* Payer template overview */}
             <PayerTemplateInfo />
-
-            {/* Payer-specific export */}
             <div className="flex justify-center">
               <PayerExportDialog auditCase={auditCase} />
             </div>
@@ -159,7 +484,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
         </div>
       )}
 
-      {/* Decision Panel - using Spark component with confirmation dialog */}
+      {/* Decision Panel */}
       {!auditCase.decision && hasAnalyses && (
         <DecisionPanel auditCase={auditCase} onDecision={handleDecision} />
       )}
