@@ -322,7 +322,7 @@ export const mockCases: AuditCase[] = [
     analyses: [
       {
         role: 'builder',
-        model: 'GPT-4o',
+        model: 'Gemini 2.5 Flash',
         status: 'complete',
         confidence: 55,
         perspectiveStatement: 'The additional codes may be justified if the patient had pre-existing bone deficiency requiring structural grafting and documented tendon pathology separate from the arthroplasty.',
