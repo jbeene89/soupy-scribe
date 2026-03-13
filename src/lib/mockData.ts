@@ -496,7 +496,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'analyst',
-        model: 'Gemini Pro',
+        model: 'Gemini 2.5 Pro',
         status: 'complete',
         confidence: 72,
         perspectiveStatement: 'Complex spine cases legitimately generate high code counts. The issue is not the number of codes but whether each is independently documented.',
