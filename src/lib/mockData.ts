@@ -511,7 +511,7 @@ export const mockCases: AuditCase[] = [
       },
       {
         role: 'breaker',
-        model: 'GPT-4o Mini',
+        model: 'GPT-5 Mini',
         status: 'complete',
         confidence: 55,
         perspectiveStatement: 'Spine surgery billing complexity is a systemic problem — the coding rules don\'t match how surgeons actually work. This case may be a documentation failure, not a billing failure.',
