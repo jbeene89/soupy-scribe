@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockCodeCombinations } from '@/lib/mockData';
+import { getCodeCombinations, type CodeCombination } from '@/lib/soupyEngineService';
 import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight, ShieldAlert, Eye } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';

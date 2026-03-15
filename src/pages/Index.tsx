@@ -16,6 +16,7 @@ import { CaseUpload } from '@/components/CaseUpload';
 import { AuthGate, SignInDialog } from '@/components/AuthGate';
 import { useAuth } from '@/hooks/useAuth';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
+import { deleteCase, deriveLivePatterns, type LivePhysicianPattern } from '@/lib/soupyEngineService';
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
 import type { AppMode } from '@/lib/providerTypes';
