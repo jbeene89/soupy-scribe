@@ -26,7 +26,8 @@ import { AIAnalysisLoadingState } from './spark/LoadingState';
 
 // Pre-Appeal Resolution
 import { PreAppealResolutionTab } from './pre-appeal/PreAppealResolutionTab';
-import { preAppealResolutions } from '@/lib/preAppealMockData';
+import { getStoredPreAppealResolution, runPreAppealAnalysis } from '@/lib/preAppealService';
+import type { PreAppealResolution } from '@/lib/preAppealTypes';
 
 // Engine v3 services
 import {
