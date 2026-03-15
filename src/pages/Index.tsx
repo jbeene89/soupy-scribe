@@ -20,7 +20,7 @@ import { deleteCase, deriveLivePatterns, type LivePhysicianPattern } from '@/lib
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
 import type { AppMode } from '@/lib/providerTypes';
-import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope, FileDown } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope, FileDown, Ghost } from 'lucide-react';
 import { exportPlatformSummaryPDF } from '@/lib/exportPlatformSummary';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ import { ProviderDashboard } from '@/components/provider/ProviderDashboard';
 import { ProviderCaseDetail } from '@/components/provider/ProviderCaseDetail';
 import { EducationInsights } from '@/components/provider/EducationInsights';
 import { ProviderCaseUpload } from '@/components/provider/ProviderCaseUpload';
+import { GhostCaseManager } from '@/components/GhostCaseManager';
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
@@ -399,6 +400,10 @@ const Index = () => {
                 <BarChart3 className="h-3.5 w-3.5" />
                 Platform Value
               </TabsTrigger>
+              <TabsTrigger value="ghost-cases" className="gap-1.5">
+                <Ghost className="h-3.5 w-3.5" />
+                Ghost Cases
+              </TabsTrigger>
               <TabsTrigger value="history">Case History</TabsTrigger>
             </TabsList>
 
@@ -450,6 +455,10 @@ const Index = () => {
                 <PlatformValueCard />
                 <IntegrationArchitecture />
               </div>
+            </TabsContent>
+
+            <TabsContent value="ghost-cases">
+              <GhostCaseManager />
             </TabsContent>
 
             <TabsContent value="history">

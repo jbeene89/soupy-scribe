@@ -26,7 +26,7 @@ SOUPY Engine v3 architecture: 2-phase pipeline, 12 modules, edge functions split
 - Pre-appeal resolution stored in audit_cases.metadata.preAppealResolution
 - Provider review stored in audit_cases.metadata.providerReview
 
-## Wiring Status (as of 2026-03-15) — 100% COMPLETE
+## Wiring Status (as of 2026-03-15) — ~95% COMPLETE
 - Provider mode: LIVE — providerService.ts computes dashboard stats from live reviews
 - Pre-appeal: LIVE — pre-appeal-analyze edge function, both payer and provider views
 - Payer adversarial: WIRED — CaseUpload has payer selector dropdown, passes payerCode to runSOUPYAnalysis
@@ -35,4 +35,11 @@ SOUPY Engine v3 architecture: 2-phase pipeline, 12 modules, edge functions split
 - Realtime: ENABLED — audit_cases and processing_queue tables
 - Case deletion: ENABLED — RLS policy + delete function + trash button in queue
 - Payer export: ENRICHED — includes V3 evidence sufficiency, contradictions, action pathways
+- Ghost cases: LIVE — create, inject, validate, track accuracy (GhostCaseManager component + create-ghost-case action)
 - Mock data: still exists for Demo mode only
+
+## Remaining Gaps
+- Gold set case UI (tables + edge function actions exist, no dedicated UI)
+- Engine calibration dashboard (table exists, no UI)
+- Regulatory flag ingestion from external sources
+- PDF export for appeal packages
