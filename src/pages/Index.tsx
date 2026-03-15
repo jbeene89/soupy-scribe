@@ -457,6 +457,10 @@ const Index = () => {
               </div>
             </TabsContent>
 
+            <TabsContent value="ghost-cases">
+              <GhostCaseManager />
+            </TabsContent>
+
             <TabsContent value="history">
               <CaseQueue
                 cases={historyCases}
