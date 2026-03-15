@@ -322,7 +322,7 @@ const Index = () => {
             </TabsList>
 
             <TabsContent value="provider-dashboard">
-              <ProviderDashboard />
+              <ProviderDashboard dataSource={dataSource} />
             </TabsContent>
 
             <TabsContent value="provider-cases">
