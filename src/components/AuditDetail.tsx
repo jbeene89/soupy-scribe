@@ -278,9 +278,12 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
                 <Badge variant="outline" className={cn('ml-1.5 text-[9px] px-1', exportReadiness.colorClass)}>{exportReadiness.label}</Badge>
               )}
             </TabsTrigger>
-            {preAppealResolutions[auditCase.id] && (
-              <TabsTrigger value="pre-appeal">Pre-Appeal Resolution</TabsTrigger>
-            )}
+            <TabsTrigger value="pre-appeal">
+              Pre-Appeal Resolution
+              {preAppealResolution && (
+                <Badge variant="outline" className="ml-1.5 text-[9px] px-1 py-0 border-accent/40 text-accent">✓</Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="analysis" className="space-y-4">
