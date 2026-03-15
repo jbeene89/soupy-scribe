@@ -451,11 +451,51 @@ serve(async (req) => {
     }
 
     // ═══════════════════════════════════════════════════
+    // ACTION: create-ghost-case — Create a new ghost case
+    // ═══════════════════════════════════════════════════
+    if (action === "create-ghost-case") {
+      const { caseTemplate, knownAnswer, difficulty, category } = body;
+      if (!caseTemplate || !knownAnswer) {
+        return new Response(JSON.stringify({ error: "caseTemplate and knownAnswer are required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: ghost, error: insertErr } = await supabase
+        .from("ghost_cases")
+        .insert({
+          case_template: caseTemplate,
+          known_answer: knownAnswer,
+          difficulty: difficulty || "medium",
+          category: category || "general",
+        })
+        .select()
+        .single();
+
+      if (insertErr || !ghost) {
+        return new Response(JSON.stringify({ error: insertErr?.message || "Failed to create ghost case" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, ghostCase: ghost }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ═══════════════════════════════════════════════════
     // ACTION: list-ghost-cases
     // ═══════════════════════════════════════════════════
     if (action === "list-ghost-cases") {
       const { data: ghosts } = await supabase.from("ghost_cases").select("*").order("created_at");
-      return new Response(JSON.stringify({ success: true, ghostCases: ghosts || [] }), {
+
+      // Also fetch recent results for each ghost case
+      const ghostIds = (ghosts || []).map((g: any) => g.id);
+      const { data: results } = ghostIds.length > 0
+        ? await supabase.from("ghost_case_results").select("*").in("ghost_case_id", ghostIds).order("created_at", { ascending: false })
+        : { data: [] };
+
+      return new Response(JSON.stringify({ success: true, ghostCases: ghosts || [], results: results || [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
