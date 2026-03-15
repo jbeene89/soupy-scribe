@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -7,9 +7,11 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, FileText, Brain, CheckCircle, AlertCircle, Loader2, File, X, Play, FolderOpen, FileArchive } from 'lucide-react';
 import { toast } from 'sonner';
 import { submitCaseText, runSOUPYAnalysis } from '@/lib/caseService';
+import { listPayerProfilesDirect } from '@/lib/soupyEngineService';
 import JSZip from 'jszip';
 
 interface CaseUploadProps {
