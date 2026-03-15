@@ -47,6 +47,7 @@ const Index = () => {
   const [liveCases, setLiveCases] = useState<AuditCase[]>([]);
   const [loadingLive, setLoadingLive] = useState(false);
   const [dataSource, setDataSource] = useState<'mock' | 'live'>('mock');
+  const [livePatterns, setLivePatterns] = useState<LivePhysicianPattern[]>([]);
 
   const loadLiveCases = useCallback(async () => {
     setLoadingLive(true);
