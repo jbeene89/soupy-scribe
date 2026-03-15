@@ -85,6 +85,20 @@ const Index = () => {
 
   const allCases = dataSource === 'live' ? liveCases : [...mockCases, ...liveCases];
 
+  const handleDeleteCase = async (caseId: string) => {
+    try {
+      await deleteCase(caseId);
+      toast.success('Case deleted');
+      if (selectedCase?.id === caseId) {
+        setSelectedCase(null);
+        setActiveTab(appMode === 'provider' ? 'provider-dashboard' : 'queue');
+      }
+      loadLiveCases();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete case');
+    }
+  };
+
   const handleSelectCase = async (c: AuditCase) => {
     if (liveCases.some(lc => lc.id === c.id)) {
       const fresh = await fetchCase(c.id);
