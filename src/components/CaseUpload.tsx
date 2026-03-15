@@ -337,7 +337,7 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
       // Step 2: Analyze
       updateFile(fileItem.id, { status: 'analyzing' });
       try {
-        await runSOUPYAnalysis(caseId);
+        await runSOUPYAnalysis(caseId, selectedPayer || undefined);
         updateFile(fileItem.id, { status: 'complete' });
         completedCount++;
       } catch (err) {
