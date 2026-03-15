@@ -69,6 +69,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
   const [winningPacket, setWinningPacket] = useState<MinimalWinningPacket | null>(null);
   const [floorEvents, setFloorEvents] = useState<ConfidenceFloorEvent[]>([]);
   const [regFlags, setRegFlags] = useState<RegulatoryFlag[]>([]);
+  const [liveCodeCombos, setLiveCodeCombos] = useState<CodeCombination[]>([]);
 
   // Pre-appeal resolution (live)
   const [preAppealResolution, setPreAppealResolution] = useState<PreAppealResolution | null>(null);
