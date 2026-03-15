@@ -61,6 +61,23 @@ const Index = () => {
 
   useEffect(() => {
     loadLiveCases();
+
+    // Realtime subscription — refresh case list on any change
+    const channel = supabase
+      .channel('audit-cases-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'audit_cases' },
+        () => { loadLiveCases(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'processing_queue' },
+        () => { loadLiveCases(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [loadLiveCases]);
 
   const allCases = dataSource === 'live' ? liveCases : [...mockCases, ...liveCases];
