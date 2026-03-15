@@ -130,8 +130,14 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [pasteText, setPasteText] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [batchRunning, setBatchRunning] = useState(false);
+  const [selectedPayer, setSelectedPayer] = useState<string>('');
+  const [payerProfiles, setPayerProfiles] = useState<Array<{ payer_code: string; payer_name: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    listPayerProfilesDirect().then(setPayerProfiles).catch(() => {});
+  }, []);
 
   const reset = useCallback(() => {
     setFiles([]);
