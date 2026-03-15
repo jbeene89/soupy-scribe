@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.analyze-v3]
 verify_jwt = false
+
+[functions.pre-appeal-analyze]
+verify_jwt = false

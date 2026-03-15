@@ -322,7 +322,7 @@ const Index = () => {
             </TabsList>
 
             <TabsContent value="provider-dashboard">
-              <ProviderDashboard />
+              <ProviderDashboard dataSource={dataSource} />
             </TabsContent>
 
             <TabsContent value="provider-cases">
@@ -334,7 +334,7 @@ const Index = () => {
             </TabsContent>
 
             <TabsContent value="provider-education">
-              <EducationInsights />
+              <EducationInsights dataSource={dataSource} />
             </TabsContent>
           </Tabs>
         ) : (

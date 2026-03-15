@@ -15,6 +15,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { AuthGate } from '@/components/AuthGate';
 
 // Spark integrations
 import { DecisionPanel } from './spark/DecisionPanel';
@@ -26,7 +27,8 @@ import { AIAnalysisLoadingState } from './spark/LoadingState';
 
 // Pre-Appeal Resolution
 import { PreAppealResolutionTab } from './pre-appeal/PreAppealResolutionTab';
-import { preAppealResolutions } from '@/lib/preAppealMockData';
+import { getStoredPreAppealResolution, runPreAppealAnalysis } from '@/lib/preAppealService';
+import type { PreAppealResolution } from '@/lib/preAppealTypes';
 
 // Engine v3 services
 import {
@@ -68,6 +70,10 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
   const [floorEvents, setFloorEvents] = useState<ConfidenceFloorEvent[]>([]);
   const [regFlags, setRegFlags] = useState<RegulatoryFlag[]>([]);
 
+  // Pre-appeal resolution (live)
+  const [preAppealResolution, setPreAppealResolution] = useState<PreAppealResolution | null>(null);
+  const [runningPreAppeal, setRunningPreAppeal] = useState(false);
+
   useEffect(() => {
     if (!isLiveCase || !hasAnalyses) return;
     Promise.allSettled([
@@ -78,6 +84,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
       getMinimalWinningPacket(auditCase.id).then(setWinningPacket),
       getConfidenceFloorEvents(auditCase.id).then(setFloorEvents),
       getRegulatoryFlags(auditCase.id).then(setRegFlags),
+      getStoredPreAppealResolution(auditCase.id).then(r => { if (r) setPreAppealResolution(r); }),
     ]);
   }, [auditCase.id, isLiveCase, hasAnalyses]);
 
@@ -272,9 +279,12 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
                 <Badge variant="outline" className={cn('ml-1.5 text-[9px] px-1', exportReadiness.colorClass)}>{exportReadiness.label}</Badge>
               )}
             </TabsTrigger>
-            {preAppealResolutions[auditCase.id] && (
-              <TabsTrigger value="pre-appeal">Pre-Appeal Resolution</TabsTrigger>
-            )}
+            <TabsTrigger value="pre-appeal">
+              Pre-Appeal Resolution
+              {preAppealResolution && (
+                <Badge variant="outline" className="ml-1.5 text-[9px] px-1 py-0 border-accent/40 text-accent">✓</Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="analysis" className="space-y-4">
@@ -582,15 +592,51 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
             </div>
           </TabsContent>
 
-          {preAppealResolutions[auditCase.id] && (
-            <TabsContent value="pre-appeal">
+          <TabsContent value="pre-appeal">
+            {preAppealResolution ? (
               <PreAppealResolutionTab
                 auditCase={auditCase}
-                resolution={preAppealResolutions[auditCase.id]}
+                resolution={preAppealResolution}
                 viewMode="payer"
               />
-            </TabsContent>
-          )}
+            ) : (
+              <div className="rounded-lg border bg-card p-8 text-center shadow-sm space-y-4">
+                <div className="p-3 rounded-full bg-accent/10 w-fit mx-auto">
+                  <Activity className="h-8 w-8 text-accent/50" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">No pre-appeal resolution yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Run AI-powered pre-appeal analysis to determine if this denial can be resolved without a formal appeal.
+                  </p>
+                </div>
+                <AuthGate>
+                  <Button
+                    onClick={async () => {
+                      setRunningPreAppeal(true);
+                      try {
+                        const result = await runPreAppealAnalysis(auditCase.id);
+                        setPreAppealResolution(result);
+                        toast.success('Pre-appeal resolution analysis complete');
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : 'Pre-appeal analysis failed');
+                      } finally {
+                        setRunningPreAppeal(false);
+                      }
+                    }}
+                    disabled={runningPreAppeal}
+                    className="gap-2"
+                  >
+                    {runningPreAppeal ? (
+                      <><Activity className="h-4 w-4 animate-spin" />Analyzing...</>
+                    ) : (
+                      <><Activity className="h-4 w-4" />Run Pre-Appeal Analysis</>
+                    )}
+                  </Button>
+                </AuthGate>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       ) : (
         <div className="rounded-lg border bg-card p-6 shadow-sm">

@@ -1,9 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import type { RecurringIssue } from '@/lib/providerTypes';
-import { recurringIssues } from '@/lib/providerMockData';
-import { GraduationCap, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { RecurringIssue, ProviderDashboardStats } from '@/lib/providerTypes';
+import { recurringIssues as mockRecurringIssues } from '@/lib/providerMockData';
+import { computeProviderDashboardStats } from '@/lib/providerService';
+import { useState, useEffect } from 'react';
+import { GraduationCap } from 'lucide-react';
 
 const categoryLabels: Record<string, string> = {
   'modifier-misuse': 'Modifier Usage',
@@ -14,9 +17,40 @@ const categoryLabels: Record<string, string> = {
   'addon-vulnerability': 'Add-on Code Risk',
 };
 
-export function EducationInsights() {
-  const highImpact = recurringIssues.filter(i => i.impact === 'high');
-  const mediumImpact = recurringIssues.filter(i => i.impact === 'medium');
+interface EducationInsightsProps {
+  dataSource?: 'mock' | 'live';
+}
+
+export function EducationInsights({ dataSource = 'mock' }: EducationInsightsProps) {
+  const [liveIssues, setLiveIssues] = useState<RecurringIssue[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (dataSource === 'mock') {
+      setLiveIssues(null);
+      return;
+    }
+    setLoading(true);
+    computeProviderDashboardStats()
+      .then(s => setLiveIssues(s.recurringThemes))
+      .catch(() => setLiveIssues(null))
+      .finally(() => setLoading(false));
+  }, [dataSource]);
+
+  const issues = dataSource === 'live' && liveIssues ? liveIssues : mockRecurringIssues;
+
+  if (dataSource === 'live' && loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <Skeleton className="h-24 w-full" />
+        <div className="grid grid-cols-3 gap-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20" />)}</div>
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  const highImpact = issues.filter(i => i.impact === 'high');
+  const mediumImpact = issues.filter(i => i.impact === 'medium');
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -55,21 +89,30 @@ export function EducationInsights() {
         </Card>
         <Card>
           <CardContent className="pt-5 pb-4 text-center">
-            <p className="text-2xl font-semibold text-foreground">{recurringIssues.reduce((sum, i) => sum + i.frequency, 0)}</p>
+            <p className="text-2xl font-semibold text-foreground">{issues.reduce((sum, i) => sum + i.frequency, 0)}</p>
             <p className="text-xs text-muted-foreground">Total Cases Affected</p>
           </CardContent>
         </Card>
       </div>
 
+      {issues.length === 0 && (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <GraduationCap className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+            <p className="text-sm text-muted-foreground">No recurring issues detected yet. Run provider readiness analysis on cases to identify education opportunities.</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Issue Cards */}
       <div className="space-y-4">
-        {recurringIssues.map(issue => (
+        {issues.map(issue => (
           <Card key={issue.id}>
             <CardHeader className="pb-3">
               <div className="flex items-start gap-2">
                 <CardTitle className="text-sm flex-1">{issue.title}</CardTitle>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="outline" className="text-[10px]">{categoryLabels[issue.category]}</Badge>
+                  <Badge variant="outline" className="text-[10px]">{categoryLabels[issue.category] || issue.category}</Badge>
                   <Badge variant="outline" className={`text-[10px] ${
                     issue.impact === 'high' ? 'border-violation/40 text-violation bg-violation/10' : 'border-disagreement/40 text-disagreement bg-disagreement/10'
                   }`}>{issue.impact} impact</Badge>

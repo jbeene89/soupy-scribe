@@ -1,12 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { ProviderDashboardStats } from '@/lib/providerTypes';
-import { providerDashboardStats } from '@/lib/providerMockData';
+import { providerDashboardStats as mockDashboardStats } from '@/lib/providerMockData';
+import { computeProviderDashboardStats } from '@/lib/providerService';
+import { useState, useEffect } from 'react';
 import {
   FileWarning, ShieldAlert, TrendingDown, GraduationCap,
-  DollarSign, ClipboardCheck, AlertTriangle, ArrowRight,
+  DollarSign, ClipboardCheck, AlertTriangle,
 } from 'lucide-react';
 
 const statCards = [
@@ -16,8 +18,44 @@ const statCards = [
   { label: 'Appeals Not Recommended', icon: TrendingDown, colorClass: 'text-muted-foreground', bgClass: 'bg-muted', getValue: (s: ProviderDashboardStats) => s.appealsNotWorthPursuing },
 ];
 
-export function ProviderDashboard() {
-  const stats = providerDashboardStats;
+interface ProviderDashboardProps {
+  dataSource?: 'mock' | 'live';
+}
+
+export function ProviderDashboard({ dataSource = 'mock' }: ProviderDashboardProps) {
+  const [liveStats, setLiveStats] = useState<ProviderDashboardStats | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (dataSource === 'mock') {
+      setLiveStats(null);
+      return;
+    }
+    setLoading(true);
+    computeProviderDashboardStats()
+      .then(s => setLiveStats(s))
+      .catch(() => setLiveStats(null))
+      .finally(() => setLoading(false));
+  }, [dataSource]);
+
+  // Use live stats when available, merge with mock for demo mode
+  const stats = dataSource === 'live' && liveStats
+    ? liveStats
+    : dataSource === 'live' && loading
+      ? null
+      : mockDashboardStats;
+
+  if (!stats) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <Skeleton className="h-24 w-full" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20" />)}
+        </div>
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -91,59 +129,63 @@ export function ProviderDashboard() {
       </div>
 
       {/* Top Vulnerabilities */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-disagreement" />
-            Top Documentation Vulnerabilities
-          </CardTitle>
-          <CardDescription>Most frequent areas needing improvement across reviewed cases</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {stats.topVulnerabilities.map((v, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="text-xs font-mono text-muted-foreground w-5">{i + 1}.</span>
-                <div className="flex-1">
-                  <p className="text-sm">{v}</p>
-                  <Progress value={100 - i * 20} className="h-1.5 mt-1" />
+      {stats.topVulnerabilities.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-disagreement" />
+              Top Documentation Vulnerabilities
+            </CardTitle>
+            <CardDescription>Most frequent areas needing improvement across reviewed cases</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {stats.topVulnerabilities.map((v, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-xs font-mono text-muted-foreground w-5">{i + 1}.</span>
+                  <div className="flex-1">
+                    <p className="text-sm">{v}</p>
+                    <Progress value={100 - i * 20} className="h-1.5 mt-1" />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recurring Themes Preview */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <GraduationCap className="h-4 w-4 text-accent" />
-            Recurring Documentation Themes
-          </CardTitle>
-          <CardDescription>Patterns that suggest operational improvement and staff education opportunities</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {stats.recurringThemes.slice(0, 4).map(theme => (
-              <div key={theme.id} className="flex items-start gap-3 p-3 rounded-md border bg-background">
-                <Badge variant="outline" className={`text-[10px] shrink-0 ${
-                  theme.impact === 'high' ? 'border-violation/40 text-violation' : 'border-disagreement/40 text-disagreement'
-                }`}>
-                  {theme.impact}
-                </Badge>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{theme.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{theme.description}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    <span className="font-medium text-foreground">{theme.frequency} cases</span> affected
-                  </p>
+      {stats.recurringThemes.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <GraduationCap className="h-4 w-4 text-accent" />
+              Recurring Documentation Themes
+            </CardTitle>
+            <CardDescription>Patterns that suggest operational improvement and staff education opportunities</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {stats.recurringThemes.slice(0, 4).map(theme => (
+                <div key={theme.id} className="flex items-start gap-3 p-3 rounded-md border bg-background">
+                  <Badge variant="outline" className={`text-[10px] shrink-0 ${
+                    theme.impact === 'high' ? 'border-violation/40 text-violation' : 'border-disagreement/40 text-disagreement'
+                  }`}>
+                    {theme.impact}
+                  </Badge>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{theme.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{theme.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      <span className="font-medium text-foreground">{theme.frequency} cases</span> affected
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
