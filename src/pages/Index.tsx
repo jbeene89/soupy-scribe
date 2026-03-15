@@ -400,6 +400,10 @@ const Index = () => {
                 <BarChart3 className="h-3.5 w-3.5" />
                 Platform Value
               </TabsTrigger>
+              <TabsTrigger value="ghost-cases" className="gap-1.5">
+                <Ghost className="h-3.5 w-3.5" />
+                Ghost Cases
+              </TabsTrigger>
               <TabsTrigger value="history">Case History</TabsTrigger>
             </TabsList>
 
