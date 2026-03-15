@@ -73,6 +73,36 @@ function downloadTextFile(content: string, filename: string) {
 function generatePayerExport(auditCase: AuditCase, payerType: PayerType): string {
   const payer = PAYER_TEMPLATES[payerType];
   const violations = auditCase.analyses.flatMap(a => a.violations);
+  const metadata = auditCase.metadata as any;
+
+  // V3 module data from metadata (populated by analyze-v3)
+  const evidenceSuff = metadata?.evidenceSufficiency;
+  const contradictions = metadata?.contradictions;
+  const actionPathway = metadata?.actionPathway;
+  const decisionTrace = metadata?.decisionTrace;
+
+  let v3Section = '';
+  if (evidenceSuff) {
+    v3Section += `\nEVIDENCE SUFFICIENCY ANALYSIS
+• Overall Score: ${evidenceSuff.overall_score || evidenceSuff.overallScore || 'N/A'}%
+• Defensible: ${evidenceSuff.is_defensible ?? evidenceSuff.isDefensible ?? 'N/A'}
+• Sufficiency for Approve: ${evidenceSuff.sufficiency_for_approve ?? 'N/A'}%
+• Sufficiency for Appeal Defense: ${evidenceSuff.sufficiency_for_appeal_defense ?? 'N/A'}%
+`;
+  }
+  if (contradictions && Array.isArray(contradictions) && contradictions.length > 0) {
+    v3Section += `\nCONTRADICTIONS DETECTED (${contradictions.length})
+${contradictions.map((c: any) => `• [${c.severity}] ${c.contradiction_type || c.type}: ${c.description}`).join('\n')}
+`;
+  }
+  if (actionPathway) {
+    v3Section += `\nENGINE RECOMMENDATION
+• Action: ${actionPathway.recommended_action || actionPathway.recommendedAction}
+• Rationale: ${actionPathway.action_rationale || actionPathway.actionRationale}
+• Confidence: ${actionPathway.confidence_in_recommendation ?? actionPathway.confidence ?? 'N/A'}%
+• Human Review Required: ${actionPathway.is_human_review_required ?? actionPathway.isHumanReviewRequired ?? 'N/A'}
+`;
+  }
 
   return `${payer.name.toUpperCase()} APPEAL PACKAGE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -85,6 +115,8 @@ CASE INFORMATION
 • Claim Amount: $${auditCase.claimAmount.toLocaleString()}
 • CPT Codes: ${auditCase.cptCodes.join(', ')}
 • ICD-10 Codes: ${auditCase.icdCodes.join(', ')}
+• Consensus Score: ${auditCase.consensusScore}%
+• Risk Score: ${auditCase.riskScore?.score ?? 'N/A'}
 
 COMPLIANCE FRAMEWORK
 ${payer.complianceStandards.map(s => `• ${s}`).join('\n')}
@@ -94,6 +126,9 @@ SUBMISSION: ${payer.submissionMethod.join(' | ')}
 
 REQUIRED FIELDS
 ${payer.requiresFields.map(f => `☐ ${f}`).join('\n')}
+
+AI ANALYSIS SUMMARY (${auditCase.analyses.length} roles)
+${auditCase.analyses.map(a => `• ${a.role.toUpperCase()} (${a.model}): ${a.confidence}% confidence — ${a.overallAssessment?.substring(0, 120)}...`).join('\n')}
 
 VIOLATIONS & DEFENSES (${violations.length} total)
 ${violations.map((v, i) => {
@@ -106,7 +141,7 @@ ${i + 1}. ${v.code} — ${v.type} (${v.severity})
    Regulation: ${v.regulationRef}
    Best Defense (${bestDefense.strength}%): ${bestDefense.strategy}`;
 }).join('\n')}
-
+${v3Section}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Generated: ${new Date().toLocaleString()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
