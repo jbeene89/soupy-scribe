@@ -457,6 +457,7 @@ const Index = () => {
                 cases={historyCases}
                 onSelectCase={handleSelectCase}
                 selectedCaseId={selectedCase?.id}
+                onDeleteCase={handleDeleteCase}
               />
             </TabsContent>
           </Tabs>
