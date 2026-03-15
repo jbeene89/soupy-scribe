@@ -410,7 +410,25 @@ const Index = () => {
             </TabsContent>
 
             <TabsContent value="patterns">
-              <PatternAnalysis patterns={mockPatterns} onSelectCase={handleSelectCase} />
+              <PatternAnalysis
+                patterns={dataSource === 'live' && livePatterns.length > 0
+                  ? livePatterns.map((lp, idx) => ({
+                      patternId: `LIVE-${idx}`,
+                      physicianId: lp.physicianId,
+                      physicianName: lp.physicianName,
+                      cptCodes: lp.cptCodes,
+                      cases: lp.cases,
+                      totalCases: lp.totalCases,
+                      rejectionRate: lp.rejectionRate,
+                      totalClaimAmount: lp.avgClaimAmount * lp.totalCases,
+                      averageClaimAmount: lp.avgClaimAmount,
+                      dateRange: { start: '', end: '' },
+                      insights: [`Avg risk score: ${lp.avgRiskScore}`, `${lp.totalCases} case(s) analyzed`],
+                    }))
+                  : mockPatterns
+                }
+                onSelectCase={handleSelectCase}
+              />
             </TabsContent>
 
             <TabsContent value="comparison">
