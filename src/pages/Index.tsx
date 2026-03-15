@@ -54,6 +54,7 @@ const Index = () => {
     try {
       const cases = await fetchCases();
       setLiveCases(cases);
+      setLivePatterns(deriveLivePatterns(cases));
     } catch (err) {
       console.error('Failed to load live cases:', err);
     } finally {
