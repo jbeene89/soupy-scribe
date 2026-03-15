@@ -334,7 +334,7 @@ const Index = () => {
             </TabsContent>
 
             <TabsContent value="provider-education">
-              <EducationInsights />
+              <EducationInsights dataSource={dataSource} />
             </TabsContent>
           </Tabs>
         ) : (
