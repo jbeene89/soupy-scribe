@@ -86,6 +86,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
       getConfidenceFloorEvents(auditCase.id).then(setFloorEvents),
       getRegulatoryFlags(auditCase.id).then(setRegFlags),
       getStoredPreAppealResolution(auditCase.id).then(r => { if (r) setPreAppealResolution(r); }),
+      getCodeCombinations(auditCase.id).then(setLiveCodeCombos),
     ]);
   }, [auditCase.id, isLiveCase, hasAnalyses]);
 
