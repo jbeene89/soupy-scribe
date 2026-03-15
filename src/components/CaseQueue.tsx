@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,9 @@ import { CaseCard } from './spark/CaseCard';
 import { CaseCardSkeleton } from './spark/LoadingState';
 import { deriveCaseSignals } from '@/lib/caseIntelligence';
 import { cn } from '@/lib/utils';
-import { Clock, CheckCircle, XCircle, Search, FileText, LayoutGrid, List, AlertTriangle, AlertCircle, ShieldAlert } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Search, FileText, LayoutGrid, List, AlertTriangle, AlertCircle, ShieldAlert, Trash2 } from 'lucide-react';
+import { deleteCase } from '@/lib/soupyEngineService';
+import { toast } from 'sonner';
 
 function getRelativeTime(dateStr: string): string {
   const now = new Date();
@@ -47,9 +49,10 @@ interface CaseQueueProps {
   onSelectCase: (caseData: AuditCase) => void;
   selectedCaseId?: string;
   loading?: boolean;
+  onDeleteCase?: (caseId: string) => void;
 }
 
-export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading }: CaseQueueProps) {
+export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading, onDeleteCase }: CaseQueueProps) {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
   // Pre-compute signals for all cases for truthful queue display
@@ -178,6 +181,18 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading }: Case
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{c.dateOfService}</TableCell>
+                  {onDeleteCase && c.createdAt && (
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); onDeleteCase(c.id); }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}

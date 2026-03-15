@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -7,9 +7,11 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, FileText, Brain, CheckCircle, AlertCircle, Loader2, File, X, Play, FolderOpen, FileArchive } from 'lucide-react';
 import { toast } from 'sonner';
 import { submitCaseText, runSOUPYAnalysis } from '@/lib/caseService';
+import { listPayerProfilesDirect } from '@/lib/soupyEngineService';
 import JSZip from 'jszip';
 
 interface CaseUploadProps {
@@ -128,8 +130,14 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   const [pasteText, setPasteText] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [batchRunning, setBatchRunning] = useState(false);
+  const [selectedPayer, setSelectedPayer] = useState<string>('');
+  const [payerProfiles, setPayerProfiles] = useState<Array<{ payer_code: string; payer_name: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    listPayerProfilesDirect().then(setPayerProfiles).catch(() => {});
+  }, []);
 
   const reset = useCallback(() => {
     setFiles([]);
@@ -329,7 +337,7 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
       // Step 2: Analyze
       updateFile(fileItem.id, { status: 'analyzing' });
       try {
-        await runSOUPYAnalysis(caseId);
+        await runSOUPYAnalysis(caseId, selectedPayer || undefined);
         updateFile(fileItem.id, { status: 'complete' });
         completedCount++;
       } catch (err) {
@@ -425,6 +433,24 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
           className="hidden"
           {...{ webkitdirectory: '', directory: '', multiple: true } as any}
         />
+
+        {/* Payer selector for adversarial tuning */}
+        {payerProfiles.length > 0 && (
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-medium text-muted-foreground shrink-0">Payer Profile:</label>
+            <Select value={selectedPayer} onValueChange={setSelectedPayer}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="None (generic analysis)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None (generic analysis)</SelectItem>
+                {payerProfiles.map(p => (
+                  <SelectItem key={p.payer_code} value={p.payer_code}>{p.payer_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Drop zone */}
         <div

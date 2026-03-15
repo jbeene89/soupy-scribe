@@ -16,6 +16,7 @@ import { CaseUpload } from '@/components/CaseUpload';
 import { AuthGate, SignInDialog } from '@/components/AuthGate';
 import { useAuth } from '@/hooks/useAuth';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
+import { deleteCase, deriveLivePatterns, type LivePhysicianPattern } from '@/lib/soupyEngineService';
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
 import type { AppMode } from '@/lib/providerTypes';
@@ -46,12 +47,14 @@ const Index = () => {
   const [liveCases, setLiveCases] = useState<AuditCase[]>([]);
   const [loadingLive, setLoadingLive] = useState(false);
   const [dataSource, setDataSource] = useState<'mock' | 'live'>('mock');
+  const [livePatterns, setLivePatterns] = useState<LivePhysicianPattern[]>([]);
 
   const loadLiveCases = useCallback(async () => {
     setLoadingLive(true);
     try {
       const cases = await fetchCases();
       setLiveCases(cases);
+      setLivePatterns(deriveLivePatterns(cases));
     } catch (err) {
       console.error('Failed to load live cases:', err);
     } finally {
@@ -81,6 +84,20 @@ const Index = () => {
   }, [loadLiveCases]);
 
   const allCases = dataSource === 'live' ? liveCases : [...mockCases, ...liveCases];
+
+  const handleDeleteCase = async (caseId: string) => {
+    try {
+      await deleteCase(caseId);
+      toast.success('Case deleted');
+      if (selectedCase?.id === caseId) {
+        setSelectedCase(null);
+        setActiveTab(appMode === 'provider' ? 'provider-dashboard' : 'queue');
+      }
+      loadLiveCases();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete case');
+    }
+  };
 
   const handleSelectCase = async (c: AuditCase) => {
     if (liveCases.some(lc => lc.id === c.id)) {
@@ -347,6 +364,7 @@ const Index = () => {
                 cases={allCases}
                 onSelectCase={handleSelectCase}
                 selectedCaseId={selectedCase?.id}
+                onDeleteCase={handleDeleteCase}
               />
             </TabsContent>
 
@@ -389,11 +407,30 @@ const Index = () => {
                 cases={activeCases}
                 onSelectCase={handleSelectCase}
                 selectedCaseId={selectedCase?.id}
+                onDeleteCase={handleDeleteCase}
               />
             </TabsContent>
 
             <TabsContent value="patterns">
-              <PatternAnalysis patterns={mockPatterns} onSelectCase={handleSelectCase} />
+              <PatternAnalysis
+                patterns={dataSource === 'live' && livePatterns.length > 0
+                  ? livePatterns.map((lp, idx) => ({
+                      patternId: `LIVE-${idx}`,
+                      physicianId: lp.physicianId,
+                      physicianName: lp.physicianName,
+                      cptCodes: lp.cptCodes,
+                      cases: lp.cases,
+                      totalCases: lp.totalCases,
+                      rejectionRate: lp.rejectionRate,
+                      totalClaimAmount: lp.avgClaimAmount * lp.totalCases,
+                      averageClaimAmount: lp.avgClaimAmount,
+                      dateRange: { start: '', end: '' },
+                      insights: [`Avg risk score: ${lp.avgRiskScore}`, `${lp.totalCases} case(s) analyzed`],
+                    }))
+                  : mockPatterns
+                }
+                onSelectCase={handleSelectCase}
+              />
             </TabsContent>
 
             <TabsContent value="comparison">
@@ -420,6 +457,7 @@ const Index = () => {
                 cases={historyCases}
                 onSelectCase={handleSelectCase}
                 selectedCaseId={selectedCase?.id}
+                onDeleteCase={handleDeleteCase}
               />
             </TabsContent>
           </Tabs>

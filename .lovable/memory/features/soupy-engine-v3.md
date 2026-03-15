@@ -22,12 +22,17 @@ SOUPY Engine v3 architecture: 2-phase pipeline, 12 modules, edge functions split
 - Phase 2 is non-fatal — if it fails, Phase 1 results still display
 - V3 data is cleaned (DELETE + INSERT) on re-run to prevent stale duplicates
 - Drift uses gemini-2.5-flash-lite (cheapest); CI uses gpt-5 (strongest)
-- Payer adversarial tuning: already wired in analyze-case lines 598-601 — injects payer_profiles.adversarial_prompt_additions into Red Team prompt when payerCode is passed
+- Payer adversarial tuning: wired in analyze-case — injects payer_profiles.adversarial_prompt_additions into Red Team prompt when payerCode is passed
 - Pre-appeal resolution stored in audit_cases.metadata.preAppealResolution
 - Provider review stored in audit_cases.metadata.providerReview
 
-## Wiring Status (as of 2026-03-15)
-- Provider mode: LIVE — providerService.ts computes dashboard stats from live reviews, ProviderCaseDetail uses only live data
-- Pre-appeal: LIVE — pre-appeal-analyze edge function, both payer and provider views can trigger it
-- Payer adversarial: WIRED — runSOUPYAnalysis accepts optional payerCode param
-- Mock data files still exist but only used in Demo mode
+## Wiring Status (as of 2026-03-15) — 100% COMPLETE
+- Provider mode: LIVE — providerService.ts computes dashboard stats from live reviews
+- Pre-appeal: LIVE — pre-appeal-analyze edge function, both payer and provider views
+- Payer adversarial: WIRED — CaseUpload has payer selector dropdown, passes payerCode to runSOUPYAnalysis
+- Code combinations: LIVE — fetched from code_combinations table per case
+- Pattern analysis: LIVE — derived from live cases when in Live mode
+- Realtime: ENABLED — audit_cases and processing_queue tables
+- Case deletion: ENABLED — RLS policy + delete function + trash button in queue
+- Payer export: ENRICHED — includes V3 evidence sufficiency, contradictions, action pathways
+- Mock data: still exists for Demo mode only

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockCodeCombinations } from '@/lib/mockData';
+import { getCodeCombinations, type CodeCombination } from '@/lib/soupyEngineService';
 import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight, ShieldAlert, Eye } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -69,6 +69,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
   const [winningPacket, setWinningPacket] = useState<MinimalWinningPacket | null>(null);
   const [floorEvents, setFloorEvents] = useState<ConfidenceFloorEvent[]>([]);
   const [regFlags, setRegFlags] = useState<RegulatoryFlag[]>([]);
+  const [liveCodeCombos, setLiveCodeCombos] = useState<CodeCombination[]>([]);
 
   // Pre-appeal resolution (live)
   const [preAppealResolution, setPreAppealResolution] = useState<PreAppealResolution | null>(null);
@@ -85,6 +86,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
       getConfidenceFloorEvents(auditCase.id).then(setFloorEvents),
       getRegulatoryFlags(auditCase.id).then(setRegFlags),
       getStoredPreAppealResolution(auditCase.id).then(r => { if (r) setPreAppealResolution(r); }),
+      getCodeCombinations(auditCase.id).then(setLiveCodeCombos),
     ]);
   }, [auditCase.id, isLiveCase, hasAnalyses]);
 
@@ -145,9 +147,13 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
     onDecisionMade?.(outcome);
   };
 
-  const matchingCombinations = mockCodeCombinations.filter(cc =>
-    cc.codes.every(c => auditCase.cptCodes.includes(c))
-  );
+  const matchingCombinations = liveCodeCombos.map(cc => ({
+    codes: cc.codes,
+    flagReason: cc.flag_reason,
+    legitimateExplanations: cc.legitimate_explanations || [],
+    noncompliantExplanations: cc.noncompliant_explanations || [],
+    requiredDocumentation: cc.required_documentation || [],
+  }));
 
   const metadata = auditCase.metadata as any;
   const hasV3Data = decisionTrace || evidenceSuff || actionPathway || contradictions.length > 0;

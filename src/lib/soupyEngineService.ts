@@ -438,6 +438,93 @@ export async function getStabilityCheck(caseId: string): Promise<StabilityCheck 
   return data as unknown as StabilityCheck;
 }
 
+// ─── Code Combinations (direct DB query) ───
+
+export interface CodeCombination {
+  id: string;
+  case_id: string | null;
+  codes: string[];
+  flag_reason: string;
+  legitimate_explanations: string[];
+  noncompliant_explanations: string[];
+  required_documentation: string[];
+  created_at: string;
+}
+
+export async function getCodeCombinations(caseId: string): Promise<CodeCombination[]> {
+  const { data, error } = await supabase
+    .from("code_combinations")
+    .select("*")
+    .eq("case_id", caseId)
+    .order("created_at");
+  if (error) return [];
+  return (data || []) as unknown as CodeCombination[];
+}
+
+// ─── Case Deletion ───
+
+export async function deleteCase(caseId: string): Promise<void> {
+  const { error } = await supabase
+    .from("audit_cases")
+    .delete()
+    .eq("id", caseId);
+  if (error) throw new Error(`Failed to delete case: ${error.message}`);
+}
+
+// ─── Live Pattern Analysis ───
+
+export interface LivePhysicianPattern {
+  physicianId: string;
+  physicianName: string;
+  totalCases: number;
+  cptCodes: string[];
+  rejectionRate: number;
+  avgClaimAmount: number;
+  avgRiskScore: number;
+  cases: any[];
+}
+
+export function deriveLivePatterns(cases: any[]): LivePhysicianPattern[] {
+  const byPhysician = new Map<string, any[]>();
+  cases.forEach(c => {
+    const existing = byPhysician.get(c.physicianId) || [];
+    existing.push(c);
+    byPhysician.set(c.physicianId, existing);
+  });
+
+  return Array.from(byPhysician.entries())
+    .filter(([, cs]) => cs.length >= 1)
+    .map(([physicianId, cs]) => {
+      const rejected = cs.filter((c: any) => c.status === 'rejected').length;
+      const allCodes = cs.flatMap((c: any) => c.cptCodes || []);
+      const uniqueCodes = [...new Set(allCodes)];
+      const avgClaim = cs.reduce((s: number, c: any) => s + (c.claimAmount || 0), 0) / cs.length;
+      const avgRisk = cs.reduce((s: number, c: any) => s + (c.riskScore?.score || 0), 0) / cs.length;
+      return {
+        physicianId,
+        physicianName: cs[0].physicianName || physicianId,
+        totalCases: cs.length,
+        cptCodes: uniqueCodes,
+        rejectionRate: Math.round((rejected / cs.length) * 100),
+        avgClaimAmount: Math.round(avgClaim),
+        avgRiskScore: Math.round(avgRisk),
+        cases: cs,
+      };
+    })
+    .sort((a, b) => b.totalCases - a.totalCases);
+}
+
+// ─── Payer Profiles (direct DB query for dropdown) ───
+
+export async function listPayerProfilesDirect(): Promise<Array<{ payer_code: string; payer_name: string }>> {
+  const { data, error } = await supabase
+    .from("payer_profiles")
+    .select("payer_code, payer_name")
+    .order("payer_name");
+  if (error) return [];
+  return (data || []).filter(p => p.payer_code) as Array<{ payer_code: string; payer_name: string }>;
+}
+
 // ─── Enhanced Analysis (with payer support) ───
 
 export async function runEnhancedSOUPYAnalysis(caseId: string, payerCode?: string): Promise<{
