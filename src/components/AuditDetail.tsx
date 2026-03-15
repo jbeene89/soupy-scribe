@@ -15,6 +15,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { AuthGate } from '@/components/AuthGate';
 
 // Spark integrations
 import { DecisionPanel } from './spark/DecisionPanel';
