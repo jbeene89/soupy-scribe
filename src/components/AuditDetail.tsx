@@ -69,6 +69,10 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
   const [floorEvents, setFloorEvents] = useState<ConfidenceFloorEvent[]>([]);
   const [regFlags, setRegFlags] = useState<RegulatoryFlag[]>([]);
 
+  // Pre-appeal resolution (live)
+  const [preAppealResolution, setPreAppealResolution] = useState<PreAppealResolution | null>(null);
+  const [runningPreAppeal, setRunningPreAppeal] = useState(false);
+
   useEffect(() => {
     if (!isLiveCase || !hasAnalyses) return;
     Promise.allSettled([
@@ -79,6 +83,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
       getMinimalWinningPacket(auditCase.id).then(setWinningPacket),
       getConfidenceFloorEvents(auditCase.id).then(setFloorEvents),
       getRegulatoryFlags(auditCase.id).then(setRegFlags),
+      getStoredPreAppealResolution(auditCase.id).then(r => { if (r) setPreAppealResolution(r); }),
     ]);
   }, [auditCase.id, isLiveCase, hasAnalyses]);
 
