@@ -20,7 +20,7 @@ import { deleteCase, deriveLivePatterns, type LivePhysicianPattern } from '@/lib
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
 import type { AppMode } from '@/lib/providerTypes';
-import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope, FileDown } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope, FileDown, Ghost } from 'lucide-react';
 import { exportPlatformSummaryPDF } from '@/lib/exportPlatformSummary';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
