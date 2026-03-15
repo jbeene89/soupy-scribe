@@ -49,9 +49,10 @@ interface CaseQueueProps {
   onSelectCase: (caseData: AuditCase) => void;
   selectedCaseId?: string;
   loading?: boolean;
+  onDeleteCase?: (caseId: string) => void;
 }
 
-export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading }: CaseQueueProps) {
+export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading, onDeleteCase }: CaseQueueProps) {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
   // Pre-compute signals for all cases for truthful queue display
