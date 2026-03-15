@@ -1,6 +1,6 @@
 import type { AuditCase } from '@/lib/types';
 import type { ProviderCaseReview as ProviderCaseReviewType } from '@/lib/providerTypes';
-import { providerReviews } from '@/lib/providerMockData';
+import type { PreAppealResolution } from '@/lib/preAppealTypes';
 import { ProviderCaseReviewCard } from './ProviderCaseReview';
 import { ProviderPacket } from './ProviderPacket';
 import { EvidenceReadinessChecklist } from './EvidenceReadinessChecklist';
@@ -10,15 +10,15 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Brain, Loader2, CheckCircle, Clock, FileText, ShieldAlert, XCircle } from 'lucide-react';
+import { ArrowLeft, Brain, Loader2, CheckCircle, Clock, FileText, ShieldAlert, XCircle, Zap } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { getStoredProviderReview, runProviderAnalysis } from '@/lib/providerService';
+import { getStoredPreAppealResolution, runPreAppealAnalysis } from '@/lib/preAppealService';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthGate } from '@/components/AuthGate';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PreAppealResolutionTab } from '@/components/pre-appeal/PreAppealResolutionTab';
-import { preAppealResolutions } from '@/lib/preAppealMockData';
 import { deriveCaseSignals } from '@/lib/caseIntelligence';
 
 interface ProviderCaseDetailProps {
@@ -28,22 +28,31 @@ interface ProviderCaseDetailProps {
 
 export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProps) {
   const { isAuthenticated } = useAuth();
-  // Check mock reviews first, then live
-  const mockReview = providerReviews[auditCase.id];
   const [liveReview, setLiveReview] = useState<ProviderCaseReviewType | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [loadingReview, setLoadingReview] = useState(false);
 
-  const review = mockReview || liveReview;
+  // Pre-appeal resolution (live)
+  const [preAppealResolution, setPreAppealResolution] = useState<PreAppealResolution | null>(null);
+  const [loadingPreAppeal, setLoadingPreAppeal] = useState(false);
+  const [runningPreAppeal, setRunningPreAppeal] = useState(false);
+
+  const review = liveReview;
 
   useEffect(() => {
-    if (mockReview) return; // skip if mock data exists
     setLoadingReview(true);
     getStoredProviderReview(auditCase.id)
       .then(r => { if (r) setLiveReview(r); })
       .catch(() => {})
       .finally(() => setLoadingReview(false));
-  }, [auditCase.id, mockReview]);
+
+    // Load stored pre-appeal resolution
+    setLoadingPreAppeal(true);
+    getStoredPreAppealResolution(auditCase.id)
+      .then(r => { if (r) setPreAppealResolution(r); })
+      .catch(() => {})
+      .finally(() => setLoadingPreAppeal(false));
+  }, [auditCase.id]);
 
   const handleRunAnalysis = async () => {
     setAnalyzing(true);
@@ -55,6 +64,19 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
       toast.error(err instanceof Error ? err.message : 'Analysis failed');
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const handleRunPreAppeal = async () => {
+    setRunningPreAppeal(true);
+    try {
+      const result = await runPreAppealAnalysis(auditCase.id);
+      setPreAppealResolution(result);
+      toast.success('Pre-appeal resolution analysis complete');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Pre-appeal analysis failed');
+    } finally {
+      setRunningPreAppeal(false);
     }
   };
 
@@ -72,7 +94,7 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-semibold">{auditCase.caseNumber}</h1>
             <Badge variant="outline" className="text-xs border-accent/40 text-accent bg-accent/10">Provider Readiness</Badge>
-            {liveReview && !mockReview && (
+            {liveReview && (
               <Badge variant="outline" className="text-xs border-consensus/40 text-consensus bg-consensus/10">AI Analyzed</Badge>
             )}
           </div>
@@ -129,9 +151,12 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
             <TabsTrigger value="review">Readiness Review</TabsTrigger>
             <TabsTrigger value="appeal">Appeal Assessment</TabsTrigger>
             <TabsTrigger value="evidence">Evidence Checklist</TabsTrigger>
-            {preAppealResolutions[auditCase.id] && (
-              <TabsTrigger value="pre-appeal">Pre-Appeal Resolution</TabsTrigger>
-            )}
+            <TabsTrigger value="pre-appeal">
+              Pre-Appeal Resolution
+              {preAppealResolution && (
+                <Badge variant="outline" className="ml-1.5 text-[9px] px-1 py-0 border-accent/40 text-accent">✓</Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="review">
@@ -146,15 +171,39 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
             <EvidenceReadinessChecklist items={review.evidenceReadiness} />
           </TabsContent>
 
-          {preAppealResolutions[auditCase.id] && (
-            <TabsContent value="pre-appeal">
+          <TabsContent value="pre-appeal">
+            {loadingPreAppeal ? (
+              <div className="rounded-lg border bg-card p-8 text-center shadow-sm">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto text-accent mb-2" />
+                <p className="text-sm text-muted-foreground">Loading pre-appeal resolution...</p>
+              </div>
+            ) : preAppealResolution ? (
               <PreAppealResolutionTab
                 auditCase={auditCase}
-                resolution={preAppealResolutions[auditCase.id]}
+                resolution={preAppealResolution}
                 viewMode="provider"
               />
-            </TabsContent>
-          )}
+            ) : (
+              <div className="rounded-lg border bg-card p-8 text-center shadow-sm space-y-4">
+                <Zap className="h-10 w-10 mx-auto text-accent/50" />
+                <div>
+                  <p className="text-sm font-medium">No pre-appeal resolution yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Run AI-powered pre-appeal analysis to determine if this case can be resolved without a formal appeal.
+                  </p>
+                </div>
+                <AuthGate>
+                  <Button onClick={handleRunPreAppeal} disabled={runningPreAppeal} className="gap-2">
+                    {runningPreAppeal ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" />Analyzing...</>
+                    ) : (
+                      <><Zap className="h-4 w-4" />Run Pre-Appeal Analysis</>
+                    )}
+                  </Button>
+                </AuthGate>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       ) : (
         <div className="rounded-lg border bg-card p-8 text-center shadow-sm space-y-4">
