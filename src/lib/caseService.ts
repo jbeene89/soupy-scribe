@@ -136,10 +136,10 @@ export async function submitCaseText(sourceText: string): Promise<{ caseId: stri
   return { caseId: data.case.id, extracted: data.extracted };
 }
 
-export async function runSOUPYAnalysis(caseId: string): Promise<{ consensusScore: number; riskScore: number }> {
-  // Phase 1: Run primary 4-role analysis
+export async function runSOUPYAnalysis(caseId: string, payerCode?: string): Promise<{ consensusScore: number; riskScore: number }> {
+  // Phase 1: Run primary 4-role analysis (with optional payer adversarial tuning)
   const response = await supabase.functions.invoke("analyze-case", {
-    body: { action: "analyze", caseId },
+    body: { action: "analyze", caseId, payerCode },
   });
 
   if (response.error) throw new Error(response.error.message || "Analysis failed");
