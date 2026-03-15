@@ -181,6 +181,18 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading, onDele
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{c.dateOfService}</TableCell>
+                  {onDeleteCase && c.createdAt && (
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); onDeleteCase(c.id); }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
