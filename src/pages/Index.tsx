@@ -407,6 +407,7 @@ const Index = () => {
                 cases={activeCases}
                 onSelectCase={handleSelectCase}
                 selectedCaseId={selectedCase?.id}
+                onDeleteCase={handleDeleteCase}
               />
             </TabsContent>
 
