@@ -434,6 +434,24 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
           {...{ webkitdirectory: '', directory: '', multiple: true } as any}
         />
 
+        {/* Payer selector for adversarial tuning */}
+        {payerProfiles.length > 0 && (
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-medium text-muted-foreground shrink-0">Payer Profile:</label>
+            <Select value={selectedPayer} onValueChange={setSelectedPayer}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="None (generic analysis)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None (generic analysis)</SelectItem>
+                {payerProfiles.map(p => (
+                  <SelectItem key={p.payer_code} value={p.payer_code}>{p.payer_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Drop zone */}
         <div
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
