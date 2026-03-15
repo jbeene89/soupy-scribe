@@ -591,15 +591,51 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
             </div>
           </TabsContent>
 
-          {preAppealResolutions[auditCase.id] && (
-            <TabsContent value="pre-appeal">
+          <TabsContent value="pre-appeal">
+            {preAppealResolution ? (
               <PreAppealResolutionTab
                 auditCase={auditCase}
-                resolution={preAppealResolutions[auditCase.id]}
+                resolution={preAppealResolution}
                 viewMode="payer"
               />
-            </TabsContent>
-          )}
+            ) : (
+              <div className="rounded-lg border bg-card p-8 text-center shadow-sm space-y-4">
+                <div className="p-3 rounded-full bg-accent/10 w-fit mx-auto">
+                  <Activity className="h-8 w-8 text-accent/50" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">No pre-appeal resolution yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Run AI-powered pre-appeal analysis to determine if this denial can be resolved without a formal appeal.
+                  </p>
+                </div>
+                <AuthGate>
+                  <Button
+                    onClick={async () => {
+                      setRunningPreAppeal(true);
+                      try {
+                        const result = await runPreAppealAnalysis(auditCase.id);
+                        setPreAppealResolution(result);
+                        toast.success('Pre-appeal resolution analysis complete');
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : 'Pre-appeal analysis failed');
+                      } finally {
+                        setRunningPreAppeal(false);
+                      }
+                    }}
+                    disabled={runningPreAppeal}
+                    className="gap-2"
+                  >
+                    {runningPreAppeal ? (
+                      <><Activity className="h-4 w-4 animate-spin" />Analyzing...</>
+                    ) : (
+                      <><Activity className="h-4 w-4" />Run Pre-Appeal Analysis</>
+                    )}
+                  </Button>
+                </AuthGate>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       ) : (
         <div className="rounded-lg border bg-card p-6 shadow-sm">
