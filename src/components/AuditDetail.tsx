@@ -147,7 +147,13 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
     onDecisionMade?.(outcome);
   };
 
-  const matchingCombinations = liveCodeCombos.length > 0 ? liveCodeCombos : [];
+  const matchingCombinations = liveCodeCombos.map(cc => ({
+    codes: cc.codes,
+    flagReason: cc.flag_reason,
+    legitimateExplanations: cc.legitimate_explanations || [],
+    noncompliantExplanations: cc.noncompliant_explanations || [],
+    requiredDocumentation: cc.required_documentation || [],
+  }));
 
   const metadata = auditCase.metadata as any;
   const hasV3Data = decisionTrace || evidenceSuff || actionPathway || contradictions.length > 0;
