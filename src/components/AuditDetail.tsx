@@ -147,9 +147,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
     onDecisionMade?.(outcome);
   };
 
-  const matchingCombinations = mockCodeCombinations.filter(cc =>
-    cc.codes.every(c => auditCase.cptCodes.includes(c))
-  );
+  const matchingCombinations = liveCodeCombos.length > 0 ? liveCodeCombos : [];
 
   const metadata = auditCase.metadata as any;
   const hasV3Data = decisionTrace || evidenceSuff || actionPathway || contradictions.length > 0;

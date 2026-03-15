@@ -484,7 +484,7 @@ export interface LivePhysicianPattern {
   cases: any[];
 }
 
-export async function deriveLivePatterns(cases: any[]): LivePhysicianPattern[] {
+export function deriveLivePatterns(cases: any[]): LivePhysicianPattern[] {
   const byPhysician = new Map<string, any[]>();
   cases.forEach(c => {
     const existing = byPhysician.get(c.physicianId) || [];
