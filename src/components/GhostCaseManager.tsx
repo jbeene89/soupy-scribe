@@ -510,10 +510,10 @@ function CreateGhostCaseForm({ onCreated }: { onCreated: () => void }) {
           </div>
           <div>
             <Label className="text-xs">Expected Action</Label>
-            <Select value={form.expectedAction} onValueChange={v => setForm(f => ({ ...f, expectedAction: v }))}>
+            <Select value={form.expectedAction || "any"} onValueChange={v => setForm(f => ({ ...f, expectedAction: v === "any" ? "" : v }))}>
               <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any</SelectItem>
+                <SelectItem value="any">Any</SelectItem>
                 <SelectItem value="approve">Approve</SelectItem>
                 <SelectItem value="deny">Deny</SelectItem>
                 <SelectItem value="request_info">Request Info</SelectItem>
