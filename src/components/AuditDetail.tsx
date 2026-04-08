@@ -53,6 +53,10 @@ import {
 } from '@/lib/caseIntelligence';
 import { assessGovernance, type GovernanceAssessment } from '@/lib/caseGovernance';
 import { GovernancePanel } from '@/components/GovernancePanel';
+import {
+  classifyRuleDependencies, deriveCaseAuditBasis,
+  AUDIT_BASIS_LABELS,
+} from '@/lib/ruleDependency';
 import { saveDecision, type AuditDecision } from '@/lib/caseService';
 
 interface AuditDetailProps {
