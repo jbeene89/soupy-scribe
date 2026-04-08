@@ -684,6 +684,15 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="defense-packet">
+            <DefensePacketBuilder
+              auditCase={auditCase}
+              evidenceSuff={evidenceSuff}
+              contradictions={contradictions}
+              winningPacket={winningPacket}
+            />
+          </TabsContent>
         </Tabs>
       ) : (
         <div className="rounded-lg border bg-card p-6 shadow-sm">
