@@ -329,6 +329,9 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
                 <Badge variant="outline" className="ml-1.5 text-[9px] px-1 py-0 border-accent/40 text-accent">✓</Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="defense-packet">
+              Defense Packet
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="analysis" className="space-y-4">
