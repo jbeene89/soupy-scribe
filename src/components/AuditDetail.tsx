@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCodeCombinations, type CodeCombination } from '@/lib/soupyEngineService';
-import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight, ShieldAlert, Eye, Download } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight, ShieldAlert, Eye, Download, Info } from 'lucide-react';
 import { exportCaseReportPDF } from '@/lib/exportCaseReportPDF';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -53,6 +53,10 @@ import {
 } from '@/lib/caseIntelligence';
 import { assessGovernance, type GovernanceAssessment } from '@/lib/caseGovernance';
 import { GovernancePanel } from '@/components/GovernancePanel';
+import {
+  classifyRuleDependencies, deriveCaseAuditBasis,
+  AUDIT_BASIS_LABELS,
+} from '@/lib/ruleDependency';
 import { saveDecision, type AuditDecision } from '@/lib/caseService';
 
 interface AuditDetailProps {
@@ -126,6 +130,16 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
     if (!hasAnalyses) return null;
     return assessGovernance(auditCase, { contradictions, evidenceSuff, floorEvents });
   }, [auditCase, contradictions, evidenceSuff, floorEvents, hasAnalyses]);
+
+  // Rule dependency audit basis
+  const auditBasis = useMemo(() => {
+    if (!hasAnalyses) return null;
+    const allViolations = auditCase.analyses.flatMap(a => a.violations);
+    const ruleResults = classifyRuleDependencies(allViolations, {
+      hasPayer: !!(auditCase.metadata as any)?.payerCode,
+    });
+    return deriveCaseAuditBasis(ruleResults);
+  }, [auditCase, hasAnalyses]);
 
   const { session } = useAuth();
   const userEmail = session?.user?.email || 'Unknown';
@@ -228,6 +242,18 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
           </Button>
         )}
       </div>
+
+      {/* ═══ Audit Basis Banner ═══ */}
+      {auditBasis && hasAnalyses && (
+        <div className="flex items-center gap-2 px-1">
+          <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <p className="text-[11px] text-muted-foreground">
+            <span className="font-medium">Audit Basis:</span>{' '}
+            <span className="font-semibold text-foreground">{auditBasis.label}</span>
+            {' — '}{auditBasis.description}
+          </p>
+        </div>
+      )}
 
       {/* ═══ Disposition Banner — Always visible when analyses exist ═══ */}
       {hasAnalyses && (
@@ -471,7 +497,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
               <h2 className="text-sm font-semibold mb-3 uppercase tracking-wider text-muted-foreground">SOUPY Protocol Analysis</h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {auditCase.analyses.map((analysis, i) => (
-                  <AIRoleCard key={analysis.role} analysis={analysis} staggerIndex={i} />
+                  <AIRoleCard key={analysis.role} analysis={analysis} staggerIndex={i} hasPayer={!!(auditCase.metadata as any)?.payerCode} />
                 ))}
               </div>
             </div>
