@@ -415,13 +415,13 @@ export function assessGovernance(
 
   if (contradictionDowngrade.mandatoryHumanReview || failCount >= 2 || floorBreached) {
     outcome = 'human_audit';
-    outcomeLabel = 'Route to Human Audit';
+    outcomeLabel = 'Route to Analyst Review';
   } else if (failCount >= 1 || warnCount >= 3) {
     outcome = 'escalate';
-    outcomeLabel = 'Escalate for Review';
+    outcomeLabel = 'Escalate for Senior Review';
   } else if (warnCount >= 1) {
     outcome = 'automated_review';
-    outcomeLabel = 'Automated Review with Flags';
+    outcomeLabel = 'Automated Processing with Flags';
   } else {
     outcome = 'automated_approve';
     outcomeLabel = 'Eligible for Automated Processing';
@@ -453,25 +453,25 @@ export const GOVERNED_SEVERITY_CONFIG: Record<GovernedSeverity, {
   borderClass: string;
 }> = {
   critical_confirmed: {
-    label: 'Critical — Confirmed',
+    label: 'Confirmed — Strong Rule Conflict',
     colorClass: 'text-destructive',
     bgClass: 'bg-destructive/10',
     borderClass: 'border-destructive/30',
   },
   critical_pending_verification: {
-    label: 'Critical — Pending Verification',
+    label: 'High-Risk — Pending Verification',
     colorClass: 'text-violation',
     bgClass: 'bg-violation/10',
     borderClass: 'border-violation/30',
   },
   high_risk_documentation_gap: {
-    label: 'High-Risk Documentation Gap',
+    label: 'Documentation Insufficient to Sustain',
     colorClass: 'text-disagreement',
     bgClass: 'bg-disagreement/10',
     borderClass: 'border-disagreement/30',
   },
   needs_payer_entity_validation: {
-    label: 'Needs Payer/Entity Validation',
+    label: 'Entity Validation Required',
     colorClass: 'text-info-blue',
     bgClass: 'bg-info-blue/10',
     borderClass: 'border-info-blue/30',
