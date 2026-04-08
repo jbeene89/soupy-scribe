@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCodeCombinations, type CodeCombination } from '@/lib/soupyEngineService';
-import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight, ShieldAlert, Eye, Download } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight, ShieldAlert, Eye, Download, Info } from 'lucide-react';
 import { exportCaseReportPDF } from '@/lib/exportCaseReportPDF';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
