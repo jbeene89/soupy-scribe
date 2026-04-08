@@ -758,12 +758,16 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
         </div>
       )}
 
-      {/* Decision Panel — suppress confident approval buttons when human review required */}
+      {/* Decision Panel — governance is the single routing authority */}
       {!auditCase.decision && hasAnalyses && (
         <DecisionPanel
           auditCase={auditCase}
           onDecision={handleDecision}
-          humanReviewRequired={signals.humanReview.triggered}
+          humanReviewRequired={
+            governance
+              ? ['human_audit', 'escalate'].includes(governance.routingDecision.outcome)
+              : signals.humanReview.triggered
+          }
           disposition={signals.disposition}
         />
       )}
