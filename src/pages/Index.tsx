@@ -167,7 +167,7 @@ const Index = () => {
                 <Scale className="h-5 w-5 text-primary-foreground" />
               </div>
               <div className="flex items-baseline gap-2">
-                <h1 className="text-base font-semibold tracking-tight text-foreground">Lyric AI</h1>
+                <h1 className="text-base font-semibold tracking-tight text-foreground">SOUPY</h1>
                 <span className="hidden sm:inline text-[11px] text-muted-foreground font-medium tracking-wide uppercase">
                   {appMode === 'provider' ? 'Provider Readiness' : 'Payment Integrity'}
                 </span>
