@@ -1,6 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ProviderCaseReview, ProviderDashboardStats, RecurringIssue, EvidenceReadinessItem } from "@/lib/providerTypes";
-
+import {
+  enrichThemes, buildCorrectablePatterns, buildHighRiskBehaviors,
+  generateInterventions, computeDenialBreakdown,
+} from "@/lib/providerReadinessEngine";
 export async function submitProviderCase(sourceText: string): Promise<{ caseId: string; extracted: any }> {
   const response = await supabase.functions.invoke("provider-analyze", {
     body: { action: "submit", sourceText },
@@ -149,6 +152,8 @@ export async function computeProviderDashboardStats(): Promise<ProviderDashboard
 
   // Build recurring themes from doc assessments and coding vulns
   const recurringThemes = buildRecurringThemes(reviewed);
+  const avgClaim = reviewed.length > 0 ? reviewed.reduce((s, r) => s + r.claimAmount, 0) / reviewed.length : 5000;
+  const enriched = enrichThemes(recurringThemes, avgClaim);
 
   return {
     totalCasesReviewed: reviewed.length,
@@ -156,9 +161,13 @@ export async function computeProviderDashboardStats(): Promise<ProviderDashboard
     codingVulnerableCases,
     appealsNotWorthPursuing,
     estimatedAvoidableDenialCost,
-    staffEducationOpportunities: recurringThemes.length,
-    recurringThemes,
+    staffEducationOpportunities: enriched.length,
+    recurringThemes: enriched,
     topVulnerabilities,
+    correctablePatterns: buildCorrectablePatterns(enriched, avgClaim),
+    highRiskBehaviors: buildHighRiskBehaviors(enriched),
+    recommendedInterventions: generateInterventions(enriched),
+    avoidableDenialBreakdown: computeDenialBreakdown(enriched, avgClaim),
   };
 }
 
@@ -230,5 +239,9 @@ function emptyDashboardStats(): ProviderDashboardStats {
     staffEducationOpportunities: 0,
     recurringThemes: [],
     topVulnerabilities: [],
+    correctablePatterns: [],
+    highRiskBehaviors: [],
+    recommendedInterventions: [],
+    avoidableDenialBreakdown: { documentationGaps: 0, codingErrors: 0, modifierIssues: 0, timeDocumentation: 0 },
   };
 }

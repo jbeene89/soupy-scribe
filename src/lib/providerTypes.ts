@@ -43,14 +43,78 @@ export interface EvidenceReadinessItem {
   materiallyImproves: boolean;
 }
 
+// ─── Enhanced: Root Cause + Remediation Types ───
+
+export type RootCause =
+  | 'physician_documentation'
+  | 'coder_interpretation'
+  | 'missing_modifier_support'
+  | 'missing_operative_detail'
+  | 'missing_time_logs'
+  | 'insufficient_medical_necessity'
+  | 'workflow_gap'
+  | 'template_deficiency';
+
+export type RemediationType =
+  | 'training'
+  | 'workflow'
+  | 'template'
+  | 'coding_review'
+  | 'policy_change'
+  | 'specialist_escalation';
+
+export type PatternSeverity =
+  | 'high_operational_risk'
+  | 'medium_recurring_weakness'
+  | 'low_informational';
+
 export interface RecurringIssue {
   id: string;
   category: 'modifier-misuse' | 'documentation-gap' | 'time-element' | 'medical-necessity' | 'em-separation' | 'addon-vulnerability';
   title: string;
   description: string;
-  frequency: number; // how many cases affected
+  frequency: number;
   impact: 'high' | 'medium' | 'low';
   educationOpportunity: string;
+  // Enhanced fields
+  rootCause?: RootCause;
+  remediationType?: RemediationType;
+  patternSeverity?: PatternSeverity;
+  estimatedDenialImpact?: number;
+  whyItMatters?: string;
+  suggestedRemediation?: string;
+  fixUpstreamInstead?: boolean;
+}
+
+export interface RecommendedIntervention {
+  id: string;
+  title: string;
+  description: string;
+  type: RemediationType;
+  typeLabel: string;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  affectedPatterns: string[];
+  estimatedImpact: string;
+  implementationEffort: 'low' | 'medium' | 'high';
+}
+
+export interface CorrectablePattern {
+  id: string;
+  title: string;
+  casesAffected: number;
+  estimatedRevenue: number;
+  isCorrectible: boolean;
+  correctiveAction: string;
+  rootCause: RootCause;
+}
+
+export interface HighRiskBehavior {
+  id: string;
+  title: string;
+  description: string;
+  casesAffected: number;
+  riskLevel: PatternSeverity;
+  suggestedAction: string;
 }
 
 export interface ProviderCaseReview {
@@ -73,4 +137,14 @@ export interface ProviderDashboardStats {
   staffEducationOpportunities: number;
   recurringThemes: RecurringIssue[];
   topVulnerabilities: string[];
+  // Enhanced
+  correctablePatterns: CorrectablePattern[];
+  highRiskBehaviors: HighRiskBehavior[];
+  recommendedInterventions: RecommendedIntervention[];
+  avoidableDenialBreakdown: {
+    documentationGaps: number;
+    codingErrors: number;
+    modifierIssues: number;
+    timeDocumentation: number;
+  };
 }
