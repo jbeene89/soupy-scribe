@@ -109,7 +109,7 @@ export function DecisionPanel({ auditCase, onDecision, humanReviewRequired, disp
                 )}
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
-                {suppressAutoApprove ? 'Override: Approve' : 'Approve Claim'}
+                {suppressAutoApprove ? 'Manual Approval Override' : 'Approve Claim'}
               </Button>
 
               <Button
