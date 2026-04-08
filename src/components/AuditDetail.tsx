@@ -53,6 +53,7 @@ import {
 } from '@/lib/caseIntelligence';
 import { assessGovernance, type GovernanceAssessment } from '@/lib/caseGovernance';
 import { GovernancePanel } from '@/components/GovernancePanel';
+import { ScoreTransparencyPanel } from '@/components/ScoreTransparencyPanel';
 import {
   classifyRuleDependencies, deriveCaseAuditBasis,
   AUDIT_BASIS_LABELS,
@@ -282,23 +283,22 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
           </CardContent>
         </Card>
       )}
+      {/* ═══ Score Transparency Panel ═══ */}
+      {governance && hasAnalyses && (
+        <ScoreTransparencyPanel governance={governance} signals={signals} />
+      )}
 
       {/* ═══ Human Review Alert — driven by governance routing ═══ */}
-      {governance && ['human_audit', 'escalate'].includes(governance.routingDecision.outcome) && hasAnalyses && (
+      {signals.humanReview.triggered && hasAnalyses && (
         <Card className="border-violation/30 bg-violation/5">
           <CardContent className="pt-3 pb-3">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-4 w-4 text-violation shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-violation">
-                  {governance.routingDecision.outcome === 'human_audit' ? 'Human Review Required' : 'Escalation Recommended'}
-                </p>
+                <p className="text-sm font-semibold text-violation">Human Review Required</p>
                 <ul className="mt-1 space-y-0.5">
-                  {governance.contradictionDowngrade.explanations.map((r, i) => (
-                    <li key={`cd-${i}`} className="text-xs text-muted-foreground">• {r}</li>
-                  ))}
-                  {governance.routingDecision.factors.filter(f => f.status === 'fail').map((f, i) => (
-                    <li key={`rf-${i}`} className="text-xs text-muted-foreground">• {f.explanation}</li>
+                  {signals.humanReview.reasons.map((r, i) => (
+                    <li key={i} className="text-xs text-muted-foreground">• {r}</li>
                   ))}
                 </ul>
               </div>
@@ -758,16 +758,12 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
         </div>
       )}
 
-      {/* Decision Panel — governance is the single routing authority */}
+      {/* Decision Panel — suppress confident approval buttons when human review required */}
       {!auditCase.decision && hasAnalyses && (
         <DecisionPanel
           auditCase={auditCase}
           onDecision={handleDecision}
-          humanReviewRequired={
-            governance
-              ? ['human_audit', 'escalate'].includes(governance.routingDecision.outcome)
-              : signals.humanReview.triggered
-          }
+          humanReviewRequired={signals.humanReview.triggered}
           disposition={signals.disposition}
         />
       )}
