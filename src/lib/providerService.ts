@@ -1,6 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ProviderCaseReview, ProviderDashboardStats, RecurringIssue, EvidenceReadinessItem } from "@/lib/providerTypes";
-
+import {
+  enrichThemes, buildCorrectablePatterns, buildHighRiskBehaviors,
+  generateInterventions, computeDenialBreakdown,
+} from "@/lib/providerReadinessEngine";
 export async function submitProviderCase(sourceText: string): Promise<{ caseId: string; extracted: any }> {
   const response = await supabase.functions.invoke("provider-analyze", {
     body: { action: "submit", sourceText },

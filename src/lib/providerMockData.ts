@@ -208,6 +208,13 @@ export const recurringIssues: RecurringIssue[] = [
 // ──────────────────────────────────────────────
 // Provider Dashboard Summary Stats
 // ──────────────────────────────────────────────
+import {
+  enrichThemes, buildCorrectablePatterns, buildHighRiskBehaviors,
+  generateInterventions, computeDenialBreakdown,
+} from './providerReadinessEngine';
+
+const enrichedThemes = enrichThemes(recurringIssues, 5800);
+
 export const providerDashboardStats: ProviderDashboardStats = {
   totalCasesReviewed: 8,
   documentationWeakCases: 4,
@@ -215,11 +222,15 @@ export const providerDashboardStats: ProviderDashboardStats = {
   appealsNotWorthPursuing: 2,
   estimatedAvoidableDenialCost: 23450,
   staffEducationOpportunities: 6,
-  recurringThemes: recurringIssues,
+  recurringThemes: enrichedThemes,
   topVulnerabilities: [
     'Critical care time documentation',
     'Add-on code modifier justification',
     'Compartment-specific operative notes',
     'Implant manifest completeness',
   ],
+  correctablePatterns: buildCorrectablePatterns(enrichedThemes, 5800),
+  highRiskBehaviors: buildHighRiskBehaviors(enrichedThemes),
+  recommendedInterventions: generateInterventions(enrichedThemes),
+  avoidableDenialBreakdown: computeDenialBreakdown(enrichedThemes, 5800),
 };

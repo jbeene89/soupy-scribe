@@ -252,6 +252,7 @@ function buildInterventionForType(
     id: `int-${remType}-${rootCause}`,
     ...templates[remType],
     priority,
+    affectedPatterns: [],
   };
 }
 
