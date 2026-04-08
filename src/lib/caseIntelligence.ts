@@ -611,7 +611,7 @@ export const ACTION_PATH_CONFIG: Record<string, {
   icon: string;
 }> = {
   approve: {
-    label: 'Approve Claim',
+    label: 'Supportable as Billed',
     shortLabel: 'Approve',
     colorClass: 'text-consensus',
     bgClass: 'bg-consensus/10',
@@ -619,7 +619,7 @@ export const ACTION_PATH_CONFIG: Record<string, {
     icon: 'CheckCircle',
   },
   pend_for_records: {
-    label: 'Pend for Additional Records',
+    label: 'Pend — Supporting Documentation Needed',
     shortLabel: 'Pend',
     colorClass: 'text-disagreement',
     bgClass: 'bg-disagreement/10',
@@ -643,7 +643,7 @@ export const ACTION_PATH_CONFIG: Record<string, {
     icon: 'FileText',
   },
   route_to_human: {
-    label: 'Route to Human Audit',
+    label: 'Route to Analyst Review',
     shortLabel: 'Human Review',
     colorClass: 'text-violation',
     bgClass: 'bg-violation/10',
@@ -651,7 +651,7 @@ export const ACTION_PATH_CONFIG: Record<string, {
     icon: 'AlertTriangle',
   },
   build_pre_appeal: {
-    label: 'Build Pre-Appeal Packet',
+    label: 'Assemble Pre-Appeal Packet',
     shortLabel: 'Pre-Appeal',
     colorClass: 'text-accent',
     bgClass: 'bg-accent/10',

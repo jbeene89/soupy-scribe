@@ -105,8 +105,8 @@ export function classifyFindingSeverity(
           violation, originalSeverity, dependsOnMissingMetadata: true,
           metadataDependencies: deps,
           governedSeverity: 'needs_payer_entity_validation',
-          governedLabel: 'Needs Payer/Entity Validation',
-          downgradeReason: `Finding depends on unverified entity/payer data: ${deps.join(', ')}. Cannot confirm as critical without validation.`,
+          governedLabel: 'Entity Validation Required',
+          downgradeReason: `Finding depends on unverified entity or payer data: ${deps.join(', ')}. Cannot confirm severity without validation.`,
         };
       }
       if (evidenceScore < 50) {
@@ -115,15 +115,15 @@ export function classifyFindingSeverity(
           dependsOnMissingMetadata: true,
           metadataDependencies: deps,
           governedSeverity: 'high_risk_documentation_gap',
-          governedLabel: 'High-Risk Documentation Gap',
-          downgradeReason: `Evidence sufficiency at ${Math.round(evidenceScore)}% with missing metadata: ${deps.join(', ')}. Insufficient to confirm critical severity.`,
+          governedLabel: 'Documentation Insufficient to Sustain',
+          downgradeReason: `Evidence sufficiency at ${Math.round(evidenceScore)}% with unresolved metadata dependencies: ${deps.join(', ')}. Insufficient to confirm critical severity.`,
         };
       }
       return {
         violation, originalSeverity, dependsOnMissingMetadata: true,
         metadataDependencies: deps,
         governedSeverity: 'critical_pending_verification',
-        governedLabel: 'Critical — Pending Verification',
+        governedLabel: 'High-Risk — Pending Verification',
         downgradeReason: `Finding flagged as critical but depends on: ${deps.join(', ')}. Requires verification before confirmed status.`,
       };
     }
@@ -134,7 +134,7 @@ export function classifyFindingSeverity(
         violation, originalSeverity, dependsOnMissingMetadata: false,
         metadataDependencies: [],
         governedSeverity: 'critical_confirmed',
-        governedLabel: 'Critical — Confirmed',
+        governedLabel: 'Confirmed — Strong Rule Conflict',
         downgradeReason: null,
       };
     }
@@ -144,8 +144,8 @@ export function classifyFindingSeverity(
       violation, originalSeverity, dependsOnMissingMetadata: false,
       metadataDependencies: [],
       governedSeverity: 'critical_pending_verification',
-      governedLabel: 'Critical — Pending Verification',
-      downgradeReason: 'Finding lacks direct regulatory reference or sufficient defense strength to confirm critical status.',
+      governedLabel: 'High-Risk — Pending Verification',
+      downgradeReason: 'Finding lacks direct regulatory reference or sufficient evidence strength to confirm as a strong rule conflict.',
     };
   }
 

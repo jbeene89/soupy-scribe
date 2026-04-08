@@ -145,10 +145,10 @@ interface ActionExplainer {
 }
 
 const ACTION_LABELS: Record<string, { label: string; colorClass: string }> = {
-  automated_approve: { label: 'Approve / Likely Supportable', colorClass: 'text-consensus' },
-  automated_review: { label: 'Support with Packet', colorClass: 'text-info-blue' },
-  escalate: { label: 'Request Additional Documentation', colorClass: 'text-disagreement' },
-  human_audit: { label: 'Route to Human Audit', colorClass: 'text-violation' },
+  automated_approve: { label: 'Supportable — Eligible for Automated Processing', colorClass: 'text-consensus' },
+  automated_review: { label: 'Conditional — Requires Flagged Review', colorClass: 'text-info-blue' },
+  escalate: { label: 'Escalate — Request Additional Documentation', colorClass: 'text-disagreement' },
+  human_audit: { label: 'Route to Analyst Review', colorClass: 'text-violation' },
 };
 
 function buildActionExplainer(gov: GovernanceAssessment): ActionExplainer {
