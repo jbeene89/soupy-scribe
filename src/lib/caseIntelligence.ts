@@ -34,15 +34,15 @@ export interface CaseDispositionResult {
 
 const DISPOSITION_CONFIG: Record<CaseDisposition, Omit<CaseDispositionResult, 'disposition'>> = {
   defensible_now: {
-    label: 'Defensible Now',
-    description: 'Current documentation and evidence sufficiently support this claim.',
+    label: 'Supportable as Documented',
+    description: 'Available documentation and evidence appear sufficient to sustain this claim.',
     colorClass: 'text-consensus',
     bgClass: 'bg-consensus/10',
     borderClass: 'border-consensus/30',
   },
   curable_with_documentation: {
-    label: 'Curable with Additional Documentation',
-    description: 'Specific records or clarifications can resolve identified gaps.',
+    label: 'Requires Supporting Documentation',
+    description: 'Specific records or clarifications could resolve identified evidentiary gaps.',
     colorClass: 'text-disagreement',
     bgClass: 'bg-disagreement/10',
     borderClass: 'border-disagreement/30',
@@ -55,15 +55,15 @@ const DISPOSITION_CONFIG: Record<CaseDisposition, Omit<CaseDispositionResult, 'd
     borderClass: 'border-info-blue/30',
   },
   human_review_required: {
-    label: 'Human Review Required',
-    description: 'Automated analysis cannot render a confident determination for this case.',
+    label: 'Analyst Review Required',
+    description: 'Automated analysis cannot render a confident determination — manual review is necessary.',
     colorClass: 'text-violation',
     bgClass: 'bg-violation/10',
     borderClass: 'border-violation/30',
   },
   not_defensible: {
-    label: 'Not Defensible on Appeal',
-    description: 'Structural issues make this case unlikely to survive appeal review.',
+    label: 'Unlikely to Sustain on Appeal',
+    description: 'Structural compliance concerns make this claim unlikely to withstand appeal review.',
     colorClass: 'text-destructive',
     bgClass: 'bg-destructive/10',
     borderClass: 'border-destructive/30',

@@ -31,7 +31,7 @@ export function ConsensusMeter({ score, className }: ConsensusMeterProps) {
   return (
     <div className={cn('space-y-2', className)}>
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-muted-foreground">AI Consensus</span>
+        <span className="font-medium text-muted-foreground">Consensus Integrity</span>
         <span className={cn('font-semibold text-xs', getTextColor())}>{getLabel()}</span>
       </div>
       <div className="h-2.5 w-full rounded-full bg-secondary overflow-hidden">

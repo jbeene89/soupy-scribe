@@ -51,10 +51,10 @@ export function DefensePacketBuilder({
 
       {/* ═══ Summary Metrics ═══ */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-        <MetricCard label="Required" value={packet.requiredCount} color="text-violation" />
+        <MetricCard label="Essential" value={packet.requiredCount} color="text-violation" />
         <MetricCard label="Supporting" value={packet.supportingCount} color="text-info-blue" />
-        <MetricCard label="Low Value" value={packet.lowValueCount} color="text-muted-foreground" />
-        <MetricCard label="Not Curable" value={packet.notCurableCount} color="text-destructive" />
+        <MetricCard label="Low-Recovery" value={packet.lowValueCount} color="text-muted-foreground" />
+        <MetricCard label="Non-Curable" value={packet.notCurableCount} color="text-destructive" />
         <MetricCard label="Defense Strength" value={`${packet.overallDefenseStrength}%`} color={
           packet.overallDefenseStrength >= 70 ? 'text-consensus' :
           packet.overallDefenseStrength >= 40 ? 'text-disagreement' : 'text-violation'
@@ -81,13 +81,13 @@ export function DefensePacketBuilder({
         <TabsList className="flex-wrap">
           <TabsTrigger value="all">All Items ({packet.supportItems.length})</TabsTrigger>
           <TabsTrigger value="required">
-            Required ({packet.requiredCount})
+            Essential ({packet.requiredCount})
           </TabsTrigger>
           <TabsTrigger value="services">
             Services at Risk ({packet.servicesAtRisk.length})
           </TabsTrigger>
           <TabsTrigger value="not-worth">
-            Not Worth Chasing ({packet.lowValueCount})
+            Low-Recovery Value ({packet.lowValueCount})
           </TabsTrigger>
         </TabsList>
 
