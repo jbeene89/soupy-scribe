@@ -48,6 +48,8 @@ import {
   generateDynamicEvidenceChecklist, buildStructuredExportPackage,
   type CaseSummarySignals,
 } from '@/lib/caseIntelligence';
+import { assessGovernance, type GovernanceAssessment } from '@/lib/caseGovernance';
+import { GovernancePanel } from '@/components/GovernancePanel';
 import { saveDecision, type AuditDecision } from '@/lib/caseService';
 
 interface AuditDetailProps {
