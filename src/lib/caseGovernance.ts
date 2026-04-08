@@ -17,6 +17,7 @@
 
 import type { AuditCase, CodeViolation, SeverityLevel } from './types';
 import type { Contradiction, EvidenceSufficiency, ConfidenceFloorEvent } from './soupyEngineService';
+import { METADATA_DEPENDENT_KEYWORDS } from './metadataDependencyKeywords';
 
 // ─── Governed Severity Classification ───
 
@@ -39,17 +40,7 @@ export interface GovernedFinding {
   metadataDependencies: string[];
 }
 
-const METADATA_DEPENDENT_KEYWORDS = [
-  'separate tin', 'separate billing entity', 'billing entity',
-  'missing mar', 'medication administration record',
-  'missing consultant note', 'consultant note', 'consult note',
-  'missing operative note', 'operative note', 'op note',
-  'time log', 'time documentation', 'anesthesia record',
-  'separate npi', 'separate provider', 'modifier documentation',
-  'medical necessity documentation', 'prior authorization',
-  'implant manifest', 'implant log', 'device log',
-  'pathology report', 'lab results',
-];
+// Keywords imported from canonical source: src/lib/metadataDependencyKeywords.ts
 
 function detectMetadataDependencies(violation: CodeViolation, missingDocs: string[]): string[] {
   const deps: string[] = [];
