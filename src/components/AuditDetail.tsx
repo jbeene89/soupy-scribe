@@ -243,6 +243,18 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
         )}
       </div>
 
+      {/* ═══ Audit Basis Banner ═══ */}
+      {auditBasis && hasAnalyses && (
+        <div className="flex items-center gap-2 px-1">
+          <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <p className="text-[11px] text-muted-foreground">
+            <span className="font-medium">Audit Basis:</span>{' '}
+            <span className="font-semibold text-foreground">{auditBasis.label}</span>
+            {' — '}{auditBasis.description}
+          </p>
+        </div>
+      )}
+
       {/* ═══ Disposition Banner — Always visible when analyses exist ═══ */}
       {hasAnalyses && (
         <Card className={cn('border-l-4', signals.disposition.borderClass, signals.disposition.bgClass)}>
@@ -485,7 +497,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
               <h2 className="text-sm font-semibold mb-3 uppercase tracking-wider text-muted-foreground">SOUPY Protocol Analysis</h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {auditCase.analyses.map((analysis, i) => (
-                  <AIRoleCard key={analysis.role} analysis={analysis} staggerIndex={i} />
+                  <AIRoleCard key={analysis.role} analysis={analysis} staggerIndex={i} hasPayer={!!(auditCase.metadata as any)?.payerCode} />
                 ))}
               </div>
             </div>
