@@ -131,6 +131,16 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
     return assessGovernance(auditCase, { contradictions, evidenceSuff, floorEvents });
   }, [auditCase, contradictions, evidenceSuff, floorEvents, hasAnalyses]);
 
+  // Rule dependency audit basis
+  const auditBasis = useMemo(() => {
+    if (!hasAnalyses) return null;
+    const allViolations = auditCase.analyses.flatMap(a => a.violations);
+    const ruleResults = classifyRuleDependencies(allViolations, {
+      hasPayer: !!(auditCase.metadata as any)?.payerCode,
+    });
+    return deriveCaseAuditBasis(ruleResults);
+  }, [auditCase, hasAnalyses]);
+
   const { session } = useAuth();
   const userEmail = session?.user?.email || 'Unknown';
 
