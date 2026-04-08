@@ -323,14 +323,14 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
               <div className="flex items-start gap-3">
                 <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Suggested Action</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Recommended Resolution Path</p>
                   <p className={cn("text-sm font-semibold mt-0.5",
                     ACTION_PATH_CONFIG[effectiveActionPath.recommended_action]?.colorClass || 'text-foreground'
                   )}>
                     {ACTION_PATH_CONFIG[effectiveActionPath.recommended_action]?.label || effectiveActionPath.recommended_action}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">{effectiveActionPath.action_rationale}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1.5 italic">Operational guidance only — not legal advice.</p>
+                  <p className="text-[10px] text-muted-foreground mt-1.5 italic">Operational guidance — not a legal or clinical determination.</p>
                 </div>
               </div>
               <div className="text-center shrink-0">
