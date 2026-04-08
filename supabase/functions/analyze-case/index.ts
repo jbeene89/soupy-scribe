@@ -678,13 +678,44 @@ serve(async (req) => {
       }
 
       const totalViolations = analysisResults.reduce((sum, a) => sum + (a.violations?.length || 0), 0);
-      const criticalViolations = analysisResults.reduce((sum, a) =>
-        sum + (a.violations?.filter((v: any) => v.severity === "critical")?.length || 0), 0);
-      const warningViolations = totalViolations - criticalViolations;
+
+      // ── Governance: Metadata-dependent severity guard ──
+      // Findings that mention missing metadata cannot count as confirmed critical.
+      // They are reclassified to "warning" for scoring purposes.
+      const METADATA_KEYWORDS = [
+        "separate tin", "separate billing", "missing mar", "consultant note",
+        "operative note", "time log", "time documentation", "anesthesia record",
+        "implant manifest", "implant log", "pathology report", "prior authorization",
+        "separate npi", "separate provider",
+      ];
+
+      let confirmedCriticals = 0;
+      let pendingCriticals = 0;
+      for (const a of analysisResults) {
+        for (const v of (a.violations || [])) {
+          if (v.severity === "critical") {
+            const descLower = (v.description || "").toLowerCase();
+            const defensesText = (v.defenses || [])
+              .flatMap((d: any) => [...(d.strengths || []), ...(d.weaknesses || []), d.strategy || ""])
+              .join(" ").toLowerCase();
+            const combined = `${descLower} ${defensesText}`;
+            const dependsOnMissing = METADATA_KEYWORDS.some(kw => combined.includes(kw));
+
+            if (dependsOnMissing) {
+              pendingCriticals++;
+              // Reclassify for scoring — the violation object itself stays as-is
+              // (client-side governance module handles display reclassification)
+            } else {
+              confirmedCriticals++;
+            }
+          }
+        }
+      }
+      const warningViolations = totalViolations - confirmedCriticals - pendingCriticals;
 
       // Fine-tuned risk scoring:
-      // Base: 10 (every case has some baseline risk)
-      // Critical violations: 30 pts each (determinative weight)
+      // Confirmed criticals: 30 pts each (determinative weight)
+      // Pending criticals: 15 pts each (reduced — pending verification)
       // Warning violations: 8 pts each (contextual weight)
       // Consensus divergence penalty: up to +15 when consensus < 60
       // Low average confidence penalty: up to +10 when avg confidence < 50
@@ -693,7 +724,7 @@ serve(async (req) => {
         ? completedAnalyses.reduce((s, a) => s + a.confidence, 0) / completedAnalyses.length
         : 50;
       const confidencePenalty = avgConf < 50 ? Math.round((50 - avgConf) * 0.2) : 0;
-      const riskNum = Math.min(100, 10 + criticalViolations * 30 + warningViolations * 8 + consensusPenalty + confidencePenalty);
+      const riskNum = Math.min(100, 10 + confirmedCriticals * 30 + pendingCriticals * 15 + warningViolations * 8 + consensusPenalty + confidencePenalty);
 
       // Adjusted thresholds: critical requires 75+, medium starts at 35
       const riskLevel = riskNum >= 75 ? "critical" : riskNum >= 55 ? "high" : riskNum >= 35 ? "medium" : "low";
