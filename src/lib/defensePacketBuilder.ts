@@ -115,31 +115,31 @@ export interface ServiceAtRisk {
 
 const CLASSIFICATION_CONFIG: Record<SupportClassification, { label: string; colorClass: string; bgClass: string; borderClass: string }> = {
   required_to_defend: {
-    label: 'Required to Defend',
+    label: 'Required — Essential to Sustain Claim',
     colorClass: 'text-violation',
     bgClass: 'bg-violation/10',
     borderClass: 'border-violation/30',
   },
   supporting_strengthens: {
-    label: 'Supporting — Strengthens Case',
+    label: 'Supporting — Strengthens Position',
     colorClass: 'text-info-blue',
     bgClass: 'bg-info-blue/10',
     borderClass: 'border-info-blue/30',
   },
   low_value_not_worth_chasing: {
-    label: 'Low Value — Not Worth Chasing',
+    label: 'Low-Recovery Value',
     colorClass: 'text-muted-foreground',
     bgClass: 'bg-muted/30',
     borderClass: 'border-muted',
   },
   human_review_required: {
-    label: 'Human Review Required',
+    label: 'Requires Analyst Determination',
     colorClass: 'text-disagreement',
     bgClass: 'bg-disagreement/10',
     borderClass: 'border-disagreement/30',
   },
   not_curable_consider_downgrade: {
-    label: 'Not Curable — Consider Downgrade',
+    label: 'Non-Curable — Consider Service Adjustment',
     colorClass: 'text-destructive',
     bgClass: 'bg-destructive/10',
     borderClass: 'border-destructive/30',
@@ -254,27 +254,27 @@ function generateNextStep(classification: SupportClassification, obtainability: 
   switch (classification) {
     case 'required_to_defend':
       return obtainability === 'likely_obtainable'
-        ? `Request ${description.toLowerCase()} from facility medical records. Critical for defense.`
-        : `Attempt to obtain ${description.toLowerCase()}. If unavailable, consider alternative documentation strategies.`;
+        ? `Request ${description.toLowerCase()} from facility medical records. Essential to sustain billed service.`
+        : `Attempt to obtain ${description.toLowerCase()}. If unavailable, evaluate alternative documentation strategies.`;
     case 'supporting_strengthens':
-      return `Obtain if available — could materially strengthen defense position.`;
+      return `Obtain if available — could materially strengthen the claim position.`;
     case 'low_value_not_worth_chasing':
-      return `Do not delay resolution for this item. Effort likely exceeds benefit.`;
+      return `Low-recovery value. Do not delay resolution for this item — effort likely exceeds benefit.`;
     case 'human_review_required':
       return `Route to clinical reviewer for determination on obtainability and relevance.`;
     case 'not_curable_consider_downgrade':
-      return `Evaluate whether to downgrade the billed service or withdraw the claim line.`;
+      return `Evaluate whether to adjust the billed service level or withdraw the claim line.`;
     default:
       return `Review and determine appropriate action.`;
   }
 }
 
 function generateImpactLabel(impact: number): string {
-  if (impact >= 70) return 'Could materially strengthen defense';
-  if (impact >= 50) return 'May support modifier justification';
-  if (impact >= 30) return 'Moderate support value';
+  if (impact >= 70) return 'Could materially strengthen claim defense';
+  if (impact >= 50) return 'May support modifier or service-level justification';
+  if (impact >= 30) return 'Moderate evidentiary value';
   if (impact >= 15) return 'Minor supporting evidence';
-  return 'Unlikely to cure core rule conflict';
+  return 'Insufficient to resolve core compliance concern';
 }
 
 function generateObtainabilityLabel(obt: Obtainability): string {
@@ -491,27 +491,27 @@ export function buildDefensePacket(
   if (notCurableCount >= 2 && requiredCount === 0) {
     disposition = 'appeal_not_recommended';
     dispositionLabel = 'Appeal Not Recommended';
-    dispositionDescription = 'Multiple findings cannot be cured with additional documentation. Consider withdrawal or downgrade.';
+    dispositionDescription = 'Multiple findings are unlikely to be resolved with additional documentation. Consider service-level adjustment or withdrawal.';
   } else if (humanReviewCount >= 2) {
     disposition = 'route_to_human';
     dispositionLabel = 'Route to Human Audit';
-    dispositionDescription = 'Multiple items require clinical reviewer determination before disposition.';
+    dispositionDescription = 'Multiple items require clinical reviewer determination before a defensible disposition can be reached.';
   } else if (notCurableCount >= 1 && requiredCount >= 1) {
     disposition = 'downgrade_resubmit';
-    dispositionLabel = 'Downgrade and Resubmit';
-    dispositionDescription = 'Some findings are not curable but others can be defended. Consider partial downgrade.';
+    dispositionLabel = 'Correct and Resubmit';
+    dispositionDescription = 'Some findings are structurally non-curable. Others may be defended with documentation. Evaluate partial service-level adjustment.';
   } else if (requiredCount >= 1) {
     disposition = 'defend_with_packet';
-    dispositionLabel = 'Defend with Supporting Packet';
-    dispositionDescription = 'Required documentation identified. Assemble defense packet before submission.';
+    dispositionLabel = 'Assemble Supporting Documentation';
+    dispositionDescription = 'Required evidence has been identified. Assemble a defense-ready packet before submission or appeal.';
   } else if (overallDefenseStrength >= 70 && notCurableCount === 0) {
     disposition = 'defend_as_billed';
-    dispositionLabel = 'Defend as Billed';
-    dispositionDescription = 'Current documentation appears sufficient. No critical gaps identified.';
+    dispositionLabel = 'Supportable as Billed';
+    dispositionDescription = 'Available documentation appears sufficient to sustain the billed services. No critical evidentiary gaps identified.';
   } else {
     disposition = 'defend_with_packet';
-    dispositionLabel = 'Defend with Supporting Packet';
-    dispositionDescription = 'Supporting documentation could strengthen the claim position.';
+    dispositionLabel = 'Assemble Supporting Documentation';
+    dispositionDescription = 'Additional documentation could strengthen the claim position before submission or review.';
   }
 
   // ── Summary notes (cautious language) ──

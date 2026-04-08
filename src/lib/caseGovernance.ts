@@ -105,8 +105,8 @@ export function classifyFindingSeverity(
           violation, originalSeverity, dependsOnMissingMetadata: true,
           metadataDependencies: deps,
           governedSeverity: 'needs_payer_entity_validation',
-          governedLabel: 'Needs Payer/Entity Validation',
-          downgradeReason: `Finding depends on unverified entity/payer data: ${deps.join(', ')}. Cannot confirm as critical without validation.`,
+          governedLabel: 'Entity Validation Required',
+          downgradeReason: `Finding depends on unverified entity or payer data: ${deps.join(', ')}. Cannot confirm severity without validation.`,
         };
       }
       if (evidenceScore < 50) {
@@ -115,15 +115,15 @@ export function classifyFindingSeverity(
           dependsOnMissingMetadata: true,
           metadataDependencies: deps,
           governedSeverity: 'high_risk_documentation_gap',
-          governedLabel: 'High-Risk Documentation Gap',
-          downgradeReason: `Evidence sufficiency at ${Math.round(evidenceScore)}% with missing metadata: ${deps.join(', ')}. Insufficient to confirm critical severity.`,
+          governedLabel: 'Documentation Insufficient to Sustain',
+          downgradeReason: `Evidence sufficiency at ${Math.round(evidenceScore)}% with unresolved metadata dependencies: ${deps.join(', ')}. Insufficient to confirm critical severity.`,
         };
       }
       return {
         violation, originalSeverity, dependsOnMissingMetadata: true,
         metadataDependencies: deps,
         governedSeverity: 'critical_pending_verification',
-        governedLabel: 'Critical — Pending Verification',
+        governedLabel: 'High-Risk — Pending Verification',
         downgradeReason: `Finding flagged as critical but depends on: ${deps.join(', ')}. Requires verification before confirmed status.`,
       };
     }
@@ -134,7 +134,7 @@ export function classifyFindingSeverity(
         violation, originalSeverity, dependsOnMissingMetadata: false,
         metadataDependencies: [],
         governedSeverity: 'critical_confirmed',
-        governedLabel: 'Critical — Confirmed',
+        governedLabel: 'Confirmed — Strong Rule Conflict',
         downgradeReason: null,
       };
     }
@@ -144,8 +144,8 @@ export function classifyFindingSeverity(
       violation, originalSeverity, dependsOnMissingMetadata: false,
       metadataDependencies: [],
       governedSeverity: 'critical_pending_verification',
-      governedLabel: 'Critical — Pending Verification',
-      downgradeReason: 'Finding lacks direct regulatory reference or sufficient defense strength to confirm critical status.',
+      governedLabel: 'High-Risk — Pending Verification',
+      downgradeReason: 'Finding lacks direct regulatory reference or sufficient evidence strength to confirm as a strong rule conflict.',
     };
   }
 
@@ -415,13 +415,13 @@ export function assessGovernance(
 
   if (contradictionDowngrade.mandatoryHumanReview || failCount >= 2 || floorBreached) {
     outcome = 'human_audit';
-    outcomeLabel = 'Route to Human Audit';
+    outcomeLabel = 'Route to Analyst Review';
   } else if (failCount >= 1 || warnCount >= 3) {
     outcome = 'escalate';
-    outcomeLabel = 'Escalate for Review';
+    outcomeLabel = 'Escalate for Senior Review';
   } else if (warnCount >= 1) {
     outcome = 'automated_review';
-    outcomeLabel = 'Automated Review with Flags';
+    outcomeLabel = 'Automated Processing with Flags';
   } else {
     outcome = 'automated_approve';
     outcomeLabel = 'Eligible for Automated Processing';
@@ -453,25 +453,25 @@ export const GOVERNED_SEVERITY_CONFIG: Record<GovernedSeverity, {
   borderClass: string;
 }> = {
   critical_confirmed: {
-    label: 'Critical — Confirmed',
+    label: 'Confirmed — Strong Rule Conflict',
     colorClass: 'text-destructive',
     bgClass: 'bg-destructive/10',
     borderClass: 'border-destructive/30',
   },
   critical_pending_verification: {
-    label: 'Critical — Pending Verification',
+    label: 'High-Risk — Pending Verification',
     colorClass: 'text-violation',
     bgClass: 'bg-violation/10',
     borderClass: 'border-violation/30',
   },
   high_risk_documentation_gap: {
-    label: 'High-Risk Documentation Gap',
+    label: 'Documentation Insufficient to Sustain',
     colorClass: 'text-disagreement',
     bgClass: 'bg-disagreement/10',
     borderClass: 'border-disagreement/30',
   },
   needs_payer_entity_validation: {
-    label: 'Needs Payer/Entity Validation',
+    label: 'Entity Validation Required',
     colorClass: 'text-info-blue',
     bgClass: 'bg-info-blue/10',
     borderClass: 'border-info-blue/30',

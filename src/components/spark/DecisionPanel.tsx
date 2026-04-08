@@ -56,13 +56,13 @@ export function DecisionPanel({ auditCase, onDecision, humanReviewRequired, disp
         return {
           title: 'Approve Claim',
           description: suppressAutoApprove
-            ? '⚠ This case has been flagged for human review. By approving, you are overriding the automated recommendation. Please provide detailed justification.'
+            ? '⚠ This case has been flagged for human review. By approving, you are issuing a manual override of the automated recommendation. Detailed justification is required for audit trail purposes.'
             : 'You are approving this claim for payment. Please document your reasoning for this decision.',
         };
       case 'rejected':
         return {
-          title: 'Reject Claim',
-          description: 'You are rejecting this claim. Please provide detailed reasoning that will be shared with the provider.',
+          title: 'Deny Claim',
+          description: 'You are denying this claim based on identified compliance concerns. Provide specific reasoning that will be included in the provider notification.',
         };
       case 'info-requested':
         return {
@@ -109,7 +109,7 @@ export function DecisionPanel({ auditCase, onDecision, humanReviewRequired, disp
                 )}
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
-                {suppressAutoApprove ? 'Override: Approve' : 'Approve Claim'}
+                {suppressAutoApprove ? 'Manual Approval Override' : 'Approve Claim'}
               </Button>
 
               <Button
@@ -129,7 +129,7 @@ export function DecisionPanel({ auditCase, onDecision, humanReviewRequired, disp
                 className="flex-1"
               >
                 <XCircle className="h-4 w-4 mr-2" />
-                Reject Claim
+                Deny Claim
               </Button>
             </div>
 

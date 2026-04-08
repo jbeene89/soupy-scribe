@@ -60,7 +60,7 @@ export const mockCases: AuditCase[] = [
         violations: [
           {
             id: 'v1', code: '99291', type: 'medical-necessity', severity: 'warning',
-            description: 'Critical care time documentation may be insufficient to support billing',
+            description: 'Critical care time documentation may be insufficient to sustain billed service',
             regulationRef: 'CPT Guidelines §99291-99292; CMS Transmittal 1548',
             defenses: [
               { role: 'builder', strategy: 'STEMI presentation inherently requires critical care management. The clinical scenario supports time-intensive interventions.', strengths: ['Strong clinical indication', 'Life-threatening condition'], weaknesses: ['Missing explicit time documentation'], strength: 68 },
@@ -71,7 +71,7 @@ export const mockCases: AuditCase[] = [
           },
           {
             id: 'v2', code: '99285', type: 'upcoding', severity: 'critical',
-            description: 'ED visit level 5 requires documentation of immediate, significant threat to life or physiologic function',
+            description: 'ED visit level 5 requires documentation of immediate, significant threat to life or physiologic function — under-supported as billed',
             regulationRef: 'AMA CPT Professional Edition; CMS OPPS Guidelines',
             defenses: [
               { role: 'builder', strategy: 'Acute STEMI with respiratory distress clearly meets level 5 criteria for threat to life.', strengths: ['Clear clinical justification', 'ICD codes support acuity'], weaknesses: ['Documentation completeness unknown'], strength: 78 },
@@ -98,7 +98,7 @@ export const mockCases: AuditCase[] = [
         violations: [
           {
             id: 'v3', code: '99291', type: 'medical-necessity', severity: 'critical',
-            description: 'Critical care billing requires contemporaneous time documentation — none found',
+            description: 'Critical care billing requires contemporaneous time documentation — none identified in available records',
             regulationRef: 'CMS IOM Pub 100-04, Ch.12, §30.6.12',
             defenses: [
               { role: 'builder', strategy: 'Clinical acuity of STEMI makes critical care self-evident.', strengths: ['Strong clinical case'], weaknesses: ['Self-evidence insufficient for billing'], strength: 35 },
@@ -125,7 +125,7 @@ export const mockCases: AuditCase[] = [
         violations: [
           {
             id: 'v4', code: '99292', type: 'unbundling', severity: 'warning',
-            description: 'Add-on critical care time may overlap with separately billed procedures',
+            description: 'Potential unbundling concern: add-on critical care time may overlap with separately billed procedures',
             regulationRef: 'CPT Appendix C; CMS NCCI Edits',
             defenses: [
               { role: 'builder', strategy: 'Multiple interventions during STEMI management justify extended critical care beyond initial 74 minutes.', strengths: ['Clinical justification', 'Complex case'], weaknesses: ['Must prove >74 min of qualifying time'], strength: 62 },
@@ -243,15 +243,15 @@ export const mockCases: AuditCase[] = [
       rawScore: 98,
       percentile: 98,
       confidence: 85,
-      recommendation: 'High risk of overbilling. Both meniscectomy codes billed for same knee requires strong justification.',
+      recommendation: 'High risk of apparent duplicate billing. Both meniscectomy codes billed for same knee — requires strong supporting documentation.',
       dataCompleteness: { score: 85, present: ['CPT codes', 'ICD-10 codes', 'Operative note', 'Pre-op imaging', 'Physician ID', 'Service metadata'], missing: ['Distinct compartment documentation'] },
       factors: [
-        { id: 'f8', title: 'Duplicate meniscectomy codes', description: '29880 and 29881 billed together', whyItMatters: '29880 includes both compartments — billing 29881 additionally suggests unbundling', evidenceToConfirm: ['Operative note showing distinct work in separate compartments', 'Medical necessity for both procedures'], weight: 35, isDeterminative: true, triggered: true },
+        { id: 'f8', title: 'Apparent duplicate meniscectomy codes', description: '29880 and 29881 billed together', whyItMatters: '29880 includes both compartments — billing 29881 additionally suggests potential unbundling concern', evidenceToConfirm: ['Operative note showing distinct work in separate compartments', 'Medical necessity for both procedures'], weight: 35, isDeterminative: true, triggered: true },
         { id: 'f9', title: 'High claim amount', description: '$5,200 is 2.1x specialty median', whyItMatters: 'Significant financial outlier', evidenceToConfirm: ['Itemized billing', 'Justification for each code'], weight: 20, isDeterminative: false, triggered: true },
       ],
     },
     analyses: [],
-    decision: { outcome: 'rejected', reasoning: 'Operative note does not support billing both 29880 and 29881. 29880 includes medial AND lateral meniscectomy. Recommend rebilling with 29880 only.', auditor: 'John Auditor', timestamp: '2024-02-15T14:00:00Z', overrides: [] },
+    decision: { outcome: 'rejected', reasoning: 'Operative note does not support billing both 29880 and 29881. 29880 includes medial AND lateral meniscectomy. Recommend resubmission with 29880 only.', auditor: 'John Auditor', timestamp: '2024-02-15T14:00:00Z', overrides: [] },
     metadata: { dayOfWeek: 'Friday', timeOfDay: '07:30', anesthesiaType: 'General', patientObesity: true, understaffing: false, errorsFound: 2, upchargeAmount: 2600, procedureDuration: 90 },
   },
   {

@@ -145,10 +145,10 @@ interface ActionExplainer {
 }
 
 const ACTION_LABELS: Record<string, { label: string; colorClass: string }> = {
-  automated_approve: { label: 'Approve / Likely Supportable', colorClass: 'text-consensus' },
-  automated_review: { label: 'Support with Packet', colorClass: 'text-info-blue' },
-  escalate: { label: 'Request Additional Documentation', colorClass: 'text-disagreement' },
-  human_audit: { label: 'Route to Human Audit', colorClass: 'text-violation' },
+  automated_approve: { label: 'Supportable — Eligible for Automated Processing', colorClass: 'text-consensus' },
+  automated_review: { label: 'Conditional — Requires Flagged Review', colorClass: 'text-info-blue' },
+  escalate: { label: 'Escalate — Request Additional Documentation', colorClass: 'text-disagreement' },
+  human_audit: { label: 'Route to Analyst Review', colorClass: 'text-violation' },
 };
 
 function buildActionExplainer(gov: GovernanceAssessment): ActionExplainer {
@@ -189,7 +189,7 @@ export function ScoreTransparencyPanel({ governance, signals }: ScoreTransparenc
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-semibold">Score Transparency</span>
+                <span className="text-sm font-semibold">Scoring Framework</span>
                 <Badge variant="outline" className="text-[9px]">
                   {explainers.length} scores
                 </Badge>
@@ -272,7 +272,7 @@ export function ScoreTransparencyPanel({ governance, signals }: ScoreTransparenc
             <div className="rounded-md border p-3 space-y-1.5">
               <div className="flex items-center gap-2">
                 <ShieldAlert className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-semibold">Final Action Recommendation</span>
+                <span className="text-xs font-semibold">Recommended Resolution Path</span>
               </div>
               <p className={cn('text-sm font-semibold', actionExplainer.colorClass)}>
                 {actionExplainer.label}
@@ -346,7 +346,7 @@ export function ScoreTransparencyPanel({ governance, signals }: ScoreTransparenc
             </div>
 
             <p className="text-[10px] text-muted-foreground italic">
-              Scores are operational guidance only — not legal determinations. High risk does not equal automatic denial.
+              Scores are operational guidance — not legal or clinical determinations. Elevated risk does not imply improper billing.
             </p>
           </div>
         </CollapsibleContent>

@@ -126,7 +126,7 @@ export function GovernancePanel({ assessment, compact }: GovernancePanelProps) {
           <CardHeader className="pb-2 pt-3">
             <CardTitle className="text-xs flex items-center gap-2">
               <Info className="h-3.5 w-3.5 text-disagreement" />
-              Contradiction-Aware Adjustments
+              Perspective Disagreement Adjustments
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3">
@@ -141,7 +141,7 @@ export function GovernancePanel({ assessment, compact }: GovernancePanelProps) {
             {contradictionDowngrade.mandatoryHumanReview && (
               <div className="mt-2 rounded-md border border-violation/30 bg-violation/5 p-2">
                 <p className="text-[11px] font-medium text-violation">
-                  ⚠ Mandatory human review triggered by contradiction analysis
+                  ⚠ Mandatory analyst review triggered by perspective disagreement analysis
                 </p>
               </div>
             )}
