@@ -385,6 +385,9 @@ serve(async (req) => {
         });
       }
 
+      // Sanitize: remove null bytes and other non-printable Unicode that Postgres rejects
+      const sanitizedSourceText = sourceText.replace(/\u0000/g, "");
+
       console.log("Extracting case data from source text...");
       const { result: extracted } = await callAI(
         LOVABLE_API_KEY, "google/gemini-2.5-flash", EXTRACTION_PROMPT, sourceText,
