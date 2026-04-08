@@ -111,7 +111,7 @@ export function classifyFindingSeverity(
       }
       if (evidenceScore < 50) {
         return {
-          violation, originalSeverity, dependsOnMissing: true,
+          violation, originalSeverity,
           dependsOnMissingMetadata: true,
           metadataDependencies: deps,
           governedSeverity: 'high_risk_documentation_gap',
