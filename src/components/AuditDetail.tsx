@@ -31,6 +31,9 @@ import { PreAppealResolutionTab } from './pre-appeal/PreAppealResolutionTab';
 import { getStoredPreAppealResolution, runPreAppealAnalysis } from '@/lib/preAppealService';
 import type { PreAppealResolution } from '@/lib/preAppealTypes';
 
+// Defense Packet Builder
+import { DefensePacketBuilder } from './DefensePacketBuilder';
+
 // Engine v3 services
 import {
   getDecisionTrace, getEvidenceSufficiency, getContradictions,
