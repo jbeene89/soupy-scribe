@@ -295,7 +295,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-4 w-4 text-violation shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-violation">Human Review Required</p>
+                <p className="text-sm font-semibold text-violation">Analyst Review Required</p>
                 <ul className="mt-1 space-y-0.5">
                   {signals.humanReview.reasons.map((r, i) => (
                     <li key={i} className="text-xs text-muted-foreground">• {r}</li>
@@ -345,9 +345,9 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
       {hasAnalyses ? (
         <Tabs defaultValue="analysis" className="space-y-4">
           <TabsList className="flex-wrap">
-            <TabsTrigger value="analysis">AI Analysis</TabsTrigger>
-            {hasV3Data && <TabsTrigger value="engine">Engine Intelligence</TabsTrigger>}
-            <TabsTrigger value="evidence">Evidence</TabsTrigger>
+            <TabsTrigger value="analysis">Analysis</TabsTrigger>
+            {hasV3Data && <TabsTrigger value="engine">Engine Diagnostics</TabsTrigger>}
+            <TabsTrigger value="evidence">Evidence & Documentation</TabsTrigger>
             <TabsTrigger value="appeals">
               Appeals & Export
               {exportReadiness.status !== 'ready' && (
@@ -361,7 +361,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
               )}
             </TabsTrigger>
             <TabsTrigger value="defense-packet">
-              Defense Packet
+              Support Requirements
             </TabsTrigger>
           </TabsList>
 
