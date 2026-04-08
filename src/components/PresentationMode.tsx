@@ -103,7 +103,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
           <div className="p-1.5 rounded-md bg-primary">
             <Scale className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-sm">Lyric AI</span>
+          <span className="font-semibold text-sm">SOUPY</span>
           <Badge variant="outline" className="text-[10px] ml-2">Executive Preview</Badge>
         </div>
         <div className="flex items-center gap-2">
