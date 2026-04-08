@@ -31,6 +31,9 @@ import { PreAppealResolutionTab } from './pre-appeal/PreAppealResolutionTab';
 import { getStoredPreAppealResolution, runPreAppealAnalysis } from '@/lib/preAppealService';
 import type { PreAppealResolution } from '@/lib/preAppealTypes';
 
+// Defense Packet Builder
+import { DefensePacketBuilder } from './DefensePacketBuilder';
+
 // Engine v3 services
 import {
   getDecisionTrace, getEvidenceSufficiency, getContradictions,
@@ -325,6 +328,9 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
               {preAppealResolution && (
                 <Badge variant="outline" className="ml-1.5 text-[9px] px-1 py-0 border-accent/40 text-accent">✓</Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="defense-packet">
+              Defense Packet
             </TabsTrigger>
           </TabsList>
 
@@ -677,6 +683,15 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
                 </AuthGate>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="defense-packet">
+            <DefensePacketBuilder
+              auditCase={auditCase}
+              evidenceSuff={evidenceSuff}
+              contradictions={contradictions}
+              winningPacket={winningPacket}
+            />
           </TabsContent>
         </Tabs>
       ) : (
