@@ -680,8 +680,23 @@ serve(async (req) => {
       const totalViolations = analysisResults.reduce((sum, a) => sum + (a.violations?.length || 0), 0);
       const criticalViolations = analysisResults.reduce((sum, a) =>
         sum + (a.violations?.filter((v: any) => v.severity === "critical")?.length || 0), 0);
-      const riskNum = Math.min(100, 20 + criticalViolations * 25 + totalViolations * 10);
-      const riskLevel = riskNum >= 80 ? "critical" : riskNum >= 60 ? "high" : riskNum >= 40 ? "medium" : "low";
+      const warningViolations = totalViolations - criticalViolations;
+
+      // Fine-tuned risk scoring:
+      // Base: 10 (every case has some baseline risk)
+      // Critical violations: 30 pts each (determinative weight)
+      // Warning violations: 8 pts each (contextual weight)
+      // Consensus divergence penalty: up to +15 when consensus < 60
+      // Low average confidence penalty: up to +10 when avg confidence < 50
+      const consensusPenalty = consensusScore < 60 ? Math.round((60 - consensusScore) * 0.25) : 0;
+      const avgConf = completedAnalyses.length > 0
+        ? completedAnalyses.reduce((s, a) => s + a.confidence, 0) / completedAnalyses.length
+        : 50;
+      const confidencePenalty = avgConf < 50 ? Math.round((50 - avgConf) * 0.2) : 0;
+      const riskNum = Math.min(100, 10 + criticalViolations * 30 + warningViolations * 8 + consensusPenalty + confidencePenalty);
+
+      // Adjusted thresholds: critical requires 75+, medium starts at 35
+      const riskLevel = riskNum >= 75 ? "critical" : riskNum >= 55 ? "high" : riskNum >= 35 ? "medium" : "low";
 
       // ── Primary analysis complete — update case with initial scores ──
       await supabase.from("audit_cases").update({

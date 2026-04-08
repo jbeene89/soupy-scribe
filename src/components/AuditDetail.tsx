@@ -10,7 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCodeCombinations, type CodeCombination } from '@/lib/soupyEngineService';
-import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight, ShieldAlert, Eye } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight, ShieldAlert, Eye, Download } from 'lucide-react';
+import { exportCaseReportPDF } from '@/lib/exportCaseReportPDF';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -194,6 +195,28 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
             ))}
           </div>
         </div>
+        {hasAnalyses && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 shrink-0"
+            onClick={() => {
+              exportCaseReportPDF({
+                auditCase,
+                evidenceSuff,
+                contradictions,
+                actionPathway,
+                decisionTrace,
+                winningPacket,
+                floorEvents,
+              });
+              toast.success('Case report PDF downloaded');
+            }}
+          >
+            <Download className="h-4 w-4" />
+            PDF Report
+          </Button>
+        )}
       </div>
 
       {/* ═══ Disposition Banner — Always visible when analyses exist ═══ */}
