@@ -682,11 +682,28 @@ serve(async (req) => {
       // ── Governance: Metadata-dependent severity guard ──
       // Findings that mention missing metadata cannot count as confirmed critical.
       // They are reclassified to "warning" for scoring purposes.
+      // ⚠ CANONICAL SOURCE: src/lib/metadataDependencyKeywords.ts
+      // Edge functions cannot import from src/ — keep this list in sync manually.
+      // Last synced: 2026-04-08
       const METADATA_KEYWORDS = [
-        "separate tin", "separate billing", "missing mar", "consultant note",
-        "operative note", "time log", "time documentation", "anesthesia record",
-        "implant manifest", "implant log", "pathology report", "prior authorization",
+        // Entity / billing identity
+        "separate tin", "separate billing entity", "billing entity",
         "separate npi", "separate provider",
+        // Clinical documentation
+        "missing mar", "medication administration record",
+        "missing consultant note", "consultant note", "consult note",
+        "missing operative note", "operative note", "op note",
+        "time log", "time documentation", "anesthesia record",
+        // Authorization & device
+        "prior authorization", "implant manifest", "implant log", "device log",
+        // Lab / pathology
+        "pathology report", "lab results",
+        // Modifier
+        "modifier documentation",
+        // Medical necessity
+        "medical necessity documentation",
+        // Payer
+        "payer policy", "payer-specific",
       ];
 
       let confirmedCriticals = 0;

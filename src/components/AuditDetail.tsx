@@ -283,17 +283,22 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
         </Card>
       )}
 
-      {/* ═══ Human Review Alert ═══ */}
-      {signals.humanReview.triggered && hasAnalyses && (
+      {/* ═══ Human Review Alert — driven by governance routing ═══ */}
+      {governance && ['human_audit', 'escalate'].includes(governance.routingDecision.outcome) && hasAnalyses && (
         <Card className="border-violation/30 bg-violation/5">
           <CardContent className="pt-3 pb-3">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-4 w-4 text-violation shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-violation">Human Review Required</p>
+                <p className="text-sm font-semibold text-violation">
+                  {governance.routingDecision.outcome === 'human_audit' ? 'Human Review Required' : 'Escalation Recommended'}
+                </p>
                 <ul className="mt-1 space-y-0.5">
-                  {signals.humanReview.reasons.map((r, i) => (
-                    <li key={i} className="text-xs text-muted-foreground">• {r}</li>
+                  {governance.contradictionDowngrade.explanations.map((r, i) => (
+                    <li key={`cd-${i}`} className="text-xs text-muted-foreground">• {r}</li>
+                  ))}
+                  {governance.routingDecision.factors.filter(f => f.status === 'fail').map((f, i) => (
+                    <li key={`rf-${i}`} className="text-xs text-muted-foreground">• {f.explanation}</li>
                   ))}
                 </ul>
               </div>
