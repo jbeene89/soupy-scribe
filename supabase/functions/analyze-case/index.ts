@@ -390,7 +390,7 @@ serve(async (req) => {
 
       console.log("Extracting case data from source text...");
       const { result: extracted } = await callAI(
-        LOVABLE_API_KEY, "google/gemini-2.5-flash", EXTRACTION_PROMPT, sourceText,
+        LOVABLE_API_KEY, "google/gemini-2.5-flash", EXTRACTION_PROMPT, sanitizedSourceText,
         [extractionToolSchema],
         { type: "function", function: { name: "extract_case_data" } }
       );
@@ -407,7 +407,7 @@ serve(async (req) => {
           cpt_codes: extracted.cpt_codes,
           icd_codes: extracted.icd_codes,
           claim_amount: extracted.claim_amount,
-          source_text: sourceText,
+          source_text: sanitizedSourceText,
           status: "pending",
           risk_score: {},
           metadata: { summary: extracted.summary, procedure_type: extracted.procedure_type },
