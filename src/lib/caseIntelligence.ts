@@ -241,7 +241,7 @@ export function deriveCaseSignals(
   let consensusLabel: string;
   if (consensusScore >= 90) consensusLabel = 'Strong Agreement';
   else if (consensusScore >= 75) consensusLabel = 'Majority Agreement';
-  else if (consensusScore >= 50) consensusLabel = 'Split Opinion';
+  else if (consensusScore >= 50) consensusLabel = 'Moderate Agreement';
   else consensusLabel = 'High Divergence';
 
   const confidence = auditCase.riskScore?.confidence || 0;
