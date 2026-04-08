@@ -283,8 +283,12 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
           </CardContent>
         </Card>
       )}
+      {/* ═══ Score Transparency Panel ═══ */}
+      {governance && hasAnalyses && (
+        <ScoreTransparencyPanel governance={governance} signals={signals} />
+      )}
 
-      {/* ═══ Human Review Alert ═══ */}
+      {/* ═══ Human Review Alert — driven by governance routing ═══ */}
       {signals.humanReview.triggered && hasAnalyses && (
         <Card className="border-violation/30 bg-violation/5">
           <CardContent className="pt-3 pb-3">
