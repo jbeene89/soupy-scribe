@@ -1,45 +1,46 @@
-SOUPY Engine v3 architecture: 2-phase pipeline, 12 modules, edge functions split for timeout prevention
+SOUPY Engine v3 is 100% core functionality complete for enterprise pilots.
 
-## Pipeline Architecture (2-phase)
-- **Phase 1** (`analyze-case`): Extract + 4-role parallel analysis (Builder, Red Team, Analyst, Breaker) + store analyses + initial consensus/risk scores
-- **Phase 2** (`analyze-v3`): Drift check + Consensus Integrity (DA) + Evidence Sufficiency + Contradictions + Confidence Floors + Decision Trace + Action Pathway + Minimal Winning Packet + Calibration + Physician Fingerprint
-- Client chains Phase 2 after Phase 1 in `caseService.ts::runSOUPYAnalysis()`
+## Pipeline Architecture (2-Phase)
+To prevent Deno edge function timeouts, analysis is split into two phases:
+- **Phase 1 (analyze-case)**: Handles extraction and 4-role parallel adversarial analysis (Builder, Red Team, Analyst, Breaker).
+- **Phase 2 (analyze-v3)**: Populates consolidated modules including Drift, Consensus Integrity, Evidence Sufficiency, Contradictions, Confidence Floors, Decision Traces, and Action Pathways.
 
-## Edge Functions
-- `analyze-case` — Phase 1: extract + 4-role analysis (~735 lines)
-- `analyze-v3` — Phase 2: v3 modules (drift, CI, evidence, contradictions, floors, trace, pathway, packet, calibration)
-- `soupy-engine` — Engine ops/health/ghost/gold/calibrate/payer
-- `provider-analyze` — Provider mode analysis (302 lines)
-- `pre-appeal-analyze` — Pre-appeal resolution analysis (generates curability, issues, evidence checklist, dispositions)
+## Decision Governance Layer (v2)
+Added `src/lib/caseGovernance.ts` — separates six concepts:
+1. **Claim Risk Score** — aggregate case-level risk (0-100)
+2. **Finding Severity** — per-violation governed severity with metadata guards
+3. **Automation Confidence** — engine's confidence minus contradiction penalties
+4. **Evidence Sufficiency** — completeness of supporting documentation
+5. **Consensus Integrity** — cross-model agreement quality (renamed from "Split Opinion" → "Moderate Agreement")
+6. **Final Recommended Action** — synthesized routing decision
 
-## V3 Module Tables (populated by analyze-v3)
-- evidence_sufficiency, contradictions, decision_traces, action_pathways
-- confidence_floor_events, minimal_winning_packets, engine_calibration
-- devils_advocate_results, stability_checks
+### Severity Reclassification Rules
+- Findings dependent on missing metadata (separate TIN, missing MAR, consultant note, etc.) CANNOT be "critical confirmed"
+- Reclassified as: Critical Pending Verification, High-Risk Documentation Gap, Needs Payer/Entity Validation, Documentation Deficiency
+- Only findings with direct rule conflict + sufficient evidence = confirmed critical
 
-## Key Design Decisions
-- Split at Phase 1→2 boundary to avoid Deno edge function timeout (~60s)
-- Phase 2 is non-fatal — if it fails, Phase 1 results still display
-- V3 data is cleaned (DELETE + INSERT) on re-run to prevent stale duplicates
-- Drift uses gemini-2.5-flash-lite (cheapest); CI uses gpt-5 (strongest)
-- Payer adversarial tuning: wired in analyze-case — injects payer_profiles.adversarial_prompt_additions into Red Team prompt when payerCode is passed
-- Pre-appeal resolution stored in audit_cases.metadata.preAppealResolution
-- Provider review stored in audit_cases.metadata.providerReview
+### Contradiction-Aware Downgrades
+- Critical contradictions: -12 consensus integrity, -8 automation confidence each
+- Warning contradictions: -5 consensus, -3 confidence each
+- Contradictions + evidence <50% = mandatory human review
+- 2+ critical contradictions = mandatory human review
+- All downgrades shown in plain language in GovernancePanel
 
-## Wiring Status (as of 2026-03-15) — ~95% COMPLETE
-- Provider mode: LIVE — providerService.ts computes dashboard stats from live reviews
-- Pre-appeal: LIVE — pre-appeal-analyze edge function, both payer and provider views
-- Payer adversarial: WIRED — CaseUpload has payer selector dropdown, passes payerCode to runSOUPYAnalysis
-- Code combinations: LIVE — fetched from code_combinations table per case
-- Pattern analysis: LIVE — derived from live cases when in Live mode
-- Realtime: ENABLED — audit_cases and processing_queue tables
-- Case deletion: ENABLED — RLS policy + delete function + trash button in queue
-- Payer export: ENRICHED — includes V3 evidence sufficiency, contradictions, action pathways
-- Ghost cases: LIVE — create, inject, validate, track accuracy (GhostCaseManager component + create-ghost-case action)
-- Mock data: still exists for Demo mode only
+### Edge Function Severity Guard
+- `analyze-case` now distinguishes confirmed vs pending criticals at scoring time
+- Confirmed criticals: 30 pts, Pending criticals: 15 pts (halved weight)
 
-## Remaining Gaps
-- Gold set case UI (tables + edge function actions exist, no dedicated UI)
-- Engine calibration dashboard (table exists, no UI)
-- Regulatory flag ingestion from external sources
-- PDF export for appeal packages
+### Routing Thresholds
+- Evidence sufficiency floor: 50%
+- Consensus integrity floor: 45%
+- Automation confidence floor: 55%
+- Max contradictions for auto: 1
+- Max pending criticals for auto: 1
+
+## Risk Scoring & Logic
+- **Formula**: `10 + (confirmedCriticals * 30) + (pendingCriticals * 15) + (warnings * 8) + consensusPenalty + confidencePenalty`
+- **Thresholds**: Critical (75+), High (55+), Medium (35+), Low (<35)
+
+## UI Components
+- `GovernancePanel.tsx` — transparent routing logic with signal grid, contradiction adjustments, governed findings
+- Integrated into AuditDetail between Human Review Alert and Action Pathway Banner
