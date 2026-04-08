@@ -119,6 +119,11 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
     contradictions,
   }), [auditCase, evidenceSuff, contradictions]);
 
+  const governance = useMemo(() => {
+    if (!hasAnalyses) return null;
+    return assessGovernance(auditCase, { contradictions, evidenceSuff, floorEvents });
+  }, [auditCase, contradictions, evidenceSuff, floorEvents, hasAnalyses]);
+
   const { session } = useAuth();
   const userEmail = session?.user?.email || 'Unknown';
 
