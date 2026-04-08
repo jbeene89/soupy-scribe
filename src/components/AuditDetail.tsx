@@ -48,6 +48,8 @@ import {
   generateDynamicEvidenceChecklist, buildStructuredExportPackage,
   type CaseSummarySignals,
 } from '@/lib/caseIntelligence';
+import { assessGovernance, type GovernanceAssessment } from '@/lib/caseGovernance';
+import { GovernancePanel } from '@/components/GovernancePanel';
 import { saveDecision, type AuditDecision } from '@/lib/caseService';
 
 interface AuditDetailProps {
@@ -116,6 +118,11 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
     evidenceSuff,
     contradictions,
   }), [auditCase, evidenceSuff, contradictions]);
+
+  const governance = useMemo(() => {
+    if (!hasAnalyses) return null;
+    return assessGovernance(auditCase, { contradictions, evidenceSuff, floorEvents });
+  }, [auditCase, contradictions, evidenceSuff, floorEvents, hasAnalyses]);
 
   const { session } = useAuth();
   const userEmail = session?.user?.email || 'Unknown';
@@ -264,6 +271,11 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* ═══ Governance Panel — Decision Layer Transparency ═══ */}
+      {governance && hasAnalyses && (
+        <GovernancePanel assessment={governance} />
       )}
 
       {/* ═══ Action Pathway Banner ═══ */}
