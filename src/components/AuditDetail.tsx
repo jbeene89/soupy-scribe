@@ -273,6 +273,11 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
         </Card>
       )}
 
+      {/* ═══ Governance Panel — Decision Layer Transparency ═══ */}
+      {governance && hasAnalyses && (
+        <GovernancePanel assessment={governance} />
+      )}
+
       {/* ═══ Action Pathway Banner ═══ */}
       {effectiveActionPath && hasAnalyses && (
         <Card className={cn(
