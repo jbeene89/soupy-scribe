@@ -388,7 +388,7 @@ const Index = () => {
                 <GitCompare className="h-3.5 w-3.5" />
                 Value Demo
               </TabsTrigger>
-              <TabsTrigger value="lyric-map" className="gap-1.5">
+              <TabsTrigger value="enhancement-map" className="gap-1.5">
                 <Layers className="h-3.5 w-3.5" />
                 Enhancement Map
               </TabsTrigger>
@@ -442,7 +442,7 @@ const Index = () => {
               <ComparisonView />
             </TabsContent>
 
-            <TabsContent value="lyric-map">
+            <TabsContent value="enhancement-map">
               <PlatformEnhancementMap />
             </TabsContent>
 
