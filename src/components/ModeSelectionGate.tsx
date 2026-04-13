@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, Stethoscope, ArrowRight, Brain } from 'lucide-react';
+import { Shield, Stethoscope, ArrowRight, Brain, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AppMode } from '@/lib/providerTypes';
 
