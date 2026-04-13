@@ -88,7 +88,7 @@ export function exportProviderCaseDetailPDF(auditCase: AuditCase, review: Provid
         ['Severity', (READINESS_LABELS[cv.severity] || cv.severity).toUpperCase()],
         ['Correctable', cv.isCorrectible ? 'Yes' : 'No'],
       ]);
-      addAlertBox(ctx, cv.recommendation, cv.severity === 'high' || cv.severity === 'critical' ? 'error' : 'warning', 'Recommendation');
+      addAlertBox(ctx, cv.recommendation, cv.severity === 'weak' || cv.severity === 'insufficient' ? 'error' : 'warning', 'Recommendation');
       addSpacer(ctx, 4);
     });
     addDivider(ctx);
