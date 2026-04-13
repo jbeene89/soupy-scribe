@@ -360,6 +360,18 @@ const Index = () => {
                 <GraduationCap className="h-3.5 w-3.5" />
                 Education Insights
               </TabsTrigger>
+              <TabsTrigger value="provider-or-readiness" className="gap-1.5">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                OR Readiness
+              </TabsTrigger>
+              <TabsTrigger value="provider-triage" className="gap-1.5">
+                <Target className="h-3.5 w-3.5" />
+                Triage Accuracy
+              </TabsTrigger>
+              <TabsTrigger value="provider-postop" className="gap-1.5">
+                <Bed className="h-3.5 w-3.5" />
+                Post-Op Flow
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="provider-dashboard">
@@ -377,6 +389,18 @@ const Index = () => {
 
             <TabsContent value="provider-education">
               <EducationInsights dataSource={dataSource} />
+            </TabsContent>
+
+            <TabsContent value="provider-or-readiness">
+              <ORReadinessModule events={mockORReadinessEvents} posture="compliance-coaching" />
+            </TabsContent>
+
+            <TabsContent value="provider-triage">
+              <TriageAccuracyModule events={mockTriageEvents} posture="compliance-coaching" />
+            </TabsContent>
+
+            <TabsContent value="provider-postop">
+              <PostOpFlowModule events={mockPostOpFlowEvents} posture="compliance-coaching" />
             </TabsContent>
           </Tabs>
         ) : (
