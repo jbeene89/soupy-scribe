@@ -39,6 +39,8 @@ import { ORReadinessModule } from '@/components/operational/ORReadinessModule';
 import { TriageAccuracyModule } from '@/components/operational/TriageAccuracyModule';
 import { PostOpFlowModule } from '@/components/operational/PostOpFlowModule';
 import { mockORReadinessEvents, mockTriageEvents, mockPostOpFlowEvents } from '@/lib/operationalMockData';
+import { fetchORReadinessEvents, fetchTriageAccuracyEvents, fetchPostOpFlowEvents } from '@/lib/operationalService';
+import type { ORReadinessEvent, TriageAccuracyEvent, PostOpFlowEvent } from '@/lib/operationalTypes';
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
@@ -56,6 +58,11 @@ const Index = () => {
   const [dataSource, setDataSource] = useState<'mock' | 'live'>('mock');
   const [livePatterns, setLivePatterns] = useState<LivePhysicianPattern[]>([]);
 
+  // Live operational events
+  const [liveOREvents, setLiveOREvents] = useState<ORReadinessEvent[]>([]);
+  const [liveTriageEvents, setLiveTriageEvents] = useState<TriageAccuracyEvent[]>([]);
+  const [livePostOpEvents, setLivePostOpEvents] = useState<PostOpFlowEvent[]>([]);
+
   const loadLiveCases = useCallback(async () => {
     setLoadingLive(true);
     try {
@@ -69,8 +76,24 @@ const Index = () => {
     }
   }, []);
 
+  const loadLiveOperationalEvents = useCallback(async () => {
+    try {
+      const [or, triage, postop] = await Promise.all([
+        fetchORReadinessEvents(),
+        fetchTriageAccuracyEvents(),
+        fetchPostOpFlowEvents(),
+      ]);
+      setLiveOREvents(or);
+      setLiveTriageEvents(triage);
+      setLivePostOpEvents(postop);
+    } catch (err) {
+      console.error('Failed to load operational events:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadLiveCases();
+    loadLiveOperationalEvents();
 
     // Realtime subscription — refresh case list on any change
     const channel = supabase
@@ -85,12 +108,32 @@ const Index = () => {
         { event: '*', schema: 'public', table: 'processing_queue' },
         () => { loadLiveCases(); }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'or_readiness_events' },
+        () => { loadLiveOperationalEvents(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'triage_accuracy_events' },
+        () => { loadLiveOperationalEvents(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'postop_flow_events' },
+        () => { loadLiveOperationalEvents(); }
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [loadLiveCases]);
+  }, [loadLiveCases, loadLiveOperationalEvents]);
 
   const allCases = dataSource === 'live' ? liveCases : [...mockCases, ...liveCases];
+
+  // Operational events: demo shows mock + live, live shows only live
+  const orEvents = dataSource === 'live' ? liveOREvents : [...mockORReadinessEvents, ...liveOREvents];
+  const triageEvents = dataSource === 'live' ? liveTriageEvents : [...mockTriageEvents, ...liveTriageEvents];
+  const postOpEvents = dataSource === 'live' ? livePostOpEvents : [...mockPostOpFlowEvents, ...livePostOpEvents];
 
   const handleDeleteCase = async (caseId: string) => {
     try {
@@ -392,15 +435,15 @@ const Index = () => {
             </TabsContent>
 
             <TabsContent value="provider-or-readiness">
-              <ORReadinessModule events={mockORReadinessEvents} posture="compliance-coaching" />
+              <ORReadinessModule events={orEvents} posture="compliance-coaching" />
             </TabsContent>
 
             <TabsContent value="provider-triage">
-              <TriageAccuracyModule events={mockTriageEvents} posture="compliance-coaching" />
+              <TriageAccuracyModule events={triageEvents} posture="compliance-coaching" />
             </TabsContent>
 
             <TabsContent value="provider-postop">
-              <PostOpFlowModule events={mockPostOpFlowEvents} posture="compliance-coaching" />
+              <PostOpFlowModule events={postOpEvents} posture="compliance-coaching" />
             </TabsContent>
           </Tabs>
         ) : (
@@ -504,15 +547,15 @@ const Index = () => {
             </TabsContent>
 
             <TabsContent value="or-readiness">
-              <ORReadinessModule events={mockORReadinessEvents} posture={posture} />
+              <ORReadinessModule events={orEvents} posture={posture} />
             </TabsContent>
 
             <TabsContent value="triage-accuracy">
-              <TriageAccuracyModule events={mockTriageEvents} posture={posture} />
+              <TriageAccuracyModule events={triageEvents} posture={posture} />
             </TabsContent>
 
             <TabsContent value="postop-flow">
-              <PostOpFlowModule events={mockPostOpFlowEvents} posture={posture} />
+              <PostOpFlowModule events={postOpEvents} posture={posture} />
             </TabsContent>
 
             <TabsContent value="history">
