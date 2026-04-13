@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { CaseQueue } from '@/components/CaseQueue';
@@ -33,6 +33,7 @@ import { ProviderCaseDetail } from '@/components/provider/ProviderCaseDetail';
 import { EducationInsights } from '@/components/provider/EducationInsights';
 import { ProviderCaseUpload } from '@/components/provider/ProviderCaseUpload';
 import { GhostCaseManager } from '@/components/GhostCaseManager';
+import { ModeSelectionGate } from '@/components/ModeSelectionGate';
 
 // Operational modules
 import { ORReadinessModule } from '@/components/operational/ORReadinessModule';
