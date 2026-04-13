@@ -1,11 +1,13 @@
 import { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bed, Clock, Users, TrendingUp, AlertTriangle, Activity, Syringe, CheckCircle2, XCircle } from 'lucide-react';
+import { Bed, Clock, Users, TrendingUp, AlertTriangle, Activity, Syringe, CheckCircle2, XCircle, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
 import { cn } from '@/lib/utils';
 import type { PostOpFlowEvent } from '@/lib/operationalTypes';
 import { DELAY_CATEGORY_OPTIONS } from '@/lib/operationalTypes';
+import { exportPostOpFlowPDF } from '@/lib/exportOperationalPDF';
 
 interface Props {
   events: PostOpFlowEvent[];
@@ -116,14 +118,20 @@ export function PostOpFlowModule({ events, posture }: Props) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Bed className="h-5 w-5 text-info-blue" />
-          Post-Op Flow Monitoring
-        </h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {isPayer ? 'Track post-operative bottlenecks that increase facility cost, resource consumption, and operational risk.' : 'Monitor recovery flow to reduce patient wait times, optimize staff utilization, and minimize unnecessary anesthesia.'}
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Bed className="h-5 w-5 text-info-blue" />
+            Post-Op Flow Monitoring
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isPayer ? 'Track post-operative bottlenecks that increase facility cost, resource consumption, and operational risk.' : 'Monitor recovery flow to reduce patient wait times, optimize staff utilization, and minimize unnecessary anesthesia.'}
+          </p>
+        </div>
+        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => exportPostOpFlowPDF(events, posture)}>
+          <Download className="h-3.5 w-3.5" />
+          Export PDF
+        </Button>
       </div>
 
       {/* Score Cards */}
