@@ -328,7 +328,6 @@ const Index = () => {
             {appMode === 'payer' && (
               <>
                 <div className="w-px h-4 bg-border mx-0.5" />
-                <AuditPostureToggle posture={posture} onChange={setPosture} />
                 <SOUPYConfigDialog config={soupyConfig} onSave={setSoupyConfig} />
               </>
             )}
