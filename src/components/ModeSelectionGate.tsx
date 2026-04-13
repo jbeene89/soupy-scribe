@@ -141,6 +141,9 @@ export function ModeSelectionGate({ onSelect }: Props) {
 
       {/* Pilot Pipeline */}
       <PilotPipeline />
+      <ROICalculator />
+      <PricingSection />
+      <div className="h-12" />
     </div>
   );
 }
