@@ -824,6 +824,7 @@ export type Database = {
           event_type: string
           id: string
           notes: string | null
+          org_id: string | null
           patient_wait_status: string | null
           replacement_source: string | null
           room_id: string | null
@@ -839,6 +840,7 @@ export type Database = {
           event_type?: string
           id?: string
           notes?: string | null
+          org_id?: string | null
           patient_wait_status?: string | null
           replacement_source?: string | null
           room_id?: string | null
@@ -854,6 +856,7 @@ export type Database = {
           event_type?: string
           id?: string
           notes?: string | null
+          org_id?: string | null
           patient_wait_status?: string | null
           replacement_source?: string | null
           room_id?: string | null
@@ -869,7 +872,70 @@ export type Database = {
             referencedRelation: "audit_cases"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "or_readiness_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      org_members: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_members_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       payer_profiles: {
         Row: {
@@ -923,6 +989,7 @@ export type Database = {
           facility: string | null
           id: string
           notes: string | null
+          org_id: string | null
           patient_wait_minutes: number | null
           service_line: string | null
           shift: string | null
@@ -938,6 +1005,7 @@ export type Database = {
           facility?: string | null
           id?: string
           notes?: string | null
+          org_id?: string | null
           patient_wait_minutes?: number | null
           service_line?: string | null
           shift?: string | null
@@ -953,6 +1021,7 @@ export type Database = {
           facility?: string | null
           id?: string
           notes?: string | null
+          org_id?: string | null
           patient_wait_minutes?: number | null
           service_line?: string | null
           shift?: string | null
@@ -965,6 +1034,13 @@ export type Database = {
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "postop_flow_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1211,6 +1287,7 @@ export type Database = {
           foreseeability_score: number | null
           id: string
           notes: string | null
+          org_id: string | null
           service_line: string | null
           surgeon_name: string | null
           unplanned_support: string[] | null
@@ -1231,6 +1308,7 @@ export type Database = {
           foreseeability_score?: number | null
           id?: string
           notes?: string | null
+          org_id?: string | null
           service_line?: string | null
           surgeon_name?: string | null
           unplanned_support?: string[] | null
@@ -1251,6 +1329,7 @@ export type Database = {
           foreseeability_score?: number | null
           id?: string
           notes?: string | null
+          org_id?: string | null
           service_line?: string | null
           surgeon_name?: string | null
           unplanned_support?: string[] | null
@@ -1263,6 +1342,13 @@ export type Database = {
             referencedRelation: "audit_cases"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "triage_accuracy_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -1270,7 +1356,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      user_org_ids: { Args: { _user_id: string }; Returns: string[] }
     }
     Enums: {
       [_ in never]: never
