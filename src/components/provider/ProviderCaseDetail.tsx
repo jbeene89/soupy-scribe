@@ -99,6 +99,11 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
               <Badge variant="outline" className="text-xs border-consensus/40 text-consensus bg-consensus/10">AI Analyzed</Badge>
             )}
           </div>
+          {liveReview && (
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => exportProviderCaseDetailPDF(auditCase, liveReview)}>
+              <Download className="h-3.5 w-3.5 mr-1.5" /> Export PDF
+            </Button>
+          )}
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <span>DOS: {auditCase.dateOfService}</span>
             <span className="font-mono font-semibold text-foreground">${auditCase.claimAmount.toLocaleString()}</span>
