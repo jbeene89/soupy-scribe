@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Brain, Loader2, CheckCircle, Clock, FileText, ShieldAlert, XCircle, Zap } from 'lucide-react';
+import { ArrowLeft, Brain, Loader2, CheckCircle, Clock, Download, FileText, ShieldAlert, XCircle, Zap } from 'lucide-react';
+import { exportProviderCaseDetailPDF } from '@/lib/exportProviderCaseDetailPDF';
 import { useState, useEffect, useMemo } from 'react';
 import { getStoredProviderReview, runProviderAnalysis } from '@/lib/providerService';
 import { getStoredPreAppealResolution, runPreAppealAnalysis } from '@/lib/preAppealService';
@@ -98,6 +99,11 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
               <Badge variant="outline" className="text-xs border-consensus/40 text-consensus bg-consensus/10">AI Analyzed</Badge>
             )}
           </div>
+          {liveReview && (
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => exportProviderCaseDetailPDF(auditCase, liveReview)}>
+              <Download className="h-3.5 w-3.5 mr-1.5" /> Export PDF
+            </Button>
+          )}
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <span>DOS: {auditCase.dateOfService}</span>
             <span className="font-mono font-semibold text-foreground">${auditCase.claimAmount.toLocaleString()}</span>
