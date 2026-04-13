@@ -39,6 +39,8 @@ import { ORReadinessModule } from '@/components/operational/ORReadinessModule';
 import { TriageAccuracyModule } from '@/components/operational/TriageAccuracyModule';
 import { PostOpFlowModule } from '@/components/operational/PostOpFlowModule';
 import { mockORReadinessEvents, mockTriageEvents, mockPostOpFlowEvents } from '@/lib/operationalMockData';
+import { fetchORReadinessEvents, fetchTriageAccuracyEvents, fetchPostOpFlowEvents } from '@/lib/operationalService';
+import type { ORReadinessEvent, TriageAccuracyEvent, PostOpFlowEvent } from '@/lib/operationalTypes';
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
