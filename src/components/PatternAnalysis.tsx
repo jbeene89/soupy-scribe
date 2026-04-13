@@ -61,6 +61,9 @@ export function PatternAnalysis({ patterns, onSelectCase }: PatternAnalysisProps
         case 'anesthesiaType': key = c.metadata.anesthesiaType || 'None'; break;
         case 'patientObesity': key = c.metadata.patientObesity ? 'Obese' : 'Non-Obese'; break;
         case 'understaffing': key = c.metadata.understaffing ? 'Understaffed' : 'Fully Staffed'; break;
+        case 'orReadiness': key = c.metadata.errorsFound > 2 ? 'High Events' : c.metadata.errorsFound > 0 ? 'Some Events' : 'No Events'; break;
+        case 'triageAccuracy': key = c.metadata.procedureDuration > 120 ? 'Over-Duration' : c.metadata.procedureDuration > 60 ? 'Moderate' : 'On-Target'; break;
+        case 'postOpFlow': key = c.metadata.understaffing ? 'Flow Delay' : 'Normal Flow'; break;
       }
       if (!groups[key]) groups[key] = { values: { errorsFound: [], upchargeAmount: [], claimAmount: [], procedureDuration: [] } };
       groups[key].values.errorsFound.push(c.metadata.errorsFound);
