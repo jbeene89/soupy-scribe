@@ -132,9 +132,13 @@ export function ModeSelectionGate({ onSelect }: Props) {
       </div>
 
       {/* Footer */}
-      <p className="mt-10 text-[10px] text-muted-foreground/60 animate-fade-in" style={{ animationDelay: '300ms' }}>
+      <p className="mt-6 text-[10px] text-muted-foreground/60 animate-fade-in" style={{ animationDelay: '300ms' }}>
         You can switch modes at any time from within the application.
       </p>
+      </div>
+
+      {/* Pilot Pipeline */}
+      <PilotPipeline />
     </div>
   );
 }
