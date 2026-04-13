@@ -52,7 +52,7 @@ export function exportPlatformSummaryPDF() {
   };
 
   // ── Cover ──
-  addTitle('Lyric AI — SOUPY ThinkTank Platform', 22);
+  addTitle('SOUPY ThinkTank Platform', 22);
   addSpacer(4);
   addBody('Confidential Executive Summary — Platform Architecture & Strategic Overview');
   addBody(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`);
@@ -94,7 +94,7 @@ export function exportPlatformSummaryPDF() {
   addBody('A premium capability that intercepts potential denials before they enter the formal appeals process. Includes: issue classification (clinical vs. coding vs. administrative), curability assessment, payer review simulation, provider submission builder with auto-generated language, rapid resolution checklists, and resolution likelihood scoring.');
   addSpacer(4);
   addSubtitle('Claim Accuracy Program (CAP)');
-  addBody('Rebranded from "Pattern Analysis" to align with Lyric\'s compliance coaching language. Surfaces recurring documentation vulnerabilities, coding patterns, and projected savings from proactive intervention.');
+  addBody('Compliance coaching mode that surfaces recurring documentation vulnerabilities, coding patterns, and projected savings from proactive intervention.');
   addSpacer(12);
 
   // ── 4. Provider Mode ──
@@ -166,9 +166,9 @@ export function exportPlatformSummaryPDF() {
 
   // ── 8. Strategic Positioning ──
   checkPage();
-  addTitle('8. Strategic Positioning for Lyric');
-  addSubtitle('Lyric Product Mapping');
-  addBody('The platform maps directly onto Lyric\'s existing product suite:');
+  addTitle('8. Strategic Positioning');
+  addSubtitle('Product Mapping');
+  addBody('The platform maps directly onto existing health plan product suites:');
   addBullet('ClaimsXten — Pre-payment code auditing enhancement with multi-AI consensus');
   addBullet('Virtuoso — Clinical validation and medical necessity AI layer');
   addBullet('Rhythm — Claims workflow orchestration with embedded intelligence');
@@ -178,7 +178,7 @@ export function exportPlatformSummaryPDF() {
   addBody('The Value Demo tab provides a side-by-side comparison of Single Model AI vs. SOUPY ThinkTank multi-model approach, showing how adversarial consensus produces higher-confidence audit decisions with lower false-positive rates.');
   addSpacer(4);
   addSubtitle('Integration Architecture');
-  addBody('An 8-week rollout blueprint showing how SOUPY integrates into Lyric\'s existing data pipeline: Claim Intake → Pre-Payment Screening → SOUPY Analysis → Decision Engine → Outcome Tracking.');
+  addBody('An 8-week rollout blueprint showing how SOUPY integrates into existing data pipelines: Claim Intake → Pre-Payment Screening → SOUPY Analysis → Decision Engine → Outcome Tracking.');
   addSpacer(12);
 
   // ── 9. Security ──
@@ -208,7 +208,7 @@ export function exportPlatformSummaryPDF() {
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(9);
   doc.setTextColor(120, 120, 120);
-  doc.text('Confidential — Lyric AI / SOUPY ThinkTank — For authorized recipients only', margin, y);
+  doc.text('Confidential — SOUPY ThinkTank — For authorized recipients only', margin, y);
 
   doc.save('SOUPY-ThinkTank-Platform-Summary.pdf');
 }
