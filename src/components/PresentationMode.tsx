@@ -563,7 +563,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   <span className="text-accent"> customer you're not selling to.</span>
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-2xl">
-                  Lyric audits providers. But providers would pay to validate their claims
+                  Payers audit providers. But providers would pay to validate their claims
                   against the same AI before submission — eliminating flags at the source.
                   That's a new revenue surface from every existing payer relationship.
                 </p>
@@ -578,12 +578,12 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                       </div>
                       <div>
                         <p className="font-semibold">Existing: Payer Module</p>
-                        <p className="text-xs text-muted-foreground">What Lyric does today</p>
+                        <p className="text-xs text-muted-foreground">Current payment integrity workflow</p>
                       </div>
                     </div>
                     <ul className="space-y-2">
                       {[
-                        'SOUPY enhances ClaimsXten determinations',
+                        'SOUPY enhances rule-based determinations',
                         'Adversarial stress-testing on every flag',
                         'Pre-built appeal defense packages',
                         'Transparent reasoning trails for compliance',
@@ -742,7 +742,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   How SOUPY plugs into <span className="text-accent">your existing pipeline.</span>
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-2xl">
-                  Zero disruption. SOUPY sits as a reasoning layer between Lyric's current rule engines
+                  Zero disruption. SOUPY sits as a reasoning layer between your current rule engines
                   and the final determination — no re-architecture, no migration.
                 </p>
               </div>
@@ -970,7 +970,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   {
                     icon: Lock,
                     title: 'Market Exclusivity',
-                    body: 'Full non-compete in health insurance payment integrity. No competitor gets this technology. Lyric only.',
+                    body: 'Full non-compete in health insurance payment integrity. No competitor gets this technology. Exclusive to your organization.',
                     color: 'text-consensus',
                   },
                 ].map((item, i) => (
