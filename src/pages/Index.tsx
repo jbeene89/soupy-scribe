@@ -76,8 +76,24 @@ const Index = () => {
     }
   }, []);
 
+  const loadLiveOperationalEvents = useCallback(async () => {
+    try {
+      const [or, triage, postop] = await Promise.all([
+        fetchORReadinessEvents(),
+        fetchTriageAccuracyEvents(),
+        fetchPostOpFlowEvents(),
+      ]);
+      setLiveOREvents(or);
+      setLiveTriageEvents(triage);
+      setLivePostOpEvents(postop);
+    } catch (err) {
+      console.error('Failed to load operational events:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadLiveCases();
+    loadLiveOperationalEvents();
 
     // Realtime subscription — refresh case list on any change
     const channel = supabase
@@ -92,12 +108,32 @@ const Index = () => {
         { event: '*', schema: 'public', table: 'processing_queue' },
         () => { loadLiveCases(); }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'or_readiness_events' },
+        () => { loadLiveOperationalEvents(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'triage_accuracy_events' },
+        () => { loadLiveOperationalEvents(); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'postop_flow_events' },
+        () => { loadLiveOperationalEvents(); }
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [loadLiveCases]);
+  }, [loadLiveCases, loadLiveOperationalEvents]);
 
   const allCases = dataSource === 'live' ? liveCases : [...mockCases, ...liveCases];
+
+  // Operational events: demo shows mock + live, live shows only live
+  const orEvents = dataSource === 'live' ? liveOREvents : [...mockORReadinessEvents, ...liveOREvents];
+  const triageEvents = dataSource === 'live' ? liveTriageEvents : [...mockTriageEvents, ...liveTriageEvents];
+  const postOpEvents = dataSource === 'live' ? livePostOpEvents : [...mockPostOpFlowEvents, ...livePostOpEvents];
 
   const handleDeleteCase = async (caseId: string) => {
     try {
