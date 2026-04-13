@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { LineChart as RechartsLine, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 type ChartMetric = 'errorsFound' | 'upchargeAmount' | 'claimAmount' | 'procedureDuration';
-type GroupBy = 'dayOfWeek' | 'timeOfDay' | 'anesthesiaType' | 'patientObesity' | 'understaffing';
+type GroupBy = 'dayOfWeek' | 'timeOfDay' | 'anesthesiaType' | 'patientObesity' | 'understaffing' | 'orReadiness' | 'triageAccuracy' | 'postOpFlow';
 
 const METRIC_COLORS: Record<ChartMetric, string> = {
   errorsFound: 'hsl(var(--violation))',
