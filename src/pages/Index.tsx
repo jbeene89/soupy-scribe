@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { CaseQueue } from '@/components/CaseQueue';
@@ -33,6 +33,7 @@ import { ProviderCaseDetail } from '@/components/provider/ProviderCaseDetail';
 import { EducationInsights } from '@/components/provider/EducationInsights';
 import { ProviderCaseUpload } from '@/components/provider/ProviderCaseUpload';
 import { GhostCaseManager } from '@/components/GhostCaseManager';
+import { ModeSelectionGate } from '@/components/ModeSelectionGate';
 
 // Operational modules
 import { ORReadinessModule } from '@/components/operational/ORReadinessModule';
@@ -46,11 +47,14 @@ const Index = () => {
   const { isAuthenticated } = useAuth();
   const [showSignIn, setShowSignIn] = useState(false);
   const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
-  const [posture, setPosture] = useState<AuditPosture>('payment-integrity');
   const [soupyConfig, setSoupyConfig] = useState<SOUPYConfig>(defaultSOUPYConfig);
   const [activeTab, setActiveTab] = useState('queue');
   const [presentationMode, setPresentationMode] = useState(false);
-  const [appMode, setAppMode] = useState<AppMode>('payer');
+
+  // Mode gate: check sessionStorage for previously selected mode
+  const [modeSelected, setModeSelected] = useState<boolean>(() => !!sessionStorage.getItem('soupy_app_mode'));
+  const [appMode, setAppMode] = useState<AppMode>(() => (sessionStorage.getItem('soupy_app_mode') as AppMode) || 'payer');
+  const posture: AuditPosture = appMode === 'provider' ? 'compliance-coaching' : 'payment-integrity';
   
   // Live database cases
   const [liveCases, setLiveCases] = useState<AuditCase[]>([]);
@@ -191,10 +195,17 @@ const Index = () => {
   };
 
   const handleModeChange = (mode: AppMode) => {
+    sessionStorage.setItem('soupy_app_mode', mode);
     setAppMode(mode);
+    setModeSelected(true);
     setSelectedCase(null);
     setActiveTab(mode === 'provider' ? 'provider-dashboard' : 'queue');
   };
+
+  // Show mode selection gate if no mode has been chosen this session
+  if (!modeSelected) {
+    return <ModeSelectionGate onSelect={handleModeChange} />;
+  }
 
   if (presentationMode) {
     return <PresentationMode onExit={() => setPresentationMode(false)} />;
@@ -324,7 +335,6 @@ const Index = () => {
             {appMode === 'payer' && (
               <>
                 <div className="w-px h-4 bg-border mx-0.5" />
-                <AuditPostureToggle posture={posture} onChange={setPosture} />
                 <SOUPYConfigDialog config={soupyConfig} onSave={setSoupyConfig} />
               </>
             )}
