@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, Stethoscope, ArrowRight, Brain } from 'lucide-react';
+import { Shield, Stethoscope, ArrowRight, Brain, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AppMode } from '@/lib/providerTypes';
 
@@ -52,14 +52,23 @@ export function ModeSelectionGate({ onSelect }: Props) {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       {/* Header */}
-      <div className="text-center mb-12 max-w-xl animate-fade-in">
+      <div className="text-center mb-10 max-w-2xl animate-fade-in">
         <div className="flex items-center justify-center gap-2.5 mb-4">
           <Brain className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold tracking-tight text-foreground">SOUPY Audit</h1>
         </div>
-        <p className="text-muted-foreground text-sm leading-relaxed">
+        <p className="text-muted-foreground text-sm leading-relaxed mb-5">
           AI-powered multi-perspective audit engine. Select your workflow to get started.
         </p>
+
+        {/* Neutrality statement */}
+        <div className="inline-flex items-start gap-2.5 bg-secondary/60 border border-border/50 rounded-lg px-4 py-3 text-left max-w-lg">
+          <Scale className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <span className="font-semibold text-foreground/80">Neutral by design.</span>{' '}
+            This engine evaluates clinical documentation, coding accuracy, and evidentiary completeness against published standards. It does not advocate for payer denial or provider reimbursement — it surfaces what the facts support.
+          </p>
+        </div>
       </div>
 
       {/* Mode Cards */}
