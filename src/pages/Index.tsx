@@ -195,10 +195,17 @@ const Index = () => {
   };
 
   const handleModeChange = (mode: AppMode) => {
+    sessionStorage.setItem('soupy_app_mode', mode);
     setAppMode(mode);
+    setModeSelected(true);
     setSelectedCase(null);
     setActiveTab(mode === 'provider' ? 'provider-dashboard' : 'queue');
   };
+
+  // Show mode selection gate if no mode has been chosen this session
+  if (!modeSelected) {
+    return <ModeSelectionGate onSelect={handleModeChange} />;
+  }
 
   if (presentationMode) {
     return <PresentationMode onExit={() => setPresentationMode(false)} />;
