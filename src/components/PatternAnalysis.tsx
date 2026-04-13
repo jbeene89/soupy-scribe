@@ -193,12 +193,15 @@ export function PatternAnalysis({ patterns, onSelectCase }: PatternAnalysisProps
                     <SelectTrigger className="h-7 text-xs w-[150px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                     <SelectContent>
                       <SelectItem value="dayOfWeek">Day of Week</SelectItem>
                       <SelectItem value="timeOfDay">Time of Day</SelectItem>
                       <SelectItem value="anesthesiaType">Anesthesia Type</SelectItem>
                       <SelectItem value="patientObesity">Patient Obesity</SelectItem>
                       <SelectItem value="understaffing">Understaffing</SelectItem>
+                      <SelectItem value="orReadiness">OR Readiness</SelectItem>
+                      <SelectItem value="triageAccuracy">Triage Accuracy</SelectItem>
+                      <SelectItem value="postOpFlow">Post-Op Flow</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
