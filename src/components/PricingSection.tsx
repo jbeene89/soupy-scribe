@@ -1,4 +1,4 @@
-import { Check, Zap, ArrowRight } from 'lucide-react';
+import { Check, Zap, ArrowRight, Building2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TIERS = [
@@ -23,14 +23,15 @@ const TIERS = [
     name: 'Parallel Run',
     phase: 'Phase 1',
     price: '$3K',
-    priceSub: '/ month flat',
-    description: 'Run alongside your current workflow. Compare outputs side by side.',
+    priceSub: '/ facility / month',
+    description: 'Run alongside your current workflow at each site. All ORs included per facility.',
     features: [
       'Everything in Shadow Audit',
-      'Unlimited case volume',
+      'All ORs at the facility included',
       'Parallel processing pipeline',
       'Weekly calibration reports',
       'Agreement rate tracking',
+      'Perioperative analysis included',
       'Dedicated onboarding call',
     ],
     cta: 'Request Pilot',
@@ -58,13 +59,19 @@ const TIERS = [
   },
 ];
 
+const VOLUME_DISCOUNTS = [
+  { range: '1 facility', price: '$3,000/mo' },
+  { range: '2–4 facilities', price: '$2,500/mo each' },
+  { range: '5+ facilities', price: '$2,000/mo each' },
+];
+
 export function PricingSection() {
   return (
     <div className="w-full max-w-3xl mx-auto mt-8 px-2">
       <div className="text-center mb-6">
         <h2 className="text-lg font-bold text-foreground mb-1">Pricing</h2>
         <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-          Start free. Pay only when value is proven. No multi-year lock-ins.
+          Start free. Pay per facility when value is proven. No multi-year lock-ins.
         </p>
       </div>
 
@@ -124,6 +131,26 @@ export function PricingSection() {
             </button>
           </div>
         ))}
+      </div>
+
+      {/* Volume discounts callout */}
+      <div className="mt-5 border border-border/40 rounded-lg p-4 bg-card/30">
+        <div className="flex items-start gap-3">
+          <div className="p-1.5 rounded-md bg-primary/10 shrink-0">
+            <Building2 className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-xs font-semibold text-foreground mb-2">Multi-Facility Volume Discounts</h4>
+            <div className="grid grid-cols-3 gap-2">
+              {VOLUME_DISCOUNTS.map((d) => (
+                <div key={d.range} className="text-center rounded-md border border-border/30 bg-background/50 py-2 px-1.5">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">{d.range}</p>
+                  <p className="text-xs font-bold text-foreground">{d.price}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mt-4 text-center">
