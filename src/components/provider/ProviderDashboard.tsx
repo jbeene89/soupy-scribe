@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { ProviderDashboardStats } from '@/lib/providerTypes';
 import { providerDashboardStats as mockDashboardStats } from '@/lib/providerMockData';
@@ -10,13 +11,15 @@ import {
   ROOT_CAUSE_LABELS, REMEDIATION_TYPE_LABELS,
   PATTERN_SEVERITY_LABELS, PATTERN_SEVERITY_COLORS,
 } from '@/lib/providerReadinessEngine';
+import { exportProviderReadinessPDF } from '@/lib/exportProviderReadinessPDF';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
   FileWarning, ShieldAlert, TrendingDown, GraduationCap,
   DollarSign, ClipboardCheck, AlertTriangle, ChevronDown,
   ChevronUp, Wrench, Target, Ban, ArrowUpRight, Lightbulb,
-  BarChart3,
+  BarChart3, Download,
 } from 'lucide-react';
 
 const statCards = [
