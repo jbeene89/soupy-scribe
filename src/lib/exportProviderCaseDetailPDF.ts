@@ -1,128 +1,156 @@
 import type { AuditCase } from './types';
 import type { ProviderCaseReview } from './providerTypes';
 import {
-  createPDFContext, addTitle, addSubtitle, addBody, addBullet,
-  addKeyValue, addSpacer, addFooter, checkPage,
+  createPDFContext, addDocumentHeader, addSectionHeader, addBody, addBullet,
+  addKeyValue, addSpacer, addFooter, checkPage, addScoreCards, addAlertBox,
+  addDivider, addKeyValueGrid, addTable, addSubtitle, addBadge,
+  riskColor, severityColor,
+  type ScoreCardItem,
 } from './pdfHelpers';
 
 const READINESS_LABELS: Record<string, string> = {
-  strong: 'Strong',
-  moderate: 'Moderate',
-  weak: 'Weak',
-  insufficient: 'Insufficient',
+  strong: 'Strong', moderate: 'Moderate', weak: 'Weak', insufficient: 'Insufficient',
 };
-
 const VIABILITY_LABELS: Record<string, string> = {
-  recommended: 'Recommended',
-  conditional: 'Conditional',
-  'not-recommended': 'Not Recommended',
+  recommended: 'Recommended', conditional: 'Conditional', 'not-recommended': 'Not Recommended',
 };
-
 const ACTION_LABELS: Record<string, string> = {
-  'do-not-appeal': 'Do Not Appeal',
-  'gather-records': 'Gather Additional Records',
-  'recode-resubmit': 'Recode and Resubmit',
-  'seek-compliance-review': 'Seek Compliance Review',
+  'do-not-appeal': 'Do Not Appeal', 'gather-records': 'Gather Additional Records',
+  'recode-resubmit': 'Recode and Resubmit', 'seek-compliance-review': 'Seek Compliance Review',
   'educate-staff': 'Staff Education',
 };
 
 export function exportProviderCaseDetailPDF(auditCase: AuditCase, review: ProviderCaseReview) {
   const ctx = createPDFContext();
 
-  // ── Header ──
-  addTitle(ctx, `Provider Readiness Report — ${auditCase.caseNumber}`, 18);
+  // ── Banner ──
+  addDocumentHeader(ctx, `Provider Readiness — ${auditCase.caseNumber}`, 'SOUPY ThinkTank — Case-Level Documentation & Coding Analysis');
   addBody(ctx, `Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`);
-  addSpacer(ctx, 12);
+  addSpacer(ctx, 8);
 
-  // ── Case Summary ──
-  addTitle(ctx, 'Case Summary');
-  addKeyValue(ctx, 'Case Number', auditCase.caseNumber);
-  addKeyValue(ctx, 'Physician', `${auditCase.physicianName} (${auditCase.physicianId})`);
-  addKeyValue(ctx, 'Patient ID', auditCase.patientId);
-  addKeyValue(ctx, 'Date of Service', auditCase.dateOfService);
-  addKeyValue(ctx, 'Claim Amount', `$${auditCase.claimAmount.toLocaleString()}`);
-  addKeyValue(ctx, 'CPT Codes', auditCase.cptCodes.join(', '));
-  addKeyValue(ctx, 'ICD-10 Codes', auditCase.icdCodes.join(', '));
-  addKeyValue(ctx, 'Documentation Sufficiency', READINESS_LABELS[review.documentationSufficiency] || review.documentationSufficiency);
-  addKeyValue(ctx, 'Timeline Consistency', READINESS_LABELS[review.timelineConsistency] || review.timelineConsistency);
-  addSpacer(ctx, 12);
+  // ── Score Cards ──
+  const docColor = review.documentationSufficiency === 'strong' ? 'green' : review.documentationSufficiency === 'moderate' ? 'amber' : 'red';
+  const tlColor = review.timelineConsistency === 'strong' ? 'green' : review.timelineConsistency === 'moderate' ? 'amber' : 'red';
+  addScoreCards(ctx, [
+    { label: 'Claim Amount', value: `$${auditCase.claimAmount.toLocaleString()}`, color: 'brand' },
+    { label: 'Doc Sufficiency', value: READINESS_LABELS[review.documentationSufficiency] || review.documentationSufficiency, color: docColor },
+    { label: 'Timeline', value: READINESS_LABELS[review.timelineConsistency] || review.timelineConsistency, color: tlColor },
+    { label: 'Appeal Viability', value: VIABILITY_LABELS[review.appealAssessment.viability] || review.appealAssessment.viability, sublabel: `${review.appealAssessment.estimatedSuccessRate}%`, color: review.appealAssessment.viability === 'recommended' ? 'green' : review.appealAssessment.viability === 'conditional' ? 'amber' : 'red' },
+  ]);
+
+  // ── Case Info ──
+  addSectionHeader(ctx, 'Case Summary');
+  addKeyValueGrid(ctx, [
+    ['Case Number', auditCase.caseNumber],
+    ['Physician', `${auditCase.physicianName} (${auditCase.physicianId})`],
+    ['Patient ID', auditCase.patientId],
+    ['Date of Service', auditCase.dateOfService],
+    ['CPT Codes', auditCase.cptCodes.join(', ')],
+    ['ICD-10 Codes', auditCase.icdCodes.join(', ')],
+  ]);
+  addSpacer(ctx, 8);
 
   // ── Documentation Assessments ──
   if (review.documentationAssessments.length > 0) {
-    addTitle(ctx, 'Documentation Assessments');
+    addSectionHeader(ctx, 'Documentation Assessments');
+    const rows = review.documentationAssessments.map(da => [
+      da.category,
+      READINESS_LABELS[da.status] || da.status,
+      da.detail,
+      da.recommendation,
+    ]);
+    addTable(ctx, [
+      { header: 'Category', width: 100 },
+      { header: 'Status', width: 70, align: 'center' },
+      { header: 'Detail', width: ctx.maxWidth - 270 },
+      { header: 'Recommendation', width: 100 },
+    ], rows);
+
+    // Expanded details for each
     review.documentationAssessments.forEach(da => {
-      checkPage(ctx, 80);
-      addSubtitle(ctx, `${da.category} — ${READINESS_LABELS[da.status] || da.status}`);
-      addBody(ctx, da.detail);
-      addKeyValue(ctx, 'Why It Matters', da.whyItMatters);
-      addKeyValue(ctx, 'Recommendation', da.recommendation);
-      addSpacer(ctx, 6);
+      if (da.whyItMatters) {
+        checkPage(ctx, 40);
+        addSubtitle(ctx, da.category);
+        addBody(ctx, `Why it matters: ${da.whyItMatters}`);
+        addSpacer(ctx, 3);
+      }
     });
-    addSpacer(ctx, 8);
+    addSpacer(ctx, 6);
   }
 
   // ── Coding Vulnerabilities ──
   if (review.codingVulnerabilities.length > 0) {
-    addTitle(ctx, 'Coding Vulnerabilities');
+    addSectionHeader(ctx, 'Coding Vulnerabilities', [185, 28, 28]);
     review.codingVulnerabilities.forEach(cv => {
-      checkPage(ctx, 60);
+      checkPage(ctx, 50);
       addSubtitle(ctx, `${cv.code} — ${cv.issue}`);
-      addKeyValue(ctx, 'Severity', READINESS_LABELS[cv.severity] || cv.severity);
-      addKeyValue(ctx, 'Correctable', cv.isCorrectible ? 'Yes' : 'No');
-      addKeyValue(ctx, 'Recommendation', cv.recommendation);
-      addSpacer(ctx, 6);
+      addKeyValueGrid(ctx, [
+        ['Severity', (READINESS_LABELS[cv.severity] || cv.severity).toUpperCase()],
+        ['Correctable', cv.isCorrectible ? 'Yes' : 'No'],
+      ]);
+      addAlertBox(ctx, cv.recommendation, cv.severity === 'weak' || cv.severity === 'insufficient' ? 'error' : 'warning', 'Recommendation');
+      addSpacer(ctx, 4);
     });
-    addSpacer(ctx, 8);
+    addDivider(ctx);
   }
 
-  // ── Appeal Viability Assessment ──
+  // ── Appeal Viability ──
   const aa = review.appealAssessment;
-  addTitle(ctx, 'Appeal Viability Assessment');
-  addKeyValue(ctx, 'Viability', VIABILITY_LABELS[aa.viability] || aa.viability);
-  addKeyValue(ctx, 'Estimated Success Rate', `${aa.estimatedSuccessRate}%`);
-  addKeyValue(ctx, 'Estimated Effort', `${aa.estimatedEffortHours} hours`);
-  addKeyValue(ctx, 'Recommended Action', ACTION_LABELS[aa.recommendedAction] || aa.recommendedAction);
+  addSectionHeader(ctx, 'Appeal Viability Assessment', aa.viability === 'recommended' ? [22, 163, 74] : aa.viability === 'conditional' ? [217, 119, 6] : [185, 28, 28]);
+
+  addScoreCards(ctx, [
+    { label: 'Success Rate', value: `${aa.estimatedSuccessRate}%`, color: aa.estimatedSuccessRate >= 60 ? 'green' : aa.estimatedSuccessRate >= 30 ? 'amber' : 'red' },
+    { label: 'Effort Hours', value: String(aa.estimatedEffortHours), color: 'blue' },
+    { label: 'Recommended Action', value: ACTION_LABELS[aa.recommendedAction] || aa.recommendedAction, color: 'brand' },
+  ]);
+
   addBody(ctx, aa.actionRationale);
-  addSpacer(ctx, 6);
+  addSpacer(ctx, 4);
 
   if (aa.strengths.length > 0) {
-    addSubtitle(ctx, 'Strengths');
-    aa.strengths.forEach(s => addBullet(ctx, s));
+    addAlertBox(ctx, aa.strengths.join(' • '), 'success', 'Strengths');
   }
   if (aa.weaknesses.length > 0) {
-    addSubtitle(ctx, 'Weaknesses');
-    aa.weaknesses.forEach(w => addBullet(ctx, w));
+    addAlertBox(ctx, aa.weaknesses.join(' • '), 'warning', 'Weaknesses');
   }
   if (aa.missingSupport.length > 0) {
-    addSubtitle(ctx, 'Missing Support');
-    aa.missingSupport.forEach(m => addBullet(ctx, m));
+    addAlertBox(ctx, aa.missingSupport.join(' • '), 'error', 'Missing Support');
   }
-  addSpacer(ctx, 12);
+  addSpacer(ctx, 6);
 
   // ── Evidence Readiness ──
   if (review.evidenceReadiness.length > 0) {
-    addTitle(ctx, 'Evidence Readiness');
-    review.evidenceReadiness.forEach(er => {
-      checkPage(ctx, 60);
-      const statusTag = er.status === 'present' ? '✓' : er.status === 'missing' ? '✗' : '◐';
-      addSubtitle(ctx, `${statusTag} ${er.record} [${er.category}]`);
-      addKeyValue(ctx, 'Status', er.status.charAt(0).toUpperCase() + er.status.slice(1));
-      addKeyValue(ctx, 'Essential for Appeal', er.essentialForAppeal ? 'Yes' : 'No');
-      addKeyValue(ctx, 'Materially Improves Outcome', er.materiallyImproves ? 'Yes' : 'No');
-      if (er.whyItMatters) addBody(ctx, er.whyItMatters);
-      addSpacer(ctx, 4);
-    });
-    addSpacer(ctx, 8);
+    addSectionHeader(ctx, 'Evidence Readiness');
+    const rows = review.evidenceReadiness.map(er => [
+      er.status === 'present' ? '✓' : er.status === 'missing' ? '✗' : '◐',
+      er.record,
+      er.category,
+      er.essentialForAppeal ? 'Yes' : 'No',
+      er.materiallyImproves ? 'Yes' : 'No',
+    ]);
+    addTable(ctx, [
+      { header: '', width: 24, align: 'center' },
+      { header: 'Record', width: ctx.maxWidth * 0.35 },
+      { header: 'Category', width: ctx.maxWidth * 0.2 },
+      { header: 'Essential', width: ctx.maxWidth * 0.15, align: 'center' },
+      { header: 'Material', width: ctx.maxWidth * 0.3 - 24, align: 'center' },
+    ], rows);
+
+    // Expand missing items
+    const missingRecords = review.evidenceReadiness.filter(er => er.status === 'missing');
+    if (missingRecords.length > 0) {
+      addAlertBox(ctx, missingRecords.map(r => `${r.record}: ${r.whyItMatters || 'Required for complete case'}`).join(' • '), 'error', `${missingRecords.length} Missing Records`);
+    }
+    addSpacer(ctx, 6);
   }
 
   // ── Denial Pressure Points ──
   if (review.denialPressurePoints.length > 0) {
-    addTitle(ctx, 'Denial Pressure Points');
+    addSectionHeader(ctx, 'Denial Pressure Points', [217, 119, 6]);
     review.denialPressurePoints.forEach(dp => addBullet(ctx, dp));
-    addSpacer(ctx, 8);
+    addSpacer(ctx, 6);
   }
 
   addFooter(ctx, 'Confidential — SOUPY Provider Readiness Case Report — For authorized recipients only');
-
   ctx.doc.save(`Provider_Case_Report_${auditCase.caseNumber}_${Date.now()}.pdf`);
 }
