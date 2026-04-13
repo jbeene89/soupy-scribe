@@ -51,7 +51,8 @@ export function ModeSelectionGate({ onSelect }: Props) {
   const [hoveredMode, setHoveredMode] = useState<AppMode | null>(null);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex flex-col items-center p-6 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-center w-full">
       {/* Header */}
       <div className="text-center mb-10 max-w-2xl animate-fade-in">
         <div className="flex items-center justify-center gap-2.5 mb-4">
