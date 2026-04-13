@@ -435,15 +435,15 @@ const Index = () => {
             </TabsContent>
 
             <TabsContent value="provider-or-readiness">
-              <ORReadinessModule events={mockORReadinessEvents} posture="compliance-coaching" />
+              <ORReadinessModule events={orEvents} posture="compliance-coaching" />
             </TabsContent>
 
             <TabsContent value="provider-triage">
-              <TriageAccuracyModule events={mockTriageEvents} posture="compliance-coaching" />
+              <TriageAccuracyModule events={triageEvents} posture="compliance-coaching" />
             </TabsContent>
 
             <TabsContent value="provider-postop">
-              <PostOpFlowModule events={mockPostOpFlowEvents} posture="compliance-coaching" />
+              <PostOpFlowModule events={postOpEvents} posture="compliance-coaching" />
             </TabsContent>
           </Tabs>
         ) : (
@@ -547,15 +547,15 @@ const Index = () => {
             </TabsContent>
 
             <TabsContent value="or-readiness">
-              <ORReadinessModule events={mockORReadinessEvents} posture={posture} />
+              <ORReadinessModule events={orEvents} posture={posture} />
             </TabsContent>
 
             <TabsContent value="triage-accuracy">
-              <TriageAccuracyModule events={mockTriageEvents} posture={posture} />
+              <TriageAccuracyModule events={triageEvents} posture={posture} />
             </TabsContent>
 
             <TabsContent value="postop-flow">
-              <PostOpFlowModule events={mockPostOpFlowEvents} posture={posture} />
+              <PostOpFlowModule events={postOpEvents} posture={posture} />
             </TabsContent>
 
             <TabsContent value="history">
