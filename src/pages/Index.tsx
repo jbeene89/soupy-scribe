@@ -58,6 +58,11 @@ const Index = () => {
   const [dataSource, setDataSource] = useState<'mock' | 'live'>('mock');
   const [livePatterns, setLivePatterns] = useState<LivePhysicianPattern[]>([]);
 
+  // Live operational events
+  const [liveOREvents, setLiveOREvents] = useState<ORReadinessEvent[]>([]);
+  const [liveTriageEvents, setLiveTriageEvents] = useState<TriageAccuracyEvent[]>([]);
+  const [livePostOpEvents, setLivePostOpEvents] = useState<PostOpFlowEvent[]>([]);
+
   const loadLiveCases = useCallback(async () => {
     setLoadingLive(true);
     try {
