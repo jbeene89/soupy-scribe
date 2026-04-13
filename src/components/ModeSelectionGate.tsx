@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Shield, Stethoscope, ArrowRight, Brain, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PilotPipeline } from './PilotPipeline';
 import type { AppMode } from '@/lib/providerTypes';
 
 interface Props {
@@ -50,7 +51,8 @@ export function ModeSelectionGate({ onSelect }: Props) {
   const [hoveredMode, setHoveredMode] = useState<AppMode | null>(null);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex flex-col items-center p-6 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-center w-full">
       {/* Header */}
       <div className="text-center mb-10 max-w-2xl animate-fade-in">
         <div className="flex items-center justify-center gap-2.5 mb-4">
@@ -130,9 +132,13 @@ export function ModeSelectionGate({ onSelect }: Props) {
       </div>
 
       {/* Footer */}
-      <p className="mt-10 text-[10px] text-muted-foreground/60 animate-fade-in" style={{ animationDelay: '300ms' }}>
+      <p className="mt-6 text-[10px] text-muted-foreground/60 animate-fade-in" style={{ animationDelay: '300ms' }}>
         You can switch modes at any time from within the application.
       </p>
+      </div>
+
+      {/* Pilot Pipeline */}
+      <PilotPipeline />
     </div>
   );
 }
