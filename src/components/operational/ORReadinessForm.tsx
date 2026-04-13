@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -15,7 +16,7 @@ export function ORReadinessForm({ onClose }: Props) {
   const [formData, setFormData] = useState({
     room_id: '', event_type: 'other', delay_minutes: 0, replacement_source: '',
     patient_wait_status: 'stable', classification: 'isolated', vendor_rep: '',
-    service_line: '', shift: 'AM', notes: '',
+    service_line: '', shift: 'AM', day_of_week: '', safety_flag: false, notes: '',
   });
 
   const handleSubmit = () => {
@@ -38,6 +39,8 @@ export function ORReadinessForm({ onClose }: Props) {
               <SelectItem value="dropped_implant">Dropped Implant</SelectItem>
               <SelectItem value="wrong_size">Wrong Size</SelectItem>
               <SelectItem value="sterilization_lapse">Sterilization Lapse</SelectItem>
+              <SelectItem value="contaminated">Contaminated</SelectItem>
+              <SelectItem value="tray_not_ready">Tray Not Ready</SelectItem>
               <SelectItem value="missing_instrument">Missing Instrument</SelectItem>
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
@@ -90,8 +93,30 @@ export function ORReadinessForm({ onClose }: Props) {
           </Select>
         </div>
         <div className="space-y-1">
+          <Label className="text-xs">Day of Week</Label>
+          <Select value={formData.day_of_week} onValueChange={v => setFormData(p => ({ ...p, day_of_week: v }))}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
+            <SelectContent>
+              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(d => (
+                <SelectItem key={d} value={d}>{d}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
           <Label className="text-xs">Vendor Rep</Label>
           <Input className="h-8 text-xs" placeholder="Optional" value={formData.vendor_rep} onChange={e => setFormData(p => ({ ...p, vendor_rep: e.target.value }))} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Replacement Source</Label>
+          <Input className="h-8 text-xs" placeholder="Where was replacement sourced?" value={formData.replacement_source} onChange={e => setFormData(p => ({ ...p, replacement_source: e.target.value }))} />
+        </div>
+        <div className="space-y-1 col-span-2 flex items-center gap-3 pt-4">
+          <Switch
+            checked={formData.safety_flag}
+            onCheckedChange={v => setFormData(p => ({ ...p, safety_flag: v }))}
+          />
+          <Label className="text-xs">Flag as Patient Safety Concern</Label>
         </div>
       </div>
       <div className="space-y-1">
