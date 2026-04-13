@@ -1,0 +1,181 @@
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
+import type { AppMode } from '@/lib/providerTypes';
+import type { ORReadinessEvent, TriageAccuracyEvent, PostOpFlowEvent } from '@/lib/operationalTypes';
+import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
+import { deleteCase, deriveLivePatterns, type LivePhysicianPattern } from '@/lib/soupyEngineService';
+import { fetchCases, fetchCase } from '@/lib/caseService';
+import { fetchORReadinessEvents, fetchTriageAccuracyEvents, fetchPostOpFlowEvents } from '@/lib/operationalService';
+import { mockORReadinessEvents, mockTriageEvents, mockPostOpFlowEvents } from '@/lib/operationalMockData';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface AdminContextType {
+  appMode: AppMode;
+  handleModeChange: (mode: AppMode) => void;
+  posture: AuditPosture;
+  dataSource: 'mock' | 'live';
+  setDataSource: (ds: 'mock' | 'live') => void;
+  soupyConfig: SOUPYConfig;
+  setSoupyConfig: (c: SOUPYConfig) => void;
+
+  // Cases
+  allCases: AuditCase[];
+  liveCases: AuditCase[];
+  activeCases: AuditCase[];
+  historyCases: AuditCase[];
+  loadingLive: boolean;
+  selectedCase: AuditCase | null;
+  handleSelectCase: (c: AuditCase) => Promise<void>;
+  handleDeleteCase: (id: string) => Promise<void>;
+  handleBack: () => void;
+  handleCaseCreated: (id: string) => Promise<void>;
+  handleDecisionMade: (outcome: 'approved' | 'rejected' | 'info-requested') => void;
+  loadLiveCases: () => Promise<void>;
+
+  // Patterns
+  livePatterns: LivePhysicianPattern[];
+  mockPatternsData: typeof mockPatterns;
+
+  // Operational
+  orEvents: ORReadinessEvent[];
+  triageEvents: TriageAccuracyEvent[];
+  postOpEvents: PostOpFlowEvent[];
+}
+
+const AdminContext = createContext<AdminContextType>(null!);
+
+export function AdminProvider({ children }: { children: ReactNode }) {
+  const [appMode, setAppMode] = useState<AppMode>(
+    () => (sessionStorage.getItem('soupy_app_mode') as AppMode) || 'payer'
+  );
+  const [dataSource, setDataSource] = useState<'mock' | 'live'>('mock');
+  const [soupyConfig, setSoupyConfig] = useState<SOUPYConfig>(defaultSOUPYConfig);
+  const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
+
+  const posture: AuditPosture = appMode === 'provider' ? 'compliance-coaching' : 'payment-integrity';
+
+  // Live data
+  const [liveCases, setLiveCases] = useState<AuditCase[]>([]);
+  const [loadingLive, setLoadingLive] = useState(false);
+  const [livePatterns, setLivePatterns] = useState<LivePhysicianPattern[]>([]);
+  const [liveOREvents, setLiveOREvents] = useState<ORReadinessEvent[]>([]);
+  const [liveTriageEvents, setLiveTriageEvents] = useState<TriageAccuracyEvent[]>([]);
+  const [livePostOpEvents, setLivePostOpEvents] = useState<PostOpFlowEvent[]>([]);
+
+  const loadLiveCases = useCallback(async () => {
+    setLoadingLive(true);
+    try {
+      const cases = await fetchCases();
+      setLiveCases(cases);
+      setLivePatterns(deriveLivePatterns(cases));
+    } catch (err) {
+      console.error('Failed to load live cases:', err);
+    } finally {
+      setLoadingLive(false);
+    }
+  }, []);
+
+  const loadLiveOperationalEvents = useCallback(async () => {
+    try {
+      const [or, triage, postop] = await Promise.all([
+        fetchORReadinessEvents(),
+        fetchTriageAccuracyEvents(),
+        fetchPostOpFlowEvents(),
+      ]);
+      setLiveOREvents(or);
+      setLiveTriageEvents(triage);
+      setLivePostOpEvents(postop);
+    } catch (err) {
+      console.error('Failed to load operational events:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLiveCases();
+    loadLiveOperationalEvents();
+
+    const channel = supabase
+      .channel('admin-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_cases' }, () => loadLiveCases())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'processing_queue' }, () => loadLiveCases())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'or_readiness_events' }, () => loadLiveOperationalEvents())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'triage_accuracy_events' }, () => loadLiveOperationalEvents())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'postop_flow_events' }, () => loadLiveOperationalEvents())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [loadLiveCases, loadLiveOperationalEvents]);
+
+  const allCases = dataSource === 'live' ? liveCases : [...mockCases, ...liveCases];
+  const activeCases = allCases.filter(c => c.status === 'pending' || c.status === 'in-review');
+  const historyCases = allCases.filter(c => c.status === 'approved' || c.status === 'rejected');
+
+  const orEvents = dataSource === 'live' ? liveOREvents : [...mockORReadinessEvents, ...liveOREvents];
+  const triageEvents = dataSource === 'live' ? liveTriageEvents : [...mockTriageEvents, ...liveTriageEvents];
+  const postOpEvents = dataSource === 'live' ? livePostOpEvents : [...mockPostOpFlowEvents, ...livePostOpEvents];
+
+  const handleModeChange = (mode: AppMode) => {
+    sessionStorage.setItem('soupy_app_mode', mode);
+    setAppMode(mode);
+    setSelectedCase(null);
+  };
+
+  const handleSelectCase = async (c: AuditCase) => {
+    if (liveCases.some(lc => lc.id === c.id)) {
+      const fresh = await fetchCase(c.id);
+      if (fresh) { setSelectedCase(fresh); return; }
+    }
+    setSelectedCase(c);
+  };
+
+  const handleDeleteCase = async (caseId: string) => {
+    try {
+      await deleteCase(caseId);
+      toast.success('Case deleted');
+      if (selectedCase?.id === caseId) setSelectedCase(null);
+      loadLiveCases();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete case');
+    }
+  };
+
+  const handleBack = () => {
+    setSelectedCase(null);
+    loadLiveCases();
+  };
+
+  const handleCaseCreated = async (caseId: string) => {
+    await loadLiveCases();
+    const newCase = await fetchCase(caseId);
+    if (newCase) setSelectedCase(newCase);
+  };
+
+  const handleDecisionMade = (outcome: 'approved' | 'rejected' | 'info-requested') => {
+    if (!selectedCase) return;
+    const currentCases = allCases.filter(c => c.status === 'pending' || c.status === 'in-review');
+    const idx = currentCases.findIndex(c => c.id === selectedCase.id);
+    const next = currentCases[idx + 1] || currentCases[idx - 1];
+    if (next) { handleSelectCase(next); } else { handleBack(); toast.info('No more cases in queue'); }
+  };
+
+  return (
+    <AdminContext.Provider value={{
+      appMode, handleModeChange, posture, dataSource, setDataSource,
+      soupyConfig, setSoupyConfig,
+      allCases, liveCases, activeCases, historyCases, loadingLive,
+      selectedCase, handleSelectCase, handleDeleteCase, handleBack,
+      handleCaseCreated, handleDecisionMade, loadLiveCases,
+      livePatterns, mockPatternsData: mockPatterns,
+      orEvents, triageEvents, postOpEvents,
+    }}>
+      {children}
+    </AdminContext.Provider>
+  );
+}
+
+export function useAdminContext() {
+  const ctx = useContext(AdminContext);
+  if (!ctx) throw new Error('useAdminContext must be used within AdminProvider');
+  return ctx;
+}
