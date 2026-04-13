@@ -246,6 +246,31 @@ export function PatternAnalysis({ patterns, onSelectCase }: PatternAnalysisProps
               )}
             </div>
 
+            {/* Context Explanation */}
+            <div className="rounded-lg border bg-card p-4 shadow-sm space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Why This Dimension Matters</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {groupBy === 'dayOfWeek' && 'Day-of-week patterns reveal scheduling density impacts. Higher error rates on specific days may indicate staffing mismatches or fatigue effects.'}
+                {groupBy === 'timeOfDay' && 'Time-of-day analysis surfaces fatigue-related patterns and shift-transition risks. Late-day procedures often correlate with higher error rates.'}
+                {groupBy === 'anesthesiaType' && 'Anesthesia type correlates with case complexity and billing accuracy. General anesthesia cases tend to have higher claim amounts and more documentation requirements.'}
+                {groupBy === 'patientObesity' && 'BMI context affects procedure duration, complication rates, and equipment needs. Obese patients may require additional documentation to support medical necessity.'}
+                {groupBy === 'understaffing' && 'Understaffing correlates with increased errors, longer procedures, and documentation gaps. Patterns here suggest systemic operational issues.'}
+                {groupBy === 'orReadiness' && 'OR readiness events (dropped implants, sterilization lapses, missing instruments) drive delay costs and may indicate vendor or workflow reliability issues.'}
+                {groupBy === 'triageAccuracy' && 'Triage accuracy measures how well pre-op booking matches actual surgical complexity. Systematic under-calling affects scheduling, staffing, and cost predictability.'}
+                {groupBy === 'postOpFlow' && 'Post-op flow bottlenecks (bed unavailability, transport delays) increase patient risk and staff idle time. Patterns by day or facility reveal systemic capacity issues.'}
+              </p>
+              <div className="flex gap-2 flex-wrap mt-1">
+                {groupBy === 'dayOfWeek' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Educate on scheduling density</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Pend cases for review</span></>}
+                {groupBy === 'timeOfDay' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Review shift protocols</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Request records for late-day cases</span></>}
+                {groupBy === 'anesthesiaType' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Validate modifier usage</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Request anesthesia records</span></>}
+                {groupBy === 'patientObesity' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Request BMI documentation</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Educate on medical necessity</span></>}
+                {groupBy === 'understaffing' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Escalate staffing patterns</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Deny if documentation insufficient</span></>}
+                {groupBy === 'orReadiness' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Review vendor protocols</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Escalate repeat failures</span></>}
+                {groupBy === 'triageAccuracy' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Educate booking staff</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Flag predictable mismatches</span></>}
+                {groupBy === 'postOpFlow' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Review PACU capacity</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Optimize discharge timing</span></>}
+              </div>
+            </div>
+
             {/* Cases */}
             <div className="rounded-lg border bg-card shadow-sm">
               <div className="p-4 border-b">
