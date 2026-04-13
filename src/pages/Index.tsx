@@ -47,11 +47,14 @@ const Index = () => {
   const { isAuthenticated } = useAuth();
   const [showSignIn, setShowSignIn] = useState(false);
   const [selectedCase, setSelectedCase] = useState<AuditCase | null>(null);
-  const [posture, setPosture] = useState<AuditPosture>('payment-integrity');
   const [soupyConfig, setSoupyConfig] = useState<SOUPYConfig>(defaultSOUPYConfig);
   const [activeTab, setActiveTab] = useState('queue');
   const [presentationMode, setPresentationMode] = useState(false);
-  const [appMode, setAppMode] = useState<AppMode>('payer');
+
+  // Mode gate: check sessionStorage for previously selected mode
+  const [modeSelected, setModeSelected] = useState<boolean>(() => !!sessionStorage.getItem('soupy_app_mode'));
+  const [appMode, setAppMode] = useState<AppMode>(() => (sessionStorage.getItem('soupy_app_mode') as AppMode) || 'payer');
+  const posture: AuditPosture = appMode === 'provider' ? 'compliance-coaching' : 'payment-integrity';
   
   // Live database cases
   const [liveCases, setLiveCases] = useState<AuditCase[]>([]);
