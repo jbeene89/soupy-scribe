@@ -20,7 +20,7 @@ import { deleteCase, deriveLivePatterns, type LivePhysicianPattern } from '@/lib
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
 import type { AppMode } from '@/lib/providerTypes';
-import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope, FileDown, Ghost } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope, FileDown, Ghost, ShieldAlert, Target, Bed } from 'lucide-react';
 import { exportPlatformSummaryPDF } from '@/lib/exportPlatformSummary';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +33,12 @@ import { ProviderCaseDetail } from '@/components/provider/ProviderCaseDetail';
 import { EducationInsights } from '@/components/provider/EducationInsights';
 import { ProviderCaseUpload } from '@/components/provider/ProviderCaseUpload';
 import { GhostCaseManager } from '@/components/GhostCaseManager';
+
+// Operational modules
+import { ORReadinessModule } from '@/components/operational/ORReadinessModule';
+import { TriageAccuracyModule } from '@/components/operational/TriageAccuracyModule';
+import { PostOpFlowModule } from '@/components/operational/PostOpFlowModule';
+import { mockORReadinessEvents, mockTriageEvents, mockPostOpFlowEvents } from '@/lib/operationalMockData';
 
 const Index = () => {
   const { isAuthenticated } = useAuth();
@@ -354,6 +360,18 @@ const Index = () => {
                 <GraduationCap className="h-3.5 w-3.5" />
                 Education Insights
               </TabsTrigger>
+              <TabsTrigger value="provider-or-readiness" className="gap-1.5">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                OR Readiness
+              </TabsTrigger>
+              <TabsTrigger value="provider-triage" className="gap-1.5">
+                <Target className="h-3.5 w-3.5" />
+                Triage Accuracy
+              </TabsTrigger>
+              <TabsTrigger value="provider-postop" className="gap-1.5">
+                <Bed className="h-3.5 w-3.5" />
+                Post-Op Flow
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="provider-dashboard">
@@ -371,6 +389,18 @@ const Index = () => {
 
             <TabsContent value="provider-education">
               <EducationInsights dataSource={dataSource} />
+            </TabsContent>
+
+            <TabsContent value="provider-or-readiness">
+              <ORReadinessModule events={mockORReadinessEvents} posture="compliance-coaching" />
+            </TabsContent>
+
+            <TabsContent value="provider-triage">
+              <TriageAccuracyModule events={mockTriageEvents} posture="compliance-coaching" />
+            </TabsContent>
+
+            <TabsContent value="provider-postop">
+              <PostOpFlowModule events={mockPostOpFlowEvents} posture="compliance-coaching" />
             </TabsContent>
           </Tabs>
         ) : (
@@ -403,6 +433,18 @@ const Index = () => {
               <TabsTrigger value="ghost-cases" className="gap-1.5">
                 <Ghost className="h-3.5 w-3.5" />
                 Ghost Cases
+              </TabsTrigger>
+              <TabsTrigger value="or-readiness" className="gap-1.5">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                OR Readiness
+              </TabsTrigger>
+              <TabsTrigger value="triage-accuracy" className="gap-1.5">
+                <Target className="h-3.5 w-3.5" />
+                Triage Accuracy
+              </TabsTrigger>
+              <TabsTrigger value="postop-flow" className="gap-1.5">
+                <Bed className="h-3.5 w-3.5" />
+                Post-Op Flow
               </TabsTrigger>
               <TabsTrigger value="history">Case History</TabsTrigger>
             </TabsList>
@@ -459,6 +501,18 @@ const Index = () => {
 
             <TabsContent value="ghost-cases">
               <GhostCaseManager />
+            </TabsContent>
+
+            <TabsContent value="or-readiness">
+              <ORReadinessModule events={mockORReadinessEvents} posture={posture} />
+            </TabsContent>
+
+            <TabsContent value="triage-accuracy">
+              <TriageAccuracyModule events={mockTriageEvents} posture={posture} />
+            </TabsContent>
+
+            <TabsContent value="postop-flow">
+              <PostOpFlowModule events={mockPostOpFlowEvents} posture={posture} />
             </TabsContent>
 
             <TabsContent value="history">

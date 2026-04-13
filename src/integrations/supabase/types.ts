@@ -815,6 +815,62 @@ export type Database = {
           },
         ]
       }
+      or_readiness_events: {
+        Row: {
+          case_id: string | null
+          classification: string
+          created_at: string
+          delay_minutes: number | null
+          event_type: string
+          id: string
+          notes: string | null
+          patient_wait_status: string | null
+          replacement_source: string | null
+          room_id: string | null
+          service_line: string | null
+          shift: string | null
+          vendor_rep: string | null
+        }
+        Insert: {
+          case_id?: string | null
+          classification?: string
+          created_at?: string
+          delay_minutes?: number | null
+          event_type?: string
+          id?: string
+          notes?: string | null
+          patient_wait_status?: string | null
+          replacement_source?: string | null
+          room_id?: string | null
+          service_line?: string | null
+          shift?: string | null
+          vendor_rep?: string | null
+        }
+        Update: {
+          case_id?: string | null
+          classification?: string
+          created_at?: string
+          delay_minutes?: number | null
+          event_type?: string
+          id?: string
+          notes?: string | null
+          patient_wait_status?: string | null
+          replacement_source?: string | null
+          room_id?: string | null
+          service_line?: string | null
+          shift?: string | null
+          vendor_rep?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "or_readiness_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payer_profiles: {
         Row: {
           adversarial_prompt_additions: string | null
@@ -856,6 +912,62 @@ export type Database = {
           payer_name?: string
         }
         Relationships: []
+      }
+      postop_flow_events: {
+        Row: {
+          bed_available: boolean | null
+          case_id: string | null
+          created_at: string
+          day_of_week: string | null
+          delay_reason: string | null
+          facility: string | null
+          id: string
+          notes: string | null
+          patient_wait_minutes: number | null
+          service_line: string | null
+          shift: string | null
+          staff_idle_minutes: number | null
+          surgeon_name: string | null
+        }
+        Insert: {
+          bed_available?: boolean | null
+          case_id?: string | null
+          created_at?: string
+          day_of_week?: string | null
+          delay_reason?: string | null
+          facility?: string | null
+          id?: string
+          notes?: string | null
+          patient_wait_minutes?: number | null
+          service_line?: string | null
+          shift?: string | null
+          staff_idle_minutes?: number | null
+          surgeon_name?: string | null
+        }
+        Update: {
+          bed_available?: boolean | null
+          case_id?: string | null
+          created_at?: string
+          day_of_week?: string | null
+          delay_reason?: string | null
+          facility?: string | null
+          id?: string
+          notes?: string | null
+          patient_wait_minutes?: number | null
+          service_line?: string | null
+          shift?: string | null
+          staff_idle_minutes?: number | null
+          surgeon_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "postop_flow_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       processing_queue: {
         Row: {
@@ -1075,6 +1187,77 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "stability_checks_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      triage_accuracy_events: {
+        Row: {
+          actual_duration: number | null
+          actual_implant: string | null
+          actual_procedure: string | null
+          booker_name: string | null
+          case_id: string | null
+          complexity_delta: number | null
+          created_at: string
+          expected_duration: number | null
+          expected_implant: string | null
+          expected_procedure: string | null
+          extra_equipment: string[] | null
+          foreseeability_class: string | null
+          foreseeability_score: number | null
+          id: string
+          notes: string | null
+          service_line: string | null
+          surgeon_name: string | null
+          unplanned_support: string[] | null
+        }
+        Insert: {
+          actual_duration?: number | null
+          actual_implant?: string | null
+          actual_procedure?: string | null
+          booker_name?: string | null
+          case_id?: string | null
+          complexity_delta?: number | null
+          created_at?: string
+          expected_duration?: number | null
+          expected_implant?: string | null
+          expected_procedure?: string | null
+          extra_equipment?: string[] | null
+          foreseeability_class?: string | null
+          foreseeability_score?: number | null
+          id?: string
+          notes?: string | null
+          service_line?: string | null
+          surgeon_name?: string | null
+          unplanned_support?: string[] | null
+        }
+        Update: {
+          actual_duration?: number | null
+          actual_implant?: string | null
+          actual_procedure?: string | null
+          booker_name?: string | null
+          case_id?: string | null
+          complexity_delta?: number | null
+          created_at?: string
+          expected_duration?: number | null
+          expected_implant?: string | null
+          expected_procedure?: string | null
+          extra_equipment?: string[] | null
+          foreseeability_class?: string | null
+          foreseeability_score?: number | null
+          id?: string
+          notes?: string | null
+          service_line?: string | null
+          surgeon_name?: string | null
+          unplanned_support?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "triage_accuracy_events_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "audit_cases"

@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { LineChart as RechartsLine, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 type ChartMetric = 'errorsFound' | 'upchargeAmount' | 'claimAmount' | 'procedureDuration';
-type GroupBy = 'dayOfWeek' | 'timeOfDay' | 'anesthesiaType' | 'patientObesity' | 'understaffing';
+type GroupBy = 'dayOfWeek' | 'timeOfDay' | 'anesthesiaType' | 'patientObesity' | 'understaffing' | 'orReadiness' | 'triageAccuracy' | 'postOpFlow';
 
 const METRIC_COLORS: Record<ChartMetric, string> = {
   errorsFound: 'hsl(var(--violation))',
@@ -61,6 +61,9 @@ export function PatternAnalysis({ patterns, onSelectCase }: PatternAnalysisProps
         case 'anesthesiaType': key = c.metadata.anesthesiaType || 'None'; break;
         case 'patientObesity': key = c.metadata.patientObesity ? 'Obese' : 'Non-Obese'; break;
         case 'understaffing': key = c.metadata.understaffing ? 'Understaffed' : 'Fully Staffed'; break;
+        case 'orReadiness': key = c.metadata.errorsFound > 2 ? 'High Events' : c.metadata.errorsFound > 0 ? 'Some Events' : 'No Events'; break;
+        case 'triageAccuracy': key = c.metadata.procedureDuration > 120 ? 'Over-Duration' : c.metadata.procedureDuration > 60 ? 'Moderate' : 'On-Target'; break;
+        case 'postOpFlow': key = c.metadata.understaffing ? 'Flow Delay' : 'Normal Flow'; break;
       }
       if (!groups[key]) groups[key] = { values: { errorsFound: [], upchargeAmount: [], claimAmount: [], procedureDuration: [] } };
       groups[key].values.errorsFound.push(c.metadata.errorsFound);
@@ -190,12 +193,15 @@ export function PatternAnalysis({ patterns, onSelectCase }: PatternAnalysisProps
                     <SelectTrigger className="h-7 text-xs w-[150px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                     <SelectContent>
                       <SelectItem value="dayOfWeek">Day of Week</SelectItem>
                       <SelectItem value="timeOfDay">Time of Day</SelectItem>
                       <SelectItem value="anesthesiaType">Anesthesia Type</SelectItem>
                       <SelectItem value="patientObesity">Patient Obesity</SelectItem>
                       <SelectItem value="understaffing">Understaffing</SelectItem>
+                      <SelectItem value="orReadiness">OR Readiness</SelectItem>
+                      <SelectItem value="triageAccuracy">Triage Accuracy</SelectItem>
+                      <SelectItem value="postOpFlow">Post-Op Flow</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
@@ -238,6 +244,31 @@ export function PatternAnalysis({ patterns, onSelectCase }: PatternAnalysisProps
                   Insufficient data for chart visualization
                 </div>
               )}
+            </div>
+
+            {/* Context Explanation */}
+            <div className="rounded-lg border bg-card p-4 shadow-sm space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Why This Dimension Matters</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {groupBy === 'dayOfWeek' && 'Day-of-week patterns reveal scheduling density impacts. Higher error rates on specific days may indicate staffing mismatches or fatigue effects.'}
+                {groupBy === 'timeOfDay' && 'Time-of-day analysis surfaces fatigue-related patterns and shift-transition risks. Late-day procedures often correlate with higher error rates.'}
+                {groupBy === 'anesthesiaType' && 'Anesthesia type correlates with case complexity and billing accuracy. General anesthesia cases tend to have higher claim amounts and more documentation requirements.'}
+                {groupBy === 'patientObesity' && 'BMI context affects procedure duration, complication rates, and equipment needs. Obese patients may require additional documentation to support medical necessity.'}
+                {groupBy === 'understaffing' && 'Understaffing correlates with increased errors, longer procedures, and documentation gaps. Patterns here suggest systemic operational issues.'}
+                {groupBy === 'orReadiness' && 'OR readiness events (dropped implants, sterilization lapses, missing instruments) drive delay costs and may indicate vendor or workflow reliability issues.'}
+                {groupBy === 'triageAccuracy' && 'Triage accuracy measures how well pre-op booking matches actual surgical complexity. Systematic under-calling affects scheduling, staffing, and cost predictability.'}
+                {groupBy === 'postOpFlow' && 'Post-op flow bottlenecks (bed unavailability, transport delays) increase patient risk and staff idle time. Patterns by day or facility reveal systemic capacity issues.'}
+              </p>
+              <div className="flex gap-2 flex-wrap mt-1">
+                {groupBy === 'dayOfWeek' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Educate on scheduling density</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Pend cases for review</span></>}
+                {groupBy === 'timeOfDay' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Review shift protocols</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Request records for late-day cases</span></>}
+                {groupBy === 'anesthesiaType' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Validate modifier usage</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Request anesthesia records</span></>}
+                {groupBy === 'patientObesity' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Request BMI documentation</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Educate on medical necessity</span></>}
+                {groupBy === 'understaffing' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Escalate staffing patterns</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Deny if documentation insufficient</span></>}
+                {groupBy === 'orReadiness' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Review vendor protocols</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Escalate repeat failures</span></>}
+                {groupBy === 'triageAccuracy' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Educate booking staff</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Flag predictable mismatches</span></>}
+                {groupBy === 'postOpFlow' && <><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Review PACU capacity</span><span className="text-[10px] px-2 py-0.5 rounded-full border bg-muted text-muted-foreground">Optimize discharge timing</span></>}
+              </div>
             </div>
 
             {/* Cases */}
