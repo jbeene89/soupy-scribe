@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Shield, Stethoscope, ArrowRight, Brain, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PilotPipeline } from './PilotPipeline';
 import type { AppMode } from '@/lib/providerTypes';
 
 interface Props {
