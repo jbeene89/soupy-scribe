@@ -234,6 +234,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
                 decisionTrace,
                 winningPacket,
                 floorEvents,
+                posture,
               });
               toast.success('Case report PDF downloaded');
             }}

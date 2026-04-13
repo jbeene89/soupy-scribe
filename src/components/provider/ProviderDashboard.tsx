@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { ProviderDashboardStats } from '@/lib/providerTypes';
 import { providerDashboardStats as mockDashboardStats } from '@/lib/providerMockData';
@@ -10,13 +11,15 @@ import {
   ROOT_CAUSE_LABELS, REMEDIATION_TYPE_LABELS,
   PATTERN_SEVERITY_LABELS, PATTERN_SEVERITY_COLORS,
 } from '@/lib/providerReadinessEngine';
+import { exportProviderReadinessPDF } from '@/lib/exportProviderReadinessPDF';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
   FileWarning, ShieldAlert, TrendingDown, GraduationCap,
   DollarSign, ClipboardCheck, AlertTriangle, ChevronDown,
   ChevronUp, Wrench, Target, Ban, ArrowUpRight, Lightbulb,
-  BarChart3,
+  BarChart3, Download,
 } from 'lucide-react';
 
 const statCards = [
@@ -79,12 +82,28 @@ export function ProviderDashboard({ dataSource = 'mock' }: ProviderDashboardProp
               <ClipboardCheck className="h-5 w-5 text-accent" />
             </div>
             <div className="flex-1">
-              <h2 className="text-sm font-semibold mb-1">Provider Readiness Overview</h2>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Identify preventable denials, recurring documentation patterns, and operational improvements. 
-                This view helps reduce denial rates and improve staff documentation practices — 
-                focus on prevention, not just appeals.
-              </p>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-sm font-semibold mb-1">Provider Readiness Overview</h2>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Identify preventable denials, recurring documentation patterns, and operational improvements. 
+                    This view helps reduce denial rates and improve staff documentation practices — 
+                    focus on prevention, not just appeals.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 shrink-0"
+                  onClick={() => {
+                    exportProviderReadinessPDF(stats);
+                    toast.success('Provider readiness PDF downloaded');
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export PDF
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
