@@ -479,6 +479,18 @@ const Index = () => {
               <GhostCaseManager />
             </TabsContent>
 
+            <TabsContent value="or-readiness">
+              <ORReadinessModule events={mockORReadinessEvents} posture={posture} />
+            </TabsContent>
+
+            <TabsContent value="triage-accuracy">
+              <TriageAccuracyModule events={mockTriageEvents} posture={posture} />
+            </TabsContent>
+
+            <TabsContent value="postop-flow">
+              <PostOpFlowModule events={mockPostOpFlowEvents} posture={posture} />
+            </TabsContent>
+
             <TabsContent value="history">
               <CaseQueue
                 cases={historyCases}
