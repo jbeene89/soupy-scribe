@@ -2,12 +2,13 @@ import { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, Clock, ShieldAlert, TrendingUp, Activity, Plus, DollarSign, ShieldOff } from 'lucide-react';
+import { AlertTriangle, Clock, ShieldAlert, TrendingUp, Activity, Plus, DollarSign, ShieldOff, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
 import { cn } from '@/lib/utils';
 import type { ORReadinessEvent } from '@/lib/operationalTypes';
 import { OR_EVENT_TYPES, CLASSIFICATION_OPTIONS, estimateEventCost } from '@/lib/operationalTypes';
 import { ORReadinessForm } from './ORReadinessForm';
+import { exportORReadinessPDF } from '@/lib/exportOperationalPDF';
 
 interface Props {
   events: ORReadinessEvent[];
@@ -139,10 +140,16 @@ export function ORReadinessModule({ events, posture }: Props) {
             {isPayer ? 'Identify operational patterns that drive claim complexity, cost variance, and safety risk.' : 'Track and improve surgical readiness to reduce delays, waste, and patient risk.'}
           </p>
         </div>
-        <Button size="sm" className="gap-1.5 text-xs" onClick={() => setShowForm(!showForm)}>
-          <Plus className="h-3.5 w-3.5" />
-          Log Event
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => exportORReadinessPDF(events, posture)}>
+            <Download className="h-3.5 w-3.5" />
+            Export PDF
+          </Button>
+          <Button size="sm" className="gap-1.5 text-xs" onClick={() => setShowForm(!showForm)}>
+            <Plus className="h-3.5 w-3.5" />
+            Log Event
+          </Button>
+        </div>
       </div>
 
       {showForm && <ORReadinessForm onClose={() => setShowForm(false)} />}

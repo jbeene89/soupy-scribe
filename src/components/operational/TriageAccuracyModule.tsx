@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Target, Clock, AlertTriangle, TrendingUp, Users, ArrowUpDown, CheckCircle2, XCircle, Hourglass } from 'lucide-react';
+import { Target, Clock, AlertTriangle, TrendingUp, Users, ArrowUpDown, CheckCircle2, XCircle, Hourglass, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine, LineChart, Line } from 'recharts';
 import { cn } from '@/lib/utils';
 import type { TriageAccuracyEvent } from '@/lib/operationalTypes';
 import { FORESEEABILITY_OPTIONS } from '@/lib/operationalTypes';
 import { Progress } from '@/components/ui/progress';
+import { exportTriageAccuracyPDF } from '@/lib/exportOperationalPDF';
 
 interface Props {
   events: TriageAccuracyEvent[];
@@ -81,14 +83,20 @@ export function TriageAccuracyModule({ events, posture }: Props) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Target className="h-5 w-5 text-disagreement" />
-          Case-Triage Accuracy
-        </h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {isPayer ? 'Identify systematic under-calling that drives unexpected claim complexity and cost.' : 'Compare pre-op booking accuracy against actual intra-operative needs to improve scheduling.'}
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Target className="h-5 w-5 text-disagreement" />
+            Case-Triage Accuracy
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isPayer ? 'Identify systematic under-calling that drives unexpected claim complexity and cost.' : 'Compare pre-op booking accuracy against actual intra-operative needs to improve scheduling.'}
+          </p>
+        </div>
+        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => exportTriageAccuracyPDF(events, posture)}>
+          <Download className="h-3.5 w-3.5" />
+          Export PDF
+        </Button>
       </div>
 
       {/* Score Cards */}
