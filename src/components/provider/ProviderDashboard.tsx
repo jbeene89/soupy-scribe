@@ -82,12 +82,28 @@ export function ProviderDashboard({ dataSource = 'mock' }: ProviderDashboardProp
               <ClipboardCheck className="h-5 w-5 text-accent" />
             </div>
             <div className="flex-1">
-              <h2 className="text-sm font-semibold mb-1">Provider Readiness Overview</h2>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Identify preventable denials, recurring documentation patterns, and operational improvements. 
-                This view helps reduce denial rates and improve staff documentation practices — 
-                focus on prevention, not just appeals.
-              </p>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-sm font-semibold mb-1">Provider Readiness Overview</h2>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Identify preventable denials, recurring documentation patterns, and operational improvements. 
+                    This view helps reduce denial rates and improve staff documentation practices — 
+                    focus on prevention, not just appeals.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 shrink-0"
+                  onClick={() => {
+                    exportProviderReadinessPDF(stats);
+                    toast.success('Provider readiness PDF downloaded');
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export PDF
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
