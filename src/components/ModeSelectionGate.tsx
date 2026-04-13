@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Shield, Stethoscope, ArrowRight, Brain, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PilotPipeline } from './PilotPipeline';
+import { ROICalculator } from './ROICalculator';
+import { PricingSection } from './PricingSection';
 import type { AppMode } from '@/lib/providerTypes';
 
 interface Props {
