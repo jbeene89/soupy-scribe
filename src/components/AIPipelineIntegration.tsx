@@ -81,7 +81,7 @@ function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title
 
 /* ─── main component ─── */
 
-export function LyricAIIntegration() {
+export function AIPipelineIntegration() {
   return (
     <div className="space-y-6">
       {/* Hero Card */}
@@ -92,9 +92,9 @@ export function LyricAIIntegration() {
               <Cpu className="h-6 w-6 text-primary" />
             </div>
             <div className="flex-1">
-              <h2 className="text-lg font-semibold tracking-tight">How SOUPY Integrates Into Lyric's AI Pipeline</h2>
+              <h2 className="text-lg font-semibold tracking-tight">How SOUPY Integrates Into Your AI Pipeline</h2>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-2xl">
-                SOUPY doesn't replace any existing system. It sits as a reasoning layer between Lyric's current 
+                SOUPY doesn't replace any existing system. It sits as a reasoning layer between your current 
                 rule engines and the final determination — adding adversarial depth, appeal defense, and auditability 
                 to decisions that already flow through the platform.
               </p>
@@ -120,13 +120,13 @@ export function LyricAIIntegration() {
             <PipelineStep
               icon={<FileText className="h-4 w-4 text-muted-foreground" />}
               title="EHR / Clinical Records"
-              desc="HL7 FHIR and document ingestion continue as-is into the Lyric data lake."
+              desc="HL7 FHIR and document ingestion continue as-is into the data warehouse."
               tag="No Change"
             />
             <PipelineStep
               icon={<Database className="h-4 w-4 text-muted-foreground" />}
-              title="KnowledgePacks & Concepts"
-              desc="Lyric's proprietary clinical content libraries remain the source of truth."
+              title="Clinical Content Libraries"
+              desc="Proprietary clinical content and policy references remain the source of truth."
               tag="No Change"
             />
           </div>
@@ -137,20 +137,20 @@ export function LyricAIIntegration() {
           <SectionHeader
             icon={<Shield className="h-3.5 w-3.5 text-primary" />}
             title="Stage 2 — Deterministic Rule Engine (Existing)"
-            subtitle="ClaimsXten, edits, and flags — all preserved"
+            subtitle="Rule-based edits, flags, and pattern detection — all preserved"
           />
           <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-4 mb-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <PipelineStep
                 icon={<Shield className="h-4 w-4 text-primary" />}
-                title="ClaimsXten Rule Engine"
+                title="Rule-Based Editing Engine"
                 desc="Deterministic edit rules fire on every claim — flags, bundles, denials generated as normal."
                 tag="Existing"
                 tagColor="bg-primary/10 text-primary border-primary/30"
               />
               <PipelineStep
                 icon={<Eye className="h-4 w-4 text-primary" />}
-                title="Replay Pattern Detection"
+                title="Pattern Detection"
                 desc="Historical pattern matching identifies recurring issues and provider behaviors."
                 tag="Existing"
                 tagColor="bg-primary/10 text-primary border-primary/30"
@@ -212,7 +212,7 @@ export function LyricAIIntegration() {
               <div className="rounded-lg border bg-card/80 p-3 space-y-1">
                 <p className="text-[10px] font-semibold text-accent">Phase 2: Reality Anchoring</p>
                 <p className="text-[9px] text-muted-foreground">
-                  Evidence is validated against LCD/NCD databases and KnowledgePacks.
+                  Evidence is validated against LCD/NCD databases and clinical content libraries.
                   Code combinations are checked for known flag patterns.
                 </p>
               </div>
@@ -243,7 +243,7 @@ export function LyricAIIntegration() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             <PipelineStep
               icon={<BarChart3 className="h-4 w-4 text-consensus" />}
-              title="Virtuoso Analytics"
+              title="Analytics Dashboard"
               desc="Now includes appeal-resilience metrics and consensus confidence scores from SOUPY."
               tag="Enhanced"
               tagColor="bg-consensus/10 text-consensus border-consensus/30"
@@ -288,7 +288,7 @@ export function LyricAIIntegration() {
               </div>
               <div className="space-y-2">
                 <div className="rounded-md bg-muted/50 p-2.5 font-mono text-[10px] text-muted-foreground">
-                  <p className="text-foreground font-semibold mb-1">// ClaimsXten fires a flag →</p>
+                  <p className="text-foreground font-semibold mb-1">// Rule engine fires a flag →</p>
                   <p>POST /soupy/analyze</p>
                   <p className="text-muted-foreground">{'{'} claim_id, cpt_codes, icd_codes,</p>
                   <p className="text-muted-foreground">  clinical_notes, flag_reason {'}'}</p>
@@ -313,7 +313,7 @@ export function LyricAIIntegration() {
               <div className="space-y-2 text-[10px] text-muted-foreground">
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-consensus mt-0.5 shrink-0" />
-                  <p><span className="text-foreground font-medium">Read-only access</span> to KnowledgePacks and Concept Libraries — SOUPY never writes to Lyric's content stores</p>
+                  <p><span className="text-foreground font-medium">Read-only access</span> to clinical content libraries — SOUPY never writes to your content stores</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-consensus mt-0.5 shrink-0" />
@@ -321,7 +321,7 @@ export function LyricAIIntegration() {
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-consensus mt-0.5 shrink-0" />
-                  <p><span className="text-foreground font-medium">Event-driven</span> — triggered by ClaimsXten flags, not polling. Zero load when no claims are flagged.</p>
+                  <p><span className="text-foreground font-medium">Event-driven</span> — triggered by rule engine flags, not polling. Zero load when no claims are flagged.</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-consensus mt-0.5 shrink-0" />
@@ -341,7 +341,7 @@ export function LyricAIIntegration() {
                   <div className="w-3.5 h-3.5 rounded-full border-2 border-primary flex items-center justify-center shrink-0 mt-0.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                   </div>
-                  <p><span className="text-foreground font-medium">Cloud (Recommended)</span> — Deployed in Lyric's existing cloud VPC. HIPAA-compliant. Data never leaves the boundary.</p>
+                  <p><span className="text-foreground font-medium">Cloud (Recommended)</span> — Deployed in your existing cloud VPC. HIPAA-compliant. Data never leaves the boundary.</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground flex items-center justify-center shrink-0 mt-0.5" />
@@ -404,9 +404,9 @@ export function LyricAIIntegration() {
           The shortest path to adversarial intelligence in production.
         </p>
         <p className="text-[11px] text-muted-foreground max-w-xl mx-auto">
-          SOUPY plugs into Lyric's existing pipeline with a single API endpoint. No re-architecture, no data migration,
+          SOUPY plugs into your existing pipeline with a single API endpoint. No re-architecture, no data migration,
           no disruption to current operations. The reasoning engine runs alongside — enriching every determination 
-          with multi-perspective depth that no competitor offers.
+          with multi-perspective depth.
         </p>
       </div>
     </div>

@@ -169,10 +169,10 @@ export function exportPlatformSummaryPDF() {
   addTitle('8. Strategic Positioning');
   addSubtitle('Product Mapping');
   addBody('The platform maps directly onto existing health plan product suites:');
-  addBullet('ClaimsXten — Pre-payment code auditing enhancement with multi-AI consensus');
-  addBullet('Virtuoso — Clinical validation and medical necessity AI layer');
-  addBullet('Rhythm — Claims workflow orchestration with embedded intelligence');
-  addBullet('Vesion (Subrogation) — Cross-claim pattern detection and recovery optimization');
+  addBullet('Rule-Based Editing — Pre-payment code auditing enhancement with multi-AI consensus');
+  addBullet('Analytics Dashboard — Clinical validation and medical necessity AI layer');
+  addBullet('Workflow Orchestration — Claims workflow with embedded intelligence');
+  addBullet('Data Transparency — Cross-claim pattern detection and recovery optimization');
   addSpacer(4);
   addSubtitle('Value Demonstration');
   addBody('The Value Demo tab provides a side-by-side comparison of Single Model AI vs. SOUPY ThinkTank multi-model approach, showing how adversarial consensus produces higher-confidence audit decisions with lower false-positive rates.');

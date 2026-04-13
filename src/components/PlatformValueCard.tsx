@@ -19,7 +19,7 @@ import {
 /** Circular flywheel rendered with pure CSS/SVG */
 function FlywheelDiagram() {
   const segments = [
-    { label: 'Enhances Stack', sub: 'Sits on ClaimsXten + Replay', color: 'hsl(var(--primary))' },
+    { label: 'Enhances Stack', sub: 'Sits on existing PI systems', color: 'hsl(var(--primary))' },
     { label: 'Appeals Drop', sub: 'Pre-tested determinations', color: 'hsl(var(--consensus))' },
     { label: 'Providers Want In', sub: 'Same engine, compliance mode', color: 'hsl(var(--accent))' },
     { label: 'Value Compounds', sub: 'New revenue + lower costs', color: 'hsl(var(--disagreement))' },
@@ -120,7 +120,7 @@ function FlywheelDiagram() {
 export function PlatformValueCard() {
   return (
     <div className="space-y-6">
-      {/* What SOUPY adds that Lyric doesn't have */}
+      {/* What SOUPY adds to your existing stack */}
       <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-card to-accent/5 shadow-sm">
         <CardContent className="p-6">
           <div className="flex items-center gap-3 mb-4">
@@ -128,9 +128,9 @@ export function PlatformValueCard() {
               <ArrowLeftRight className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">What SOUPY Adds to the Lyric Stack</h2>
+              <h2 className="text-lg font-semibold tracking-tight">What SOUPY Adds to Your PI Stack</h2>
               <p className="text-xs text-muted-foreground">
-                Three new capabilities that extend ClaimsXten, Replay, Virtuoso, and ClaimShark
+                Three new capabilities that extend your existing payment integrity systems
               </p>
             </div>
           </div>
@@ -183,10 +183,10 @@ export function PlatformValueCard() {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { product: 'ClaimsXten', enhancement: 'Adds adversarial depth to edits', status: 'Enhances' },
-                { product: 'Replay', enhancement: 'Adds multi-perspective audit reasoning', status: 'Enhances' },
-                { product: 'Virtuoso', enhancement: 'Feeds appeal-resilience metrics', status: 'Enhances' },
-                { product: 'ClaimShark', enhancement: 'Adds reasoning transparency layer', status: 'Enhances' },
+                { product: 'Rule-Based Editing', enhancement: 'Adds adversarial depth to edits', status: 'Enhances' },
+                { product: 'Audit Review', enhancement: 'Adds multi-perspective audit reasoning', status: 'Enhances' },
+                { product: 'Analytics Dashboard', enhancement: 'Feeds appeal-resilience metrics', status: 'Enhances' },
+                { product: 'Data Transparency', enhancement: 'Adds reasoning transparency layer', status: 'Enhances' },
               ].map((item, i) => (
                 <div key={i} className="rounded-md border bg-card p-2.5 space-y-1">
                   <p className="text-xs font-semibold">{item.product}</p>

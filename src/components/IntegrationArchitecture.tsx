@@ -25,10 +25,10 @@ interface IntegrationNodeProps {
   sub: string;
   status: 'live' | 'ready' | 'planned';
   color: string;
-  isLyric?: boolean;
+  isExternal?: boolean;
 }
 
-function IntegrationNode({ icon, label, sub, status, color, isLyric }: IntegrationNodeProps) {
+function IntegrationNode({ icon, label, sub, status, color, isExternal }: IntegrationNodeProps) {
   const statusMap = {
     live: { label: 'Live', class: 'bg-consensus/10 text-consensus border-consensus/30' },
     ready: { label: 'Ready', class: 'bg-primary/10 text-primary border-primary/30' },
@@ -49,9 +49,9 @@ function IntegrationNode({ icon, label, sub, status, color, isLyric }: Integrati
         <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${s.class}`}>
           {s.label}
         </Badge>
-        {isLyric && (
+        {isExternal && (
           <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-primary/5 text-primary border-primary/20">
-            Lyric Product
+            Existing System
           </Badge>
         )}
       </div>
@@ -87,58 +87,58 @@ export function IntegrationArchitecture() {
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Integration Architecture</h2>
             <p className="text-xs text-muted-foreground">
-              SOUPY enhances every Lyric product — replaces none of them
+              SOUPY enhances your existing stack — replaces none of it
             </p>
           </div>
           <Badge variant="outline" className="ml-auto text-[10px]">Additive Layer</Badge>
         </div>
 
         <div className="space-y-6">
-          {/* Row 1: Existing Lyric Products SOUPY enhances */}
+          {/* Row 1: Existing Products SOUPY enhances */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Layers className="h-3.5 w-3.5 text-primary" />
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Existing Lyric Products (Enhanced by SOUPY)
+                Existing Systems (Enhanced by SOUPY)
               </span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <IntegrationNode
                 icon={<Shield className="h-3.5 w-3.5 text-primary" />}
-                label="ClaimsXten"
+                label="Rule-Based Editing"
                 sub="SOUPY adds adversarial depth to edits"
                 status="ready"
                 color="bg-primary/10"
-                isLyric
+                isExternal
               />
               <IntegrationNode
                 icon={<Search className="h-3.5 w-3.5 text-primary" />}
-                label="Replay"
+                label="Audit Review"
                 sub="SOUPY adds multi-perspective reasoning"
                 status="ready"
                 color="bg-primary/10"
-                isLyric
+                isExternal
               />
               <IntegrationNode
                 icon={<BarChart3 className="h-3.5 w-3.5 text-primary" />}
-                label="Virtuoso"
+                label="Analytics Dashboard"
                 sub="SOUPY feeds appeal-resilience metrics"
                 status="ready"
                 color="bg-primary/10"
-                isLyric
+                isExternal
               />
               <IntegrationNode
                 icon={<Database className="h-3.5 w-3.5 text-primary" />}
-                label="ClaimShark"
+                label="Data Transparency"
                 sub="SOUPY adds transparent reasoning trails"
                 status="ready"
                 color="bg-primary/10"
-                isLyric
+                isExternal
               />
             </div>
           </div>
 
-          <FlowArrow direction="down" label="SOUPY enhances output from each product" />
+          <FlowArrow direction="down" label="SOUPY enhances output from each system" />
 
           {/* Row 2: SOUPY Intelligence Layer */}
           <div>
@@ -184,7 +184,7 @@ export function IntegrationArchitecture() {
             </div>
           </div>
 
-          <FlowArrow direction="down" label="Also consumes data from Lyric content libraries" />
+          <FlowArrow direction="down" label="Also consumes data from clinical content libraries" />
 
           {/* Row 3: Data Sources + Content */}
           <div>
@@ -197,19 +197,19 @@ export function IntegrationArchitecture() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <IntegrationNode
                 icon={<BookOpen className="h-3.5 w-3.5 text-primary" />}
-                label="KnowledgePacks"
+                label="Clinical Knowledge Base"
                 sub="Clinical content feeds SOUPY context"
                 status="ready"
                 color="bg-primary/10"
-                isLyric
+                isExternal
               />
               <IntegrationNode
                 icon={<FileText className="h-3.5 w-3.5 text-primary" />}
-                label="Concept Libraries"
+                label="Policy Libraries"
                 sub="Policy content for reasoning"
                 status="ready"
                 color="bg-primary/10"
-                isLyric
+                isExternal
               />
               <IntegrationNode
                 icon={<Database className="h-3.5 w-3.5 text-accent" />}
@@ -234,7 +234,7 @@ export function IntegrationArchitecture() {
           <p className="text-[11px] text-foreground font-medium">
             Additive, not disruptive.
             <span className="text-muted-foreground font-normal ml-1">
-              SOUPY consumes output from your existing products and adds adversarial intelligence,
+              SOUPY consumes output from your existing systems and adds adversarial intelligence,
               appeal defense, and provider revenue — new capabilities that extend the current portfolio.
             </span>
           </p>

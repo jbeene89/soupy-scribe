@@ -35,21 +35,21 @@ interface ProductData {
 
 const products: ProductData[] = [
   {
-    id: 'claimsxten',
-    name: 'ClaimsXten',
+    id: 'rule-engine',
+    name: 'Rule-Based Editing',
     icon: Shield,
-    tagline: 'Rules-based payment editing engine',
+    tagline: 'Deterministic payment editing engine',
     whatItDoes: [
       'Deterministic rule-based claim edits',
       'Pre-pay & post-pay editing',
-      'KLAS #1 pre-payment accuracy',
       'High-volume automated processing',
+      'Standardized flag generation',
     ],
     whatItDoesnt: [
-      'Opportunity to explain WHY a flag matters',
-      'Opportunity to add adversarial challenge layer',
-      'Opportunity to pre-build appeal defense',
-      'Opportunity to add divergence mapping across perspectives',
+      'Explain WHY a flag matters beyond the rule',
+      'Adversarial challenge layer on each edit',
+      'Pre-built appeal defense at point of determination',
+      'Divergence mapping across multiple perspectives',
     ],
     soupyAdds: [
       'Multi-model reasoning validates each edit',
@@ -62,8 +62,8 @@ const products: ProductData[] = [
     bgColor: 'bg-primary/10',
   },
   {
-    id: 'replay',
-    name: 'Replay',
+    id: 'audit-review',
+    name: 'Internal Audit Review',
     icon: Search,
     tagline: 'AI-powered internal audit solution',
     whatItDoes: [
@@ -73,10 +73,10 @@ const products: ProductData[] = [
       'Boosts recovery savings',
     ],
     whatItDoesnt: [
-      'Opportunity to add multi-model analysis per audit',
-      'Opportunity to add adversarial stress-testing',
-      'Opportunity to predict which findings get overturned',
-      'Opportunity to pre-build appeal responses',
+      'Multi-model analysis per audit finding',
+      'Adversarial stress-testing of each conclusion',
+      'Prediction of which findings get overturned',
+      'Pre-built appeal responses at determination',
     ],
     soupyAdds: [
       'Builder + Red Team + Analyst + Breaker debate each finding',
@@ -89,10 +89,10 @@ const products: ProductData[] = [
     bgColor: 'bg-accent/10',
   },
   {
-    id: 'virtuoso',
-    name: 'Virtuoso',
+    id: 'analytics',
+    name: 'Analytics Dashboard',
     icon: BarChart3,
-    tagline: 'Payment Integrity Command Center',
+    tagline: 'Payment integrity command center',
     whatItDoes: [
       'Unified PI operations dashboard',
       'Automated workflow orchestration',
@@ -100,10 +100,10 @@ const products: ProductData[] = [
       'Performance analytics',
     ],
     whatItDoesnt: [
-      'Opportunity to add appeal-resilience metrics',
-      'Opportunity to measure AI disagreement rates',
-      'Opportunity to add provider-side intelligence',
-      'Opportunity to track determination durability',
+      'Appeal-resilience metrics per determination',
+      'AI disagreement rate tracking',
+      'Provider-side intelligence feeds',
+      'Determination durability measurement',
     ],
     soupyAdds: [
       'Appeal vulnerability scores per determination',
@@ -116,21 +116,21 @@ const products: ProductData[] = [
     bgColor: 'bg-consensus/10',
   },
   {
-    id: 'claimshark',
-    name: 'ClaimShark',
+    id: 'transparency',
+    name: 'Data Transparency',
     icon: Database,
     tagline: 'Transparency & integration platform',
     whatItDoes: [
       'Payment integrity transparency',
       'Integration hub for PI solutions',
       'Data precision for health plans',
-      'Newly acquired — expanding capabilities',
+      'Cross-system data normalization',
     ],
     whatItDoesnt: [
-      'Opportunity to add reasoning transparency (WHY, not just WHAT)',
-      'Opportunity to show providers the logic behind flags',
-      'Opportunity to add dual-sided communication channel',
-      'Opportunity to add AI reasoning audit trail',
+      'Reasoning transparency (WHY, not just WHAT)',
+      'Provider-facing logic behind each flag',
+      'Dual-sided communication channel',
+      'AI reasoning audit trail',
     ],
     soupyAdds: [
       'Full reasoning chain visible to auditors',
@@ -149,7 +149,6 @@ function EnhancementAnimation({ product, isActive }: { product: ProductData; isA
 
   return (
     <div className="relative h-32 rounded-lg border bg-muted/20 overflow-hidden">
-      {/* Base layer — the existing product */}
       <div className={cn(
         'absolute inset-0 flex items-center justify-center transition-all duration-700',
         isActive ? 'translate-y-[-20%] scale-90 opacity-60' : 'translate-y-0 scale-100 opacity-100'
@@ -165,12 +164,10 @@ function EnhancementAnimation({ product, isActive }: { product: ProductData; isA
         </div>
       </div>
 
-      {/* SOUPY enhancement layer — slides up from bottom */}
       <div className={cn(
         'absolute inset-0 flex flex-col items-center justify-center transition-all duration-700',
         isActive ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
       )}>
-        {/* Connection line */}
         <div className="flex items-center gap-2 mb-2">
           <div className={cn('p-1.5 rounded-md', product.bgColor)}>
             <Icon className={cn('h-4 w-4', product.color)} />
@@ -183,7 +180,6 @@ function EnhancementAnimation({ product, isActive }: { product: ProductData; isA
         <p className="text-xs font-semibold text-accent">{product.animMetric.after}</p>
         <p className="text-[10px] text-muted-foreground">{product.animMetric.label}</p>
 
-        {/* Glow ring */}
         <div className={cn(
           'absolute inset-0 rounded-lg border-2 transition-all duration-700',
           isActive ? 'border-accent/40 shadow-[inset_0_0_20px_rgba(var(--accent)/0.08)]' : 'border-transparent'
@@ -225,7 +221,6 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
         onClick={handleTap}
       >
         <CardContent className="p-0">
-          {/* Product header */}
           <div className="p-4 border-b bg-muted/20">
             <div className="flex items-center gap-3">
               <div className={cn('p-2 rounded-lg', product.bgColor)}>
@@ -234,7 +229,7 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold">{product.name}</h3>
-                  <Badge variant="outline" className="text-[9px]">Lyric Product</Badge>
+                  <Badge variant="outline" className="text-[9px]">Existing Capability</Badge>
                 </div>
                 <p className="text-[10px] text-muted-foreground">{product.tagline}</p>
               </div>
@@ -251,10 +246,9 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr_auto_1fr] gap-0">
-            {/* What it does */}
             <div className="p-4">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                What {product.name} Does
+                Current Capability
               </p>
               <ul className="space-y-1.5">
                 {product.whatItDoes.map((item, i) => (
@@ -266,13 +260,11 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
               </ul>
             </div>
 
-            {/* Divider */}
             <div className="hidden lg:flex items-stretch">
               <div className="w-px bg-border" />
             </div>
             <div className="lg:hidden h-px bg-border mx-4" />
 
-            {/* What it doesn't — the opportunity */}
             <div className="p-4">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-primary/70 mb-2">
                 Opportunity
@@ -287,13 +279,11 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
               </ul>
             </div>
 
-            {/* Divider */}
             <div className="hidden lg:flex items-stretch">
               <div className="w-px bg-border" />
             </div>
             <div className="lg:hidden h-px bg-border mx-4" />
 
-            {/* What SOUPY adds */}
             <div className={cn(
               'p-4 transition-colors duration-300',
               isActive ? 'bg-accent/5' : ''
@@ -312,7 +302,6 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
             </div>
           </div>
 
-          {/* Animation strip */}
           <div className="px-4 pb-4">
             <EnhancementAnimation product={product} isActive={isActive} />
           </div>
@@ -322,31 +311,28 @@ function ProductRow({ product, index }: { product: ProductData; index: number })
   );
 }
 
-export function LyricProductComparison() {
+export function PlatformEnhancementMap() {
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex items-start gap-4">
         <div className="p-2 rounded-lg bg-accent/10 shrink-0">
           <Layers className="h-5 w-5 text-accent" />
         </div>
         <div className="flex-1">
-          <h2 className="text-lg font-semibold tracking-tight">Lyric Product Enhancement Map</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Platform Enhancement Map</h2>
           <p className="text-xs text-muted-foreground">
-            SOUPY enhances every product in the Lyric stack — hover each row to see the value it adds without replacing anything
+            SOUPY enhances every layer of your payment integrity stack — hover each row to see the value it adds
           </p>
         </div>
         <Badge variant="outline" className="text-[10px] shrink-0">Additive Only</Badge>
       </div>
 
-      {/* Product comparison rows */}
       <div className="space-y-4">
         {products.map((product, i) => (
           <ProductRow key={product.id} product={product} index={i} />
         ))}
       </div>
 
-      {/* Summary bar */}
       <Card
         className="border-2 border-accent/30 bg-accent/5 opacity-0 animate-slide-up"
         style={{ animationDelay: `${products.length * 150 + 200}ms`, animationFillMode: 'forwards' }}
@@ -355,7 +341,7 @@ export function LyricProductComparison() {
           <div className="flex items-center gap-3 mb-3">
             <Brain className="h-5 w-5 text-accent" />
             <p className="text-sm font-semibold">
-              Net result: Every Lyric product gets stronger. Nothing gets replaced.
+              Net result: Every existing capability gets stronger. Nothing gets replaced.
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -363,7 +349,7 @@ export function LyricProductComparison() {
               { icon: Eye, label: 'Reasoning Transparency', desc: 'WHY, not just WHAT', color: 'text-primary' },
               { icon: Shield, label: 'Appeal Resilience', desc: 'Pre-tested determinations', color: 'text-consensus' },
               { icon: Stethoscope, label: 'Provider Revenue', desc: 'New market from same engine', color: 'text-accent' },
-              { icon: Lock, label: 'Market Exclusivity', desc: 'Lyric-only non-compete', color: 'text-disagreement' },
+              { icon: Lock, label: 'Competitive Moat', desc: 'No comparable solution exists', color: 'text-disagreement' },
             ].map((item, i) => (
               <div key={i} className="rounded-md border bg-card p-3 text-center space-y-1">
                 <item.icon className={cn('h-4 w-4 mx-auto', item.color)} />

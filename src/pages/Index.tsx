@@ -9,8 +9,8 @@ import { SOUPYConfigDialog } from '@/components/SOUPYConfigDialog';
 import { ComparisonView } from '@/components/ComparisonView';
 import { PlatformValueCard } from '@/components/PlatformValueCard';
 import { IntegrationArchitecture } from '@/components/IntegrationArchitecture';
-import { LyricProductComparison } from '@/components/LyricProductComparison';
-import { LyricAIIntegration } from '@/components/LyricAIIntegration';
+import { PlatformEnhancementMap } from '@/components/PlatformEnhancementMap';
+import { AIPipelineIntegration } from '@/components/AIPipelineIntegration';
 import { PresentationMode } from '@/components/PresentationMode';
 import { CaseUpload } from '@/components/CaseUpload';
 import { AuthGate, SignInDialog } from '@/components/AuthGate';
@@ -388,13 +388,13 @@ const Index = () => {
                 <GitCompare className="h-3.5 w-3.5" />
                 Value Demo
               </TabsTrigger>
-              <TabsTrigger value="lyric-map" className="gap-1.5">
+              <TabsTrigger value="enhancement-map" className="gap-1.5">
                 <Layers className="h-3.5 w-3.5" />
-                Lyric Enhancement
+                Enhancement Map
               </TabsTrigger>
               <TabsTrigger value="ai-integration" className="gap-1.5">
                 <Cpu className="h-3.5 w-3.5" />
-                AI Integration
+                AI Pipeline
               </TabsTrigger>
               <TabsTrigger value="platform" className="gap-1.5">
                 <BarChart3 className="h-3.5 w-3.5" />
@@ -442,12 +442,12 @@ const Index = () => {
               <ComparisonView />
             </TabsContent>
 
-            <TabsContent value="lyric-map">
-              <LyricProductComparison />
+            <TabsContent value="enhancement-map">
+              <PlatformEnhancementMap />
             </TabsContent>
 
             <TabsContent value="ai-integration">
-              <LyricAIIntegration />
+              <AIPipelineIntegration />
             </TabsContent>
 
             <TabsContent value="platform">

@@ -171,7 +171,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   <span className="text-accent">defend themselves.</span>
                 </h2>
                 <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
-                  Replay audits. Virtuoso orchestrates. ClaimsXten edits.
+                  Your audit engine flags. Your orchestration layer routes. Your edit rules fire.
                   You've built the strongest payment integrity platform in the market.
                   SOUPY adds the adversarial layer that makes every determination appeal-ready
                   and opens an entirely new revenue channel.
@@ -233,10 +233,10 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
               <div className="space-y-2">
                 <Badge variant="outline" className="text-xs">Live Case</Badge>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  What ClaimsXten flags. What SOUPY <span className="text-accent">reveals.</span>
+                  What the rule engine flags. What SOUPY <span className="text-accent">reveals.</span>
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  High-value ED + Critical Care combination — ClaimsXten catches the edit.
+                  High-value ED + Critical Care combination — the rule engine catches the edit.
                   SOUPY stress-tests whether it holds up under appeal.
                 </p>
               </div>
@@ -563,7 +563,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   <span className="text-accent"> customer you're not selling to.</span>
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-2xl">
-                  Lyric audits providers. But providers would pay to validate their claims
+                  Payers audit providers. But providers would pay to validate their claims
                   against the same AI before submission — eliminating flags at the source.
                   That's a new revenue surface from every existing payer relationship.
                 </p>
@@ -578,12 +578,12 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                       </div>
                       <div>
                         <p className="font-semibold">Existing: Payer Module</p>
-                        <p className="text-xs text-muted-foreground">What Lyric does today</p>
+                        <p className="text-xs text-muted-foreground">Current payment integrity workflow</p>
                       </div>
                     </div>
                     <ul className="space-y-2">
                       {[
-                        'SOUPY enhances ClaimsXten determinations',
+                        'SOUPY enhances rule-based determinations',
                         'Adversarial stress-testing on every flag',
                         'Pre-built appeal defense packages',
                         'Transparent reasoning trails for compliance',
@@ -680,7 +680,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                     step: '01',
                     icon: Layers,
                     title: 'SOUPY Enhances Stack',
-                    body: 'Sits on top of ClaimsXten + Replay + Virtuoso. Adds adversarial depth — no rip and replace.',
+                    body: 'Sits on top of your existing PI stack. Adds adversarial depth — no rip and replace.',
                     color: 'text-primary',
                   },
                   {
@@ -742,7 +742,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   How SOUPY plugs into <span className="text-accent">your existing pipeline.</span>
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-2xl">
-                  Zero disruption. SOUPY sits as a reasoning layer between Lyric's current rule engines
+                  Zero disruption. SOUPY sits as a reasoning layer between your current rule engines
                   and the final determination — no re-architecture, no migration.
                 </p>
               </div>
@@ -770,8 +770,8 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                       <Badge variant="outline" className="ml-auto text-[9px] border-primary/30 text-primary">Existing</Badge>
                     </div>
                     <div className="space-y-1.5 text-[11px] text-muted-foreground">
-                      <div className="flex items-center gap-2"><Shield className="h-3.5 w-3.5 shrink-0 text-primary" /><span>ClaimsXten fires deterministic edit rules</span></div>
-                      <div className="flex items-center gap-2"><Eye className="h-3.5 w-3.5 shrink-0 text-primary" /><span>Replay pattern detection on historical data</span></div>
+                      <div className="flex items-center gap-2"><Shield className="h-3.5 w-3.5 shrink-0 text-primary" /><span>Rule engine fires deterministic edit rules</span></div>
+                      <div className="flex items-center gap-2"><Eye className="h-3.5 w-3.5 shrink-0 text-primary" /><span>Pattern detection on historical data</span></div>
                     </div>
                     <p className="text-[10px] text-muted-foreground italic mt-1">Today, this is where the determination is made — a strong foundation.</p>
                   </CardContent>
@@ -827,7 +827,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
 
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { icon: BarChart3, title: 'Virtuoso Analytics', desc: 'Now with appeal-resilience metrics', tag: 'Enhanced', color: 'text-consensus' },
+                  { icon: BarChart3, title: 'Analytics Dashboard', desc: 'Now with appeal-resilience metrics', tag: 'Enhanced', color: 'text-consensus' },
                   { icon: FileText, title: 'Appeal Portal', desc: 'Pre-built defense letters at determination time', tag: 'New', color: 'text-accent' },
                   { icon: Lock, title: 'Audit Trail', desc: 'Complete reasoning transcript — every perspective', tag: 'New', color: 'text-accent' },
                 ].map((item, i) => (
@@ -970,7 +970,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   {
                     icon: Lock,
                     title: 'Market Exclusivity',
-                    body: 'Full non-compete in health insurance payment integrity. No competitor gets this technology. Lyric only.',
+                    body: 'Full non-compete in health insurance payment integrity. No competitor gets this technology. Exclusive to your organization.',
                     color: 'text-consensus',
                   },
                 ].map((item, i) => (
@@ -993,7 +993,7 @@ export function PresentationMode({ onExit }: PresentationModeProps) {
                   </p>
                   <p className="text-sm text-muted-foreground max-w-xl mx-auto">
                     adversarial AI reasoning, pre-built appeal defense, and a provider revenue channel.
-                    Designed to amplify ClaimsXten, Replay, Virtuoso, and ClaimShark.
+                    Designed to amplify your entire payment integrity stack.
                     Built to sit on top of all of them.
                   </p>
                 </CardContent>
