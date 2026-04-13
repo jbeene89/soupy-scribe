@@ -410,6 +410,18 @@ const Index = () => {
                 <Ghost className="h-3.5 w-3.5" />
                 Ghost Cases
               </TabsTrigger>
+              <TabsTrigger value="or-readiness" className="gap-1.5">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                OR Readiness
+              </TabsTrigger>
+              <TabsTrigger value="triage-accuracy" className="gap-1.5">
+                <Target className="h-3.5 w-3.5" />
+                Triage Accuracy
+              </TabsTrigger>
+              <TabsTrigger value="postop-flow" className="gap-1.5">
+                <Bed className="h-3.5 w-3.5" />
+                Post-Op Flow
+              </TabsTrigger>
               <TabsTrigger value="history">Case History</TabsTrigger>
             </TabsList>
 
