@@ -342,47 +342,8 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-8 py-6 space-y-6">
-        {/* Payer mode: Claim Accuracy Program value banner */}
-        {appMode === 'payer' && posture === 'compliance-coaching' && !selectedCase && (
-          <div className="rounded-lg border bg-card p-5 shadow-sm">
-            <div className="flex items-start gap-4">
-              <div className="p-2 rounded-lg bg-consensus/10 shrink-0">
-                <Scale className="h-5 w-5 text-consensus" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-sm font-semibold mb-1">Claim Accuracy Program — Payer Value Proposition</h2>
-                <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                  Proactive documentation guidance reduces downstream audit friction. When providers submit 
-                  complete, evidence-backed claims, the result is fewer flags, fewer appeals, and dramatically 
-                  reduced administrative burden — saving payer resources at every stage of the payment integrity lifecycle.
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="rounded-md border bg-background p-3 text-center">
-                    <p className="text-lg font-semibold text-consensus">68%</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">Projected Appeal Reduction*</p>
-                  </div>
-                  <div className="rounded-md border bg-background p-3 text-center">
-                    <p className="text-lg font-semibold text-accent">4.2hrs</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">Est. Time Saved Per Case*</p>
-                  </div>
-                  <div className="rounded-md border bg-background p-3 text-center">
-                    <p className="text-lg font-semibold text-foreground">$1.2M</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">Est. Annual Admin Savings*</p>
-                  </div>
-                  <div className="rounded-md border bg-background p-3 text-center">
-                    <p className="text-lg font-semibold text-info-blue">91%</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">Clean Claim Rate Target*</p>
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-3 italic">
-                   * All figures are modeled estimates based on platform architecture. Providers who receive structured 
-                   documentation guidance submit claims with sufficient evidence upfront — eliminating the need for 
-                   costly post-payment recovery and reducing litigation exposure.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+
+
 
         {/* Case Detail Views */}
         {selectedCase && activeTab === 'audit' ? (
@@ -463,22 +424,8 @@ const Index = () => {
                 )}
               </TabsTrigger>
               <TabsTrigger value="patterns">Pattern Analysis</TabsTrigger>
-              <TabsTrigger value="comparison" className="gap-1.5">
-                <GitCompare className="h-3.5 w-3.5" />
-                Value Demo
-              </TabsTrigger>
-              <TabsTrigger value="enhancement-map" className="gap-1.5">
-                <Layers className="h-3.5 w-3.5" />
-                Enhancement Map
-              </TabsTrigger>
-              <TabsTrigger value="ai-integration" className="gap-1.5">
-                <Cpu className="h-3.5 w-3.5" />
-                AI Pipeline
-              </TabsTrigger>
-              <TabsTrigger value="platform" className="gap-1.5">
-                <BarChart3 className="h-3.5 w-3.5" />
-                Platform Value
-              </TabsTrigger>
+
+
               <TabsTrigger value="ghost-cases" className="gap-1.5">
                 <Ghost className="h-3.5 w-3.5" />
                 Ghost Cases
@@ -529,24 +476,8 @@ const Index = () => {
               />
             </TabsContent>
 
-            <TabsContent value="comparison">
-              <ComparisonView />
-            </TabsContent>
 
-            <TabsContent value="enhancement-map">
-              <PlatformEnhancementMap />
-            </TabsContent>
 
-            <TabsContent value="ai-integration">
-              <AIPipelineIntegration />
-            </TabsContent>
-
-            <TabsContent value="platform">
-              <div className="space-y-6">
-                <PlatformValueCard />
-                <IntegrationArchitecture />
-              </div>
-            </TabsContent>
 
             <TabsContent value="ghost-cases">
               <GhostCaseManager />
