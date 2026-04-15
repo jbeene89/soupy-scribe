@@ -81,6 +81,8 @@ export interface AuditCase {
   riskScore: RiskScore;
   analyses: AIRoleAnalysis[];
   consensusScore: number;
+  bodyRegion?: string;
+  linkedCaseId?: string;
   decision?: {
     outcome: CaseStatus;
     reasoning: string;

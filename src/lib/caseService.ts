@@ -46,6 +46,8 @@ function dbCaseToAuditCase(row: any): AuditCase {
     analyses: [],
     decision: row.decision || undefined,
     metadata: row.metadata || undefined,
+    bodyRegion: row.body_region || undefined,
+    linkedCaseId: row.linked_case_id || undefined,
   };
 }
 
