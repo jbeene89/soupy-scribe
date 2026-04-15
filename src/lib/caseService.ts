@@ -125,7 +125,7 @@ export async function fetchCase(caseId: string): Promise<AuditCase | null> {
   return auditCase;
 }
 
-export async function submitCaseText(sourceText: string): Promise<{ caseId: string; extracted: any }> {
+export async function submitCaseText(sourceText: string): Promise<{ caseId: string; extracted: any; linkedTo?: { caseId: string } }> {
   const response = await supabase.functions.invoke("analyze-case", {
     body: { action: "extract", sourceText },
   });
@@ -135,7 +135,7 @@ export async function submitCaseText(sourceText: string): Promise<{ caseId: stri
   const data = response.data;
   if (!data?.success) throw new Error(data?.error || "Extraction failed");
 
-  return { caseId: data.case.id, extracted: data.extracted };
+  return { caseId: data.case.id, extracted: data.extracted, linkedTo: data.linkedTo || undefined };
 }
 
 export async function runSOUPYAnalysis(caseId: string, payerCode?: string): Promise<{ consensusScore: number; riskScore: number }> {
