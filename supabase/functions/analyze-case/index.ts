@@ -233,6 +233,7 @@ Return a JSON object with these fields:
 - claim_amount: number (total claim/charge amount, or estimate from codes)
 - summary: string (brief clinical summary of the case)
 - procedure_type: string (e.g., "orthopedic surgery", "emergency medicine", "spine surgery")
+- body_region: string (primary anatomical body region involved, e.g. "left testicle", "lumbar spine L4-L5", "right knee", "abdomen". Include laterality when documented. If multiple regions, pick the primary one.)
 
 If information is missing, make reasonable inferences from the clinical context. Always extract CPT and ICD codes if present.`;
 
