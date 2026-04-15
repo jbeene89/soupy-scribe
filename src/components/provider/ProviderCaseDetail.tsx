@@ -4,6 +4,7 @@ import type { PreAppealResolution } from '@/lib/preAppealTypes';
 import { ProviderCaseReviewCard } from './ProviderCaseReview';
 import { ProviderPacket } from './ProviderPacket';
 import { EvidenceReadinessChecklist } from './EvidenceReadinessChecklist';
+import { PayerPerspectiveView } from './PayerPerspectiveView';
 import { CPTCodeBadge } from '@/components/CPTCodeBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
