@@ -1,6 +1,7 @@
 import type { AuditCase } from '@/lib/types';
 import type { EvidenceSufficiency, Contradiction, ConfidenceFloorEvent } from '@/lib/soupyEngineService';
 import { AIRoleCard } from '@/components/AIRoleCard';
+import { FixBeforeSubmissionChecklist } from './FixBeforeSubmissionChecklist';
 import { RiskIndicator } from '@/components/RiskIndicator';
 import { ConsensusMeter } from '@/components/ConsensusMeter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -208,6 +209,13 @@ export function PayerPerspectiveView({
           ))}
         </div>
       </div>
+
+      {/* Fix Before Submission Checklist */}
+      <FixBeforeSubmissionChecklist
+        auditCase={auditCase}
+        evidenceSuff={evidenceSuff}
+        contradictions={contradictions}
+      />
 
       {/* Provider-oriented insight */}
       <Card className="border-info-blue/20 bg-info-blue/5">
