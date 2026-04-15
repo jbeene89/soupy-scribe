@@ -48,7 +48,7 @@ function extractFixItems(
         label: `Add missing: ${m.item}`,
         detail: m.impact || 'Required to reach defensible evidence threshold',
         source: 'evidence',
-        severity: m.weight >= 20 ? 'critical' : m.weight >= 10 ? 'high' : 'medium',
+        severity: i < 2 ? 'high' : 'medium',
       });
     });
 
@@ -81,13 +81,13 @@ function extractFixItems(
   });
 
   // From high risk score
-  if (auditCase.riskScore.overall > 70) {
+  if (auditCase.riskScore.score > 70) {
     items.push({
       id: 'risk-overall',
       label: 'Reduce overall risk score',
-      detail: `Risk score is ${auditCase.riskScore.overall}/100. Review documentation completeness, code-diagnosis alignment, and modifier usage.`,
+      detail: `Risk score is ${auditCase.riskScore.score}/100. Review documentation completeness, code-diagnosis alignment, and modifier usage.`,
       source: 'risk',
-      severity: auditCase.riskScore.overall > 85 ? 'critical' : 'high',
+      severity: auditCase.riskScore.score > 85 ? 'critical' : 'high',
     });
   }
 
