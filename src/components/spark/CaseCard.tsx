@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { AuditCase, CaseStatus } from '@/lib/types';
 import { deriveCaseSignals } from '@/lib/caseIntelligence';
-import { Clock, CheckCircle, XCircle, Search, FileText, AlertTriangle, AlertCircle, ShieldAlert } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Search, FileText, AlertTriangle, AlertCircle, ShieldAlert, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
 
@@ -82,7 +82,14 @@ export function CaseCard({ auditCase, onClick }: CaseCardProps) {
           </div>
           <p className="text-xs text-muted-foreground">
             {auditCase.physicianName} • {auditCase.physicianId}
+            {auditCase.bodyRegion && <span className="ml-1">• {auditCase.bodyRegion}</span>}
           </p>
+          {auditCase.linkedCaseId && (
+            <div className="flex items-center gap-1 mt-1">
+              <Link2 className="h-3 w-3 text-info-blue" />
+              <span className="text-[10px] text-info-blue font-medium">Linked case</span>
+            </div>
+          )}
         </div>
         <div className="text-right ml-2">
           <div className="font-semibold text-sm font-mono">${auditCase.claimAmount.toLocaleString()}</div>
