@@ -10,7 +10,7 @@ import { CaseCard } from './spark/CaseCard';
 import { CaseCardSkeleton } from './spark/LoadingState';
 import { deriveCaseSignals } from '@/lib/caseIntelligence';
 import { cn } from '@/lib/utils';
-import { Clock, CheckCircle, XCircle, Search, FileText, LayoutGrid, List, AlertTriangle, AlertCircle, ShieldAlert, Trash2 } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Search, FileText, LayoutGrid, List, AlertTriangle, AlertCircle, ShieldAlert, Trash2, Link2 } from 'lucide-react';
 import { deleteCase } from '@/lib/soupyEngineService';
 import { toast } from 'sonner';
 
