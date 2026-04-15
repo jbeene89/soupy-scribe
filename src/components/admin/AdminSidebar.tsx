@@ -129,9 +129,12 @@ export function AdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Operational (shared) */}
+        {/* Experimental (shared) */}
         <SidebarGroup>
-          <SidebarGroupLabel>Operational</SidebarGroupLabel>
+          <SidebarGroupLabel className="flex items-center gap-1.5">
+            Experimental
+            <span className="rounded-full bg-amber-500/15 text-amber-500 text-[9px] font-semibold px-1.5 py-0.5 leading-none">BETA</span>
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {OPERATIONAL_NAV.map((item) => (
