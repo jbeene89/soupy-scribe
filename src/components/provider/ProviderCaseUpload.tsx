@@ -77,6 +77,9 @@ export function ProviderCaseUpload({ onCaseCreated }: ProviderCaseUploadProps) {
       const result = await submitProviderCase(sourceText);
       setCaseId(result.caseId);
       setExtractedData(result.extracted);
+      if (result.linkedTo) {
+        toast.info('Auto-linked to existing case', { description: 'This document was linked to a related case based on patient ID and body region.' });
+      }
       setStep('extracted');
 
       // Auto-run analysis
