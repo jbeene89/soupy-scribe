@@ -1,12 +1,14 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
 import type { AppMode } from '@/lib/providerTypes';
-import type { ORReadinessEvent, TriageAccuracyEvent, PostOpFlowEvent } from '@/lib/operationalTypes';
+import type { ORReadinessEvent, TriageAccuracyEvent, PostOpFlowEvent, ERAcuteEvent, PatientAdvocateEvent } from '@/lib/operationalTypes';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import { deleteCase, deriveLivePatterns, type LivePhysicianPattern } from '@/lib/soupyEngineService';
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import { fetchORReadinessEvents, fetchTriageAccuracyEvents, fetchPostOpFlowEvents } from '@/lib/operationalService';
+import { fetchERAcuteEvents, fetchPatientAdvocateEvents } from '@/lib/erAcuteService';
 import { mockORReadinessEvents, mockTriageEvents, mockPostOpFlowEvents } from '@/lib/operationalMockData';
+import { mockERAcuteEvents, mockPatientAdvocateEvents } from '@/lib/erAcuteMockData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
