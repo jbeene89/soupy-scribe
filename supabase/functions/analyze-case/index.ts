@@ -397,6 +397,36 @@ serve(async (req) => {
         { type: "function", function: { name: "extract_case_data" } }
       );
 
+      // ── Auto-link: find existing cases with same patient_id + similar body_region ──
+      let linkedCaseId: string | null = null;
+      const bodyRegion = (extracted.body_region || "").toLowerCase().trim();
+      if (extracted.patient_id && bodyRegion) {
+        const { data: candidates } = await supabase
+          .from("audit_cases")
+          .select("id, body_region, case_number, created_at")
+          .eq("patient_id", extracted.patient_id)
+          .eq("owner_id", userId)
+          .not("body_region", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        if (candidates && candidates.length > 0) {
+          // Find a case with matching body region (case-insensitive substring match)
+          const match = candidates.find((c: any) => {
+            const existing = (c.body_region || "").toLowerCase();
+            return existing === bodyRegion
+              || existing.includes(bodyRegion)
+              || bodyRegion.includes(existing);
+          });
+          if (match) {
+            // Walk up to root linked case
+            const rootId = match.id;
+            linkedCaseId = rootId;
+            console.log(`Auto-linked to existing case ${match.case_number} (${match.body_region})`);
+          }
+        }
+      }
+
       const caseNumber = `AUD-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
       const { data: newCase, error: caseError } = await supabase
         .from("audit_cases")
@@ -414,6 +444,8 @@ serve(async (req) => {
           risk_score: {},
           metadata: { summary: extracted.summary, procedure_type: extracted.procedure_type },
           owner_id: userId,
+          body_region: extracted.body_region || null,
+          linked_case_id: linkedCaseId,
         })
         .select()
         .single();
@@ -430,7 +462,12 @@ serve(async (req) => {
         progress: 25,
       });
 
-      return new Response(JSON.stringify({ success: true, case: newCase, extracted }), {
+      return new Response(JSON.stringify({
+        success: true,
+        case: newCase,
+        extracted,
+        linkedTo: linkedCaseId ? { caseId: linkedCaseId } : null,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
