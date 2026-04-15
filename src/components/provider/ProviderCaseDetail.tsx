@@ -9,18 +9,31 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Brain, Loader2, CheckCircle, Clock, Download, FileText, ShieldAlert, XCircle, Zap } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { GovernancePanel } from '@/components/GovernancePanel';
+import { ScoreTransparencyPanel } from '@/components/ScoreTransparencyPanel';
+import { CodeCombinationAnalysisCard } from '@/components/spark/CodeCombinationAnalysisCard';
+import {
+  ArrowLeft, Brain, Loader2, CheckCircle, Clock, Download, FileText,
+  ShieldAlert, XCircle, Zap, Link2, AlertTriangle, ArrowRight, Info,
+} from 'lucide-react';
 import { exportProviderCaseDetailPDF } from '@/lib/exportProviderCaseDetailPDF';
 import { useState, useEffect, useMemo } from 'react';
 import { getStoredProviderReview, runProviderAnalysis } from '@/lib/providerService';
 import { getStoredPreAppealResolution, runPreAppealAnalysis } from '@/lib/preAppealService';
+import {
+  getCodeCombinations, getEvidenceSufficiency, getContradictions,
+  getConfidenceFloorEvents, type CodeCombination, type EvidenceSufficiency,
+  type Contradiction, type ConfidenceFloorEvent,
+} from '@/lib/soupyEngineService';
+import { deriveCaseSignals } from '@/lib/caseIntelligence';
+import { assessGovernance, type GovernanceAssessment } from '@/lib/caseGovernance';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthGate } from '@/components/AuthGate';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PreAppealResolutionTab } from '@/components/pre-appeal/PreAppealResolutionTab';
-import { deriveCaseSignals } from '@/lib/caseIntelligence';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProviderCaseDetailProps {
   auditCase: AuditCase;
@@ -38,7 +51,18 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
   const [loadingPreAppeal, setLoadingPreAppeal] = useState(false);
   const [runningPreAppeal, setRunningPreAppeal] = useState(false);
 
+  // Engine v3 data — parity with payer
+  const [liveCodeCombos, setLiveCodeCombos] = useState<CodeCombination[]>([]);
+  const [evidenceSuff, setEvidenceSuff] = useState<EvidenceSufficiency | null>(null);
+  const [contradictions, setContradictions] = useState<Contradiction[]>([]);
+  const [floorEvents, setFloorEvents] = useState<ConfidenceFloorEvent[]>([]);
+
+  // Linked case info
+  const [linkedCase, setLinkedCase] = useState<{ caseNumber: string; id: string } | null>(null);
+
   const review = liveReview;
+  const isLiveCase = !!auditCase.createdAt;
+  const hasAnalyses = auditCase.analyses.length > 0;
 
   useEffect(() => {
     setLoadingReview(true);
@@ -53,7 +77,29 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
       .then(r => { if (r) setPreAppealResolution(r); })
       .catch(() => {})
       .finally(() => setLoadingPreAppeal(false));
-  }, [auditCase.id]);
+
+    // Load v3 engine data
+    if (isLiveCase) {
+      Promise.allSettled([
+        getCodeCombinations(auditCase.id).then(setLiveCodeCombos),
+        getEvidenceSufficiency(auditCase.id).then(setEvidenceSuff),
+        getContradictions(auditCase.id).then(setContradictions),
+        getConfidenceFloorEvents(auditCase.id).then(setFloorEvents),
+      ]);
+    }
+
+    // Check for linked case
+    if (auditCase.linkedCaseId) {
+      supabase
+        .from('audit_cases')
+        .select('case_number, id')
+        .eq('id', auditCase.linkedCaseId)
+        .single()
+        .then(({ data }) => {
+          if (data) setLinkedCase({ caseNumber: data.case_number, id: data.id });
+        });
+    }
+  }, [auditCase.id, auditCase.linkedCaseId, isLiveCase]);
 
   const handleRunAnalysis = async () => {
     setAnalyzing(true);
@@ -82,10 +128,27 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
   };
 
   // Centralized case intelligence — same module as payer mode
-  const signals = useMemo(() => deriveCaseSignals(auditCase), [auditCase]);
+  const signals = useMemo(() => deriveCaseSignals(auditCase, {
+    contradictions,
+    evidenceSuff,
+    floorEvents,
+  }), [auditCase, contradictions, evidenceSuff, floorEvents]);
+
+  const governance = useMemo(() => {
+    if (!hasAnalyses) return null;
+    return assessGovernance(auditCase, { contradictions, evidenceSuff, floorEvents });
+  }, [auditCase, contradictions, evidenceSuff, floorEvents, hasAnalyses]);
+
+  const matchingCombinations = liveCodeCombos.map(cc => ({
+    codes: cc.codes,
+    flagReason: cc.flag_reason,
+    legitimateExplanations: cc.legitimate_explanations || [],
+    noncompliantExplanations: cc.noncompliant_explanations || [],
+    requiredDocumentation: cc.required_documentation || [],
+  }));
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       {/* Header */}
       <div className="flex items-start gap-4">
         <Button variant="ghost" size="icon" onClick={onBack} className="mt-1">
@@ -98,14 +161,20 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
             {liveReview && (
               <Badge variant="outline" className="text-xs border-consensus/40 text-consensus bg-consensus/10">AI Analyzed</Badge>
             )}
+            {auditCase.bodyRegion && (
+              <Badge variant="outline" className="text-xs">{auditCase.bodyRegion}</Badge>
+            )}
           </div>
-          {liveReview && (
-            <Button variant="outline" size="sm" className="mt-2" onClick={() => exportProviderCaseDetailPDF(auditCase, liveReview)}>
-              <Download className="h-3.5 w-3.5 mr-1.5" /> Export PDF
-            </Button>
-          )}
+          <div className="flex items-center gap-2 mt-2">
+            {liveReview && (
+              <Button variant="outline" size="sm" onClick={() => exportProviderCaseDetailPDF(auditCase, liveReview)}>
+                <Download className="h-3.5 w-3.5 mr-1.5" /> Export PDF
+              </Button>
+            )}
+          </div>
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <span>DOS: {auditCase.dateOfService}</span>
+            <span>Patient: {auditCase.patientId}</span>
             <span className="font-mono font-semibold text-foreground">${auditCase.claimAmount.toLocaleString()}</span>
           </div>
           <div className="flex gap-2 mt-2 flex-wrap">
@@ -120,8 +189,25 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
         </div>
       </div>
 
+      {/* Linked Case Banner */}
+      {linkedCase && (
+        <Card className="border-info-blue/30 bg-info-blue/5">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center gap-3">
+              <Link2 className="h-4 w-4 text-info-blue shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-info-blue">Linked to {linkedCase.caseNumber}</p>
+                <p className="text-xs text-muted-foreground">
+                  This case was auto-linked based on matching patient ID and body region.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Disposition Banner — synced with payer mode via caseIntelligence */}
-      {signals.hasAnalyses && (
+      {hasAnalyses && (
         <Card className={cn('border-l-4', signals.disposition.borderClass, signals.disposition.bgClass)}>
           <CardContent className="py-3 px-4">
             <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -146,6 +232,35 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
         </Card>
       )}
 
+      {/* Score Transparency */}
+      {governance && hasAnalyses && (
+        <ScoreTransparencyPanel governance={governance} signals={signals} />
+      )}
+
+      {/* Human Review Alert */}
+      {signals.humanReview.triggered && hasAnalyses && (
+        <Card className="border-violation/30 bg-violation/5">
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-4 w-4 text-violation shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-violation">Analyst Review Required</p>
+                <ul className="mt-1 space-y-0.5">
+                  {signals.humanReview.reasons.map((r, i) => (
+                    <li key={i} className="text-xs text-muted-foreground">• {r}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Governance Panel */}
+      {governance && hasAnalyses && (
+        <GovernancePanel assessment={governance} />
+      )}
+
       {loadingReview ? (
         <div className="rounded-lg border bg-card p-8 text-center shadow-sm">
           <Loader2 className="h-6 w-6 animate-spin mx-auto text-accent mb-2" />
@@ -153,10 +268,18 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
         </div>
       ) : review ? (
         <Tabs defaultValue="review" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="review">Readiness Review</TabsTrigger>
             <TabsTrigger value="appeal">Appeal Assessment</TabsTrigger>
             <TabsTrigger value="evidence">Evidence Checklist</TabsTrigger>
+            {matchingCombinations.length > 0 && (
+              <TabsTrigger value="code-combos">
+                Code Combinations
+                <Badge variant="outline" className="ml-1.5 text-[9px] px-1 py-0 border-disagreement/40 text-disagreement">
+                  {matchingCombinations.length}
+                </Badge>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="pre-appeal">
               Pre-Appeal Resolution
               {preAppealResolution && (
@@ -176,6 +299,22 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
           <TabsContent value="evidence">
             <EvidenceReadinessChecklist items={review.evidenceReadiness} />
           </TabsContent>
+
+          {matchingCombinations.length > 0 && (
+            <TabsContent value="code-combos">
+              <div className="space-y-4">
+                {matchingCombinations.map((combo, i) => (
+                  <CodeCombinationAnalysisCard key={i} analysis={{
+                    codes: combo.codes,
+                    flagReason: combo.flagReason,
+                    legitimateExplanations: combo.legitimateExplanations,
+                    noncompliantExplanations: combo.noncompliantExplanations,
+                    requiredDocumentation: combo.requiredDocumentation,
+                  }} />
+                ))}
+              </div>
+            </TabsContent>
+          )}
 
           <TabsContent value="pre-appeal">
             {loadingPreAppeal ? (
