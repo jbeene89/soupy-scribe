@@ -114,6 +114,7 @@ export type Database = {
       audit_cases: {
         Row: {
           assigned_to: string | null
+          body_region: string | null
           case_number: string
           claim_amount: number
           consensus_score: number | null
@@ -124,6 +125,7 @@ export type Database = {
           decision: Json | null
           icd_codes: string[]
           id: string
+          linked_case_id: string | null
           metadata: Json | null
           owner_id: string | null
           patient_id: string
@@ -136,6 +138,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          body_region?: string | null
           case_number: string
           claim_amount?: number
           consensus_score?: number | null
@@ -146,6 +149,7 @@ export type Database = {
           decision?: Json | null
           icd_codes?: string[]
           id?: string
+          linked_case_id?: string | null
           metadata?: Json | null
           owner_id?: string | null
           patient_id: string
@@ -158,6 +162,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          body_region?: string | null
           case_number?: string
           claim_amount?: number
           consensus_score?: number | null
@@ -168,6 +173,7 @@ export type Database = {
           decision?: Json | null
           icd_codes?: string[]
           id?: string
+          linked_case_id?: string | null
           metadata?: Json | null
           owner_id?: string | null
           patient_id?: string
@@ -178,7 +184,15 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audit_cases_linked_case_id_fkey"
+            columns: ["linked_case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       case_analyses: {
         Row: {
