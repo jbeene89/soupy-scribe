@@ -12,7 +12,7 @@ import NotFound from "./pages/NotFound";
 import AppDashboard from "./pages/AppDashboard";
 import AppCases from "./pages/AppCases";
 import AppPatterns from "./pages/AppPatterns";
-import { AppORReadiness, AppTriageAccuracy, AppPostOpFlow } from "./pages/AppOperational";
+import { AppORReadiness, AppTriageAccuracy, AppPostOpFlow, AppERAcute, AppPatientAdvocate } from "./pages/AppOperational";
 import { AppComparison, AppEnhancementMap, AppAIPipeline, AppPlatformValue, AppGhostCases, AppEducation } from "./pages/AppPlatform";
 import AppHistory from "./pages/AppHistory";
 
@@ -47,6 +47,8 @@ const App = () => (
               <Route path="or-readiness" element={<AppORReadiness />} />
               <Route path="triage" element={<AppTriageAccuracy />} />
               <Route path="postop" element={<AppPostOpFlow />} />
+              <Route path="er-acute" element={<AppERAcute />} />
+              <Route path="advocate" element={<AppPatientAdvocate />} />
               <Route path="education" element={<AppEducation />} />
               <Route path="history" element={<AppHistory />} />
             </Route>
