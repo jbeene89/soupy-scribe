@@ -103,3 +103,91 @@ export function estimateEventCost(delayMinutes: number, eventType: string): numb
   const multiplier = eventType === 'sterilization_lapse' || eventType === 'contaminated' ? 1.5 : 1;
   return Math.round(baseCost * multiplier);
 }
+
+// ── ER/Acute Types ──
+
+export interface ERAcuteEvent {
+  id: string;
+  case_id?: string;
+  patient_id?: string;
+  acuity_level: number; // 1-5 ESI
+  chief_complaint?: string;
+  arrival_method: 'walk-in' | 'ambulance' | 'transfer' | 'police' | 'other';
+  triage_wait_minutes: number;
+  bed_assignment_minutes: number;
+  provider_seen_minutes: number;
+  disposition: 'admitted' | 'discharged' | 'transferred' | 'left_ama' | 'observation' | 'deceased';
+  boarding_hours: number;
+  left_without_seen: boolean;
+  overcrowding_at_arrival: boolean;
+  shift?: string;
+  day_of_week?: string;
+  department_zone?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export const ACUITY_LEVELS = [
+  { value: 1, label: 'ESI 1 — Resuscitation', color: 'text-violation', description: 'Immediate life-saving intervention' },
+  { value: 2, label: 'ESI 2 — Emergent', color: 'text-violation', description: 'High risk / confused / severe pain' },
+  { value: 3, label: 'ESI 3 — Urgent', color: 'text-disagreement', description: 'Multiple resources needed' },
+  { value: 4, label: 'ESI 4 — Less Urgent', color: 'text-info-blue', description: 'One resource expected' },
+  { value: 5, label: 'ESI 5 — Non-Urgent', color: 'text-consensus', description: 'No resources expected' },
+] as const;
+
+export const DISPOSITION_OPTIONS = [
+  { value: 'admitted', label: 'Admitted' },
+  { value: 'discharged', label: 'Discharged' },
+  { value: 'transferred', label: 'Transferred' },
+  { value: 'left_ama', label: 'Left AMA' },
+  { value: 'observation', label: 'Observation' },
+  { value: 'deceased', label: 'Deceased' },
+] as const;
+
+export const ARRIVAL_METHODS = [
+  { value: 'walk-in', label: 'Walk-In' },
+  { value: 'ambulance', label: 'Ambulance' },
+  { value: 'transfer', label: 'Transfer' },
+  { value: 'police', label: 'Police/EMS' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+// ── Patient Advocate Types ──
+
+export interface PatientAdvocateEvent {
+  id: string;
+  case_id?: string;
+  patient_id?: string;
+  event_category: 'missed_assessment' | 'documentation_gap' | 'timing_deviation' | 'medication_delay' | 'handoff_failure' | 'fall_risk_miss' | 'other';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  description: string;
+  expected_standard?: string;
+  actual_finding?: string;
+  deviation_minutes: number;
+  unit?: string;
+  shift?: string;
+  day_of_week?: string;
+  responsible_role?: string;
+  was_reported: boolean;
+  resolution_status: 'open' | 'investigating' | 'resolved' | 'escalated';
+  resolution_notes?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export const ADVOCATE_CATEGORIES = [
+  { value: 'missed_assessment', label: 'Missed Assessment', icon: 'ClipboardX', severity_default: 'high' },
+  { value: 'documentation_gap', label: 'Documentation Gap', icon: 'FileX', severity_default: 'medium' },
+  { value: 'timing_deviation', label: 'Timing Deviation', icon: 'Clock', severity_default: 'medium' },
+  { value: 'medication_delay', label: 'Medication Delay', icon: 'Pill', severity_default: 'high' },
+  { value: 'handoff_failure', label: 'Handoff Failure', icon: 'ArrowLeftRight', severity_default: 'high' },
+  { value: 'fall_risk_miss', label: 'Fall Risk Miss', icon: 'PersonStanding', severity_default: 'critical' },
+  { value: 'other', label: 'Other', icon: 'AlertCircle', severity_default: 'low' },
+] as const;
+
+export const RESOLUTION_STATUSES = [
+  { value: 'open', label: 'Open', color: 'text-disagreement' },
+  { value: 'investigating', label: 'Investigating', color: 'text-info-blue' },
+  { value: 'resolved', label: 'Resolved', color: 'text-consensus' },
+  { value: 'escalated', label: 'Escalated', color: 'text-violation' },
+] as const;
