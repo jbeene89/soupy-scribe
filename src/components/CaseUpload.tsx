@@ -329,6 +329,9 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
         const result = await submitCaseText(fileItem.text);
         caseId = result.caseId;
         updateFile(fileItem.id, { status: 'extracted', caseId, extractedData: result.extracted });
+        if (result.linkedTo) {
+          toast.info('Auto-linked to existing case', { description: `This document was linked to a related case based on patient ID and body region.` });
+        }
       } catch (err) {
         updateFile(fileItem.id, { status: 'error', error: err instanceof Error ? err.message : 'Extraction failed' });
         continue;
