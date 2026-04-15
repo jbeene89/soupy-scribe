@@ -112,12 +112,38 @@ serve(async (req) => {
               claim_amount: { type: "number" },
               summary: { type: "string" },
               procedure_type: { type: "string" },
+              body_region: { type: "string", description: "Primary anatomical body region involved" },
             },
-            required: ["patient_id", "physician_id", "physician_name", "date_of_service", "cpt_codes", "icd_codes", "claim_amount", "summary"],
+            required: ["patient_id", "physician_id", "physician_name", "date_of_service", "cpt_codes", "icd_codes", "claim_amount", "summary", "body_region"],
             additionalProperties: false,
           },
         },
       }], { type: "function", function: { name: "extract_case_data" } });
+
+      // Auto-link: find existing cases with same patient + body region
+      let linkedCaseId: string | null = null;
+      const bodyRegion = (extracted.body_region || "").toLowerCase().trim();
+      if (extracted.patient_id && bodyRegion) {
+        const { data: candidates } = await supabase
+          .from("audit_cases")
+          .select("id, body_region, case_number")
+          .eq("patient_id", extracted.patient_id)
+          .eq("owner_id", userId)
+          .not("body_region", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        if (candidates && candidates.length > 0) {
+          const match = candidates.find((c: any) => {
+            const existing = (c.body_region || "").toLowerCase();
+            return existing === bodyRegion || existing.includes(bodyRegion) || bodyRegion.includes(existing);
+          });
+          if (match) {
+            linkedCaseId = match.id;
+            console.log(`Provider: auto-linked to case ${match.case_number}`);
+          }
+        }
+      }
 
       const { data: newCase, error: caseError } = await supabase
         .from("audit_cases")
@@ -134,6 +160,8 @@ serve(async (req) => {
           risk_score: {},
           metadata: { summary: extracted.summary, procedure_type: extracted.procedure_type, mode: "provider" },
           owner_id: userId,
+          body_region: extracted.body_region || null,
+          linked_case_id: linkedCaseId,
         })
         .select()
         .single();
@@ -143,7 +171,7 @@ serve(async (req) => {
         throw new Error("Failed to create case");
       }
 
-      return new Response(JSON.stringify({ success: true, caseId: newCase.id, extracted }), {
+      return new Response(JSON.stringify({ success: true, caseId: newCase.id, extracted, linkedTo: linkedCaseId ? { caseId: linkedCaseId } : null }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
