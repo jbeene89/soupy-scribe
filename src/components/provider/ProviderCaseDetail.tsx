@@ -16,7 +16,7 @@ import { ScoreTransparencyPanel } from '@/components/ScoreTransparencyPanel';
 import { CodeCombinationAnalysisCard } from '@/components/spark/CodeCombinationAnalysisCard';
 import {
   ArrowLeft, Brain, Loader2, CheckCircle, Clock, Download, FileText,
-  ShieldAlert, XCircle, Zap, Link2, AlertTriangle, ArrowRight, Info,
+  ShieldAlert, XCircle, Zap, Link2, AlertTriangle, ArrowRight, Info, Eye,
 } from 'lucide-react';
 import { exportProviderCaseDetailPDF } from '@/lib/exportProviderCaseDetailPDF';
 import { useState, useEffect, useMemo } from 'react';
