@@ -29,6 +29,8 @@ import {
   FileDown,
   Presentation,
   Settings,
+  Siren,
+  HeartHandshake,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -44,10 +46,12 @@ const PAYER_NAV = [
   { title: 'Ghost Cases', path: '/app/ghost-cases', icon: Ghost },
 ];
 
-const OPERATIONAL_NAV = [
+const EXPERIMENTAL_NAV = [
   { title: 'OR Readiness', path: '/app/or-readiness', icon: ShieldAlert },
   { title: 'Triage Accuracy', path: '/app/triage', icon: Target },
   { title: 'Post-Op Flow', path: '/app/postop', icon: Bed },
+  { title: 'ER / Acute', path: '/app/er-acute', icon: Siren },
+  { title: 'Patient Advocate', path: '/app/advocate', icon: HeartHandshake },
 ];
 
 const PROVIDER_NAV = [
@@ -137,7 +141,7 @@ export function AdminSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {OPERATIONAL_NAV.map((item) => (
+              {EXPERIMENTAL_NAV.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton
                     onClick={() => navigate(item.path)}
