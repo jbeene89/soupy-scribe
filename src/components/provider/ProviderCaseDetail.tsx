@@ -4,6 +4,7 @@ import type { PreAppealResolution } from '@/lib/preAppealTypes';
 import { ProviderCaseReviewCard } from './ProviderCaseReview';
 import { ProviderPacket } from './ProviderPacket';
 import { EvidenceReadinessChecklist } from './EvidenceReadinessChecklist';
+import { PayerPerspectiveView } from './PayerPerspectiveView';
 import { CPTCodeBadge } from '@/components/CPTCodeBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import { ScoreTransparencyPanel } from '@/components/ScoreTransparencyPanel';
 import { CodeCombinationAnalysisCard } from '@/components/spark/CodeCombinationAnalysisCard';
 import {
   ArrowLeft, Brain, Loader2, CheckCircle, Clock, Download, FileText,
-  ShieldAlert, XCircle, Zap, Link2, AlertTriangle, ArrowRight, Info,
+  ShieldAlert, XCircle, Zap, Link2, AlertTriangle, ArrowRight, Info, Eye,
 } from 'lucide-react';
 import { exportProviderCaseDetailPDF } from '@/lib/exportProviderCaseDetailPDF';
 import { useState, useEffect, useMemo } from 'react';
@@ -280,6 +281,12 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
                 </Badge>
               </TabsTrigger>
             )}
+            {hasAnalyses && (
+              <TabsTrigger value="payer-view">
+                <Eye className="h-3 w-3 mr-1" />
+                Payer Perspective
+              </TabsTrigger>
+            )}
             <TabsTrigger value="pre-appeal">
               Pre-Appeal Resolution
               {preAppealResolution && (
@@ -313,6 +320,17 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
                   }} />
                 ))}
               </div>
+            </TabsContent>
+          )}
+
+          {hasAnalyses && (
+            <TabsContent value="payer-view">
+              <PayerPerspectiveView
+                auditCase={auditCase}
+                evidenceSuff={evidenceSuff}
+                contradictions={contradictions}
+                floorEvents={floorEvents}
+              />
             </TabsContent>
           )}
 
