@@ -304,7 +304,13 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
             <TabsContent value="code-combos">
               <div className="space-y-4">
                 {matchingCombinations.map((combo, i) => (
-                  <CodeCombinationAnalysisCard key={i} combination={combo} index={i} />
+                  <CodeCombinationAnalysisCard key={i} analysis={{
+                    codes: combo.codes,
+                    flagReason: combo.flagReason,
+                    legitimateExplanations: combo.legitimateExplanations,
+                    noncompliantExplanations: combo.noncompliantExplanations,
+                    requiredDocumentation: combo.requiredDocumentation,
+                  }} />
                 ))}
               </div>
             </TabsContent>
