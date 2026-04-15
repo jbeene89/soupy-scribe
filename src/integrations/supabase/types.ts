@@ -603,6 +603,87 @@ export type Database = {
           },
         ]
       }
+      er_acute_events: {
+        Row: {
+          acuity_level: number | null
+          arrival_method: string | null
+          bed_assignment_minutes: number | null
+          boarding_hours: number | null
+          case_id: string | null
+          chief_complaint: string | null
+          created_at: string
+          day_of_week: string | null
+          department_zone: string | null
+          disposition: string | null
+          id: string
+          left_without_seen: boolean | null
+          notes: string | null
+          org_id: string | null
+          overcrowding_at_arrival: boolean | null
+          patient_id: string | null
+          provider_seen_minutes: number | null
+          shift: string | null
+          triage_wait_minutes: number | null
+        }
+        Insert: {
+          acuity_level?: number | null
+          arrival_method?: string | null
+          bed_assignment_minutes?: number | null
+          boarding_hours?: number | null
+          case_id?: string | null
+          chief_complaint?: string | null
+          created_at?: string
+          day_of_week?: string | null
+          department_zone?: string | null
+          disposition?: string | null
+          id?: string
+          left_without_seen?: boolean | null
+          notes?: string | null
+          org_id?: string | null
+          overcrowding_at_arrival?: boolean | null
+          patient_id?: string | null
+          provider_seen_minutes?: number | null
+          shift?: string | null
+          triage_wait_minutes?: number | null
+        }
+        Update: {
+          acuity_level?: number | null
+          arrival_method?: string | null
+          bed_assignment_minutes?: number | null
+          boarding_hours?: number | null
+          case_id?: string | null
+          chief_complaint?: string | null
+          created_at?: string
+          day_of_week?: string | null
+          department_zone?: string | null
+          disposition?: string | null
+          id?: string
+          left_without_seen?: boolean | null
+          notes?: string | null
+          org_id?: string | null
+          overcrowding_at_arrival?: boolean | null
+          patient_id?: string | null
+          provider_seen_minutes?: number | null
+          shift?: string | null
+          triage_wait_minutes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "er_acute_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "er_acute_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evidence_sufficiency: {
         Row: {
           case_id: string
@@ -950,6 +1031,87 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      patient_advocate_events: {
+        Row: {
+          actual_finding: string | null
+          case_id: string | null
+          created_at: string
+          day_of_week: string | null
+          description: string
+          deviation_minutes: number | null
+          event_category: string
+          expected_standard: string | null
+          id: string
+          notes: string | null
+          org_id: string | null
+          patient_id: string | null
+          resolution_notes: string | null
+          resolution_status: string | null
+          responsible_role: string | null
+          severity: string
+          shift: string | null
+          unit: string | null
+          was_reported: boolean | null
+        }
+        Insert: {
+          actual_finding?: string | null
+          case_id?: string | null
+          created_at?: string
+          day_of_week?: string | null
+          description: string
+          deviation_minutes?: number | null
+          event_category?: string
+          expected_standard?: string | null
+          id?: string
+          notes?: string | null
+          org_id?: string | null
+          patient_id?: string | null
+          resolution_notes?: string | null
+          resolution_status?: string | null
+          responsible_role?: string | null
+          severity?: string
+          shift?: string | null
+          unit?: string | null
+          was_reported?: boolean | null
+        }
+        Update: {
+          actual_finding?: string | null
+          case_id?: string | null
+          created_at?: string
+          day_of_week?: string | null
+          description?: string
+          deviation_minutes?: number | null
+          event_category?: string
+          expected_standard?: string | null
+          id?: string
+          notes?: string | null
+          org_id?: string | null
+          patient_id?: string | null
+          resolution_notes?: string | null
+          resolution_status?: string | null
+          responsible_role?: string | null
+          severity?: string
+          shift?: string | null
+          unit?: string | null
+          was_reported?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_advocate_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_advocate_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payer_profiles: {
         Row: {
