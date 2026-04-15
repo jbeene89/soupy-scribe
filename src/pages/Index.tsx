@@ -281,14 +281,10 @@ const Index = () => {
             <AppModeToggle mode={appMode} onChange={handleModeChange} />
             <div className="w-px h-4 bg-border mx-0.5" />
             {appMode === 'payer' && (
-              <AuthGate hide>
-                <CaseUpload onCaseCreated={handleCaseCreated} />
-              </AuthGate>
+              <CaseUpload onCaseCreated={handleCaseCreated} />
             )}
             {appMode === 'provider' && (
-              <AuthGate hide>
-                <ProviderCaseUpload onCaseCreated={handleCaseCreated} />
-              </AuthGate>
+              <ProviderCaseUpload onCaseCreated={handleCaseCreated} />
             )}
             {appMode === 'payer' && (
               <Button
