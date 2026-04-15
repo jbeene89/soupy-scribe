@@ -7,6 +7,7 @@ import { CaseUpload } from '@/components/CaseUpload';
 import { ProviderCaseUpload } from '@/components/provider/ProviderCaseUpload';
 import { Scale } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function AppDashboard() {
   const {
@@ -25,9 +26,39 @@ export default function AppDashboard() {
     );
   }
 
-  // Provider mode: show dashboard
+  // Provider mode: show dashboard with case queue
   if (appMode === 'provider') {
-    return <ProviderDashboard dataSource={dataSource} />;
+    return (
+      <div className="space-y-6">
+        <Tabs defaultValue="dashboard">
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="dashboard">Overview</TabsTrigger>
+              <TabsTrigger value="cases">
+                Case Queue
+                {activeCases.length > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 text-[10px]">{activeCases.length}</Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            <ProviderCaseUpload onCaseCreated={handleCaseCreated} />
+          </div>
+
+          <TabsContent value="dashboard">
+            <ProviderDashboard dataSource={dataSource} />
+          </TabsContent>
+
+          <TabsContent value="cases">
+            <CaseQueue
+              cases={activeCases}
+              onSelectCase={handleSelectCase}
+              selectedCaseId={selectedCase?.id}
+              onDeleteCase={handleDeleteCase}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
   }
 
   // Payer mode: show case queue with upload
