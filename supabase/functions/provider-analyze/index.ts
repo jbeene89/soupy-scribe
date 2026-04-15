@@ -21,7 +21,7 @@ Analyze the provided case and return a comprehensive compliance readiness assess
 
 const EXTRACTION_PROMPT = `You are a medical coding expert. Extract structured data from this case file text.
 
-Return structured data with: patient_id, physician_id, physician_name, date_of_service (YYYY-MM-DD), cpt_codes (string[]), icd_codes (string[]), claim_amount (number), summary (string), procedure_type (string).
+Return structured data with: patient_id, physician_id, physician_name, date_of_service (YYYY-MM-DD), cpt_codes (string[]), icd_codes (string[]), claim_amount (number), summary (string), procedure_type (string), body_region (string - primary anatomical body region involved, e.g. "left testicle", "lumbar spine L4-L5", "right knee". Include laterality when documented.)
 
 If information is missing, make reasonable inferences from the clinical context.`;
 
