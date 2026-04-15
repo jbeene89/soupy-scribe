@@ -43,6 +43,8 @@ interface AdminContextType {
   orEvents: ORReadinessEvent[];
   triageEvents: TriageAccuracyEvent[];
   postOpEvents: PostOpFlowEvent[];
+  erAcuteEvents: ERAcuteEvent[];
+  advocateEvents: PatientAdvocateEvent[];
 }
 
 const AdminContext = createContext<AdminContextType>(null!);
@@ -64,6 +66,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [liveOREvents, setLiveOREvents] = useState<ORReadinessEvent[]>([]);
   const [liveTriageEvents, setLiveTriageEvents] = useState<TriageAccuracyEvent[]>([]);
   const [livePostOpEvents, setLivePostOpEvents] = useState<PostOpFlowEvent[]>([]);
+  const [liveERAcuteEvents, setLiveERAcuteEvents] = useState<ERAcuteEvent[]>([]);
+  const [liveAdvocateEvents, setLiveAdvocateEvents] = useState<PatientAdvocateEvent[]>([]);
 
   const loadLiveCases = useCallback(async () => {
     setLoadingLive(true);
@@ -80,14 +84,18 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const loadLiveOperationalEvents = useCallback(async () => {
     try {
-      const [or, triage, postop] = await Promise.all([
+      const [or, triage, postop, erAcute, advocate] = await Promise.all([
         fetchORReadinessEvents(),
         fetchTriageAccuracyEvents(),
         fetchPostOpFlowEvents(),
+        fetchERAcuteEvents(),
+        fetchPatientAdvocateEvents(),
       ]);
       setLiveOREvents(or);
       setLiveTriageEvents(triage);
       setLivePostOpEvents(postop);
+      setLiveERAcuteEvents(erAcute);
+      setLiveAdvocateEvents(advocate);
     } catch (err) {
       console.error('Failed to load operational events:', err);
     }
@@ -104,6 +112,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'or_readiness_events' }, () => loadLiveOperationalEvents())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'triage_accuracy_events' }, () => loadLiveOperationalEvents())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'postop_flow_events' }, () => loadLiveOperationalEvents())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'er_acute_events' }, () => loadLiveOperationalEvents())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'patient_advocate_events' }, () => loadLiveOperationalEvents())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -116,6 +126,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const orEvents = dataSource === 'live' ? liveOREvents : [...mockORReadinessEvents, ...liveOREvents];
   const triageEvents = dataSource === 'live' ? liveTriageEvents : [...mockTriageEvents, ...liveTriageEvents];
   const postOpEvents = dataSource === 'live' ? livePostOpEvents : [...mockPostOpFlowEvents, ...livePostOpEvents];
+  const erAcuteEvents = dataSource === 'live' ? liveERAcuteEvents : [...mockERAcuteEvents, ...liveERAcuteEvents];
+  const advocateEvents = dataSource === 'live' ? liveAdvocateEvents : [...mockPatientAdvocateEvents, ...liveAdvocateEvents];
 
   const handleModeChange = (mode: AppMode) => {
     sessionStorage.setItem('soupy_app_mode', mode);
@@ -169,7 +181,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       selectedCase, handleSelectCase, handleDeleteCase, handleBack,
       handleCaseCreated, handleDecisionMade, loadLiveCases,
       livePatterns, mockPatternsData: mockPatterns,
-      orEvents, triageEvents, postOpEvents,
+      orEvents, triageEvents, postOpEvents, erAcuteEvents, advocateEvents,
     }}>
       {children}
     </AdminContext.Provider>
