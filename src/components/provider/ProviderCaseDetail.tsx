@@ -323,6 +323,17 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
             </TabsContent>
           )}
 
+          {hasAnalyses && (
+            <TabsContent value="payer-view">
+              <PayerPerspectiveView
+                auditCase={auditCase}
+                evidenceSuff={evidenceSuff}
+                contradictions={contradictions}
+                floorEvents={floorEvents}
+              />
+            </TabsContent>
+          )}
+
           <TabsContent value="pre-appeal">
             {loadingPreAppeal ? (
               <div className="rounded-lg border bg-card p-8 text-center shadow-sm">
