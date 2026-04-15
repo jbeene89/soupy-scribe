@@ -10,7 +10,7 @@ import { CaseCard } from './spark/CaseCard';
 import { CaseCardSkeleton } from './spark/LoadingState';
 import { deriveCaseSignals } from '@/lib/caseIntelligence';
 import { cn } from '@/lib/utils';
-import { Clock, CheckCircle, XCircle, Search, FileText, LayoutGrid, List, AlertTriangle, AlertCircle, ShieldAlert, Trash2 } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Search, FileText, LayoutGrid, List, AlertTriangle, AlertCircle, ShieldAlert, Trash2, Link2 } from 'lucide-react';
 import { deleteCase } from '@/lib/soupyEngineService';
 import { toast } from 'sonner';
 
@@ -60,6 +60,17 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading, onDele
     const map = new Map<string, ReturnType<typeof deriveCaseSignals>>();
     cases.forEach(c => map.set(c.id, deriveCaseSignals(c)));
     return map;
+  }, [cases]);
+
+  // Compute linked case groups: count how many cases share the same linkedCaseId or are linked to each other
+  const linkedCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    cases.forEach(c => {
+      if (c.linkedCaseId) {
+        counts.set(c.linkedCaseId, (counts.get(c.linkedCaseId) || 0) + 1);
+      }
+    });
+    return counts;
   }, [cases]);
 
   if (loading) {
@@ -147,7 +158,22 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading, onDele
                   )}
                   onClick={() => onSelectCase(c)}
                 >
-                  <TableCell className="font-mono text-sm font-medium">{c.caseNumber}</TableCell>
+                  <TableCell className="font-mono text-sm font-medium">
+                    <div className="flex items-center gap-1.5">
+                      {c.caseNumber}
+                      {(c.linkedCaseId || linkedCounts.has(c.id)) && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-info-blue/10 text-info-blue border border-info-blue/20" title={`Linked case${c.bodyRegion ? ` — ${c.bodyRegion}` : ''}`}>
+                          <Link2 className="h-3 w-3" />
+                          {linkedCounts.has(c.id) && (
+                            <span className="text-[10px] font-semibold">{linkedCounts.get(c.id)}</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                    {c.bodyRegion && (
+                      <span className="text-[10px] text-muted-foreground font-normal">{c.bodyRegion}</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div>
                       <p className="text-sm">{c.physicianName}</p>

@@ -211,8 +211,9 @@ const extractionToolSchema = {
         claim_amount: { type: "number" },
         summary: { type: "string" },
         procedure_type: { type: "string" },
+        body_region: { type: "string", description: "Primary anatomical body region involved, e.g. 'left testicle', 'lumbar spine', 'right knee', 'abdomen'. Be specific about laterality when documented." },
       },
-      required: ["patient_id", "physician_id", "physician_name", "date_of_service", "cpt_codes", "icd_codes", "claim_amount", "summary"],
+      required: ["patient_id", "physician_id", "physician_name", "date_of_service", "cpt_codes", "icd_codes", "claim_amount", "summary", "body_region"],
       additionalProperties: false,
     },
   },
@@ -232,6 +233,7 @@ Return a JSON object with these fields:
 - claim_amount: number (total claim/charge amount, or estimate from codes)
 - summary: string (brief clinical summary of the case)
 - procedure_type: string (e.g., "orthopedic surgery", "emergency medicine", "spine surgery")
+- body_region: string (primary anatomical body region involved, e.g. "left testicle", "lumbar spine L4-L5", "right knee", "abdomen". Include laterality when documented. If multiple regions, pick the primary one.)
 
 If information is missing, make reasonable inferences from the clinical context. Always extract CPT and ICD codes if present.`;
 
@@ -395,6 +397,36 @@ serve(async (req) => {
         { type: "function", function: { name: "extract_case_data" } }
       );
 
+      // ── Auto-link: find existing cases with same patient_id + similar body_region ──
+      let linkedCaseId: string | null = null;
+      const bodyRegion = (extracted.body_region || "").toLowerCase().trim();
+      if (extracted.patient_id && bodyRegion) {
+        const { data: candidates } = await supabase
+          .from("audit_cases")
+          .select("id, body_region, case_number, created_at")
+          .eq("patient_id", extracted.patient_id)
+          .eq("owner_id", userId)
+          .not("body_region", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        if (candidates && candidates.length > 0) {
+          // Find a case with matching body region (case-insensitive substring match)
+          const match = candidates.find((c: any) => {
+            const existing = (c.body_region || "").toLowerCase();
+            return existing === bodyRegion
+              || existing.includes(bodyRegion)
+              || bodyRegion.includes(existing);
+          });
+          if (match) {
+            // Walk up to root linked case
+            const rootId = match.id;
+            linkedCaseId = rootId;
+            console.log(`Auto-linked to existing case ${match.case_number} (${match.body_region})`);
+          }
+        }
+      }
+
       const caseNumber = `AUD-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
       const { data: newCase, error: caseError } = await supabase
         .from("audit_cases")
@@ -412,6 +444,8 @@ serve(async (req) => {
           risk_score: {},
           metadata: { summary: extracted.summary, procedure_type: extracted.procedure_type },
           owner_id: userId,
+          body_region: extracted.body_region || null,
+          linked_case_id: linkedCaseId,
         })
         .select()
         .single();
@@ -428,7 +462,12 @@ serve(async (req) => {
         progress: 25,
       });
 
-      return new Response(JSON.stringify({ success: true, case: newCase, extracted }), {
+      return new Response(JSON.stringify({
+        success: true,
+        case: newCase,
+        extracted,
+        linkedTo: linkedCaseId ? { caseId: linkedCaseId } : null,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
