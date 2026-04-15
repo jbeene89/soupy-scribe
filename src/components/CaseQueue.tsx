@@ -62,6 +62,17 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading, onDele
     return map;
   }, [cases]);
 
+  // Compute linked case groups: count how many cases share the same linkedCaseId or are linked to each other
+  const linkedCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    cases.forEach(c => {
+      if (c.linkedCaseId) {
+        counts.set(c.linkedCaseId, (counts.get(c.linkedCaseId) || 0) + 1);
+      }
+    });
+    return counts;
+  }, [cases]);
+
   if (loading) {
     return (
       <div className="space-y-4">
