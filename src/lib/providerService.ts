@@ -4,7 +4,7 @@ import {
   enrichThemes, buildCorrectablePatterns, buildHighRiskBehaviors,
   generateInterventions, computeDenialBreakdown,
 } from "@/lib/providerReadinessEngine";
-export async function submitProviderCase(sourceText: string): Promise<{ caseId: string; extracted: any }> {
+export async function submitProviderCase(sourceText: string): Promise<{ caseId: string; extracted: any; linkedTo?: { caseId: string } }> {
   const response = await supabase.functions.invoke("provider-analyze", {
     body: { action: "submit", sourceText },
   });
@@ -12,7 +12,7 @@ export async function submitProviderCase(sourceText: string): Promise<{ caseId: 
   if (response.error) throw new Error(response.error.message || "Submission failed");
   const data = response.data;
   if (!data?.success) throw new Error(data?.error || "Submission failed");
-  return { caseId: data.caseId, extracted: data.extracted };
+  return { caseId: data.caseId, extracted: data.extracted, linkedTo: data.linkedTo || undefined };
 }
 
 export async function runProviderAnalysis(caseId: string): Promise<ProviderCaseReview> {
