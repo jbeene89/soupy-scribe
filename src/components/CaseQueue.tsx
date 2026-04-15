@@ -158,7 +158,22 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading, onDele
                   )}
                   onClick={() => onSelectCase(c)}
                 >
-                  <TableCell className="font-mono text-sm font-medium">{c.caseNumber}</TableCell>
+                  <TableCell className="font-mono text-sm font-medium">
+                    <div className="flex items-center gap-1.5">
+                      {c.caseNumber}
+                      {(c.linkedCaseId || linkedCounts.has(c.id)) && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-info-blue/10 text-info-blue border border-info-blue/20" title={`Linked case${c.bodyRegion ? ` — ${c.bodyRegion}` : ''}`}>
+                          <Link2 className="h-3 w-3" />
+                          {linkedCounts.has(c.id) && (
+                            <span className="text-[10px] font-semibold">{linkedCounts.get(c.id)}</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                    {c.bodyRegion && (
+                      <span className="text-[10px] text-muted-foreground font-normal">{c.bodyRegion}</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div>
                       <p className="text-sm">{c.physicianName}</p>
