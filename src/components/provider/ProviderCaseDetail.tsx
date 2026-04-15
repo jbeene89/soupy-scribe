@@ -281,6 +281,12 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
                 </Badge>
               </TabsTrigger>
             )}
+            {hasAnalyses && (
+              <TabsTrigger value="payer-view">
+                <Eye className="h-3 w-3 mr-1" />
+                Payer Perspective
+              </TabsTrigger>
+            )}
             <TabsTrigger value="pre-appeal">
               Pre-Appeal Resolution
               {preAppealResolution && (
