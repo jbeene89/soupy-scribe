@@ -7,9 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
   Brain, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, DollarSign, FileText, ListChecks,
-  TrendingUp, Clock, ArrowRight, ChevronDown, ChevronUp, Zap, Eye, BadgeAlert, Printer
+  TrendingUp, Clock, ArrowRight, ChevronDown, ChevronUp, Zap, Eye, BadgeAlert, Printer, Sparkles
 } from 'lucide-react';
-import type { PsychCaseInput, PsychAuditResult, PsychBatchSummary } from '@/lib/psychTypes';
+import type { PsychCaseInput, PsychAuditResult, PsychBatchSummary, RevenueLaneSummary } from '@/lib/psychTypes';
 import { runPsychAudit, computeBatchSummary } from '@/lib/psychAuditEngine';
 import { DEMO_PSYCH_CASES } from '@/lib/psychDemoData';
 import { PsychCaseForm } from './PsychCaseForm';
@@ -133,6 +133,11 @@ export function PsychPracticeModule() {
         </Card>
       </div>
 
+      {/* Monthly Revenue Opportunity */}
+      {batch.revenueLanes.length > 0 && (
+        <MonthlyRevenueCard batch={batch} />
+      )}
+
       {/* Top Issues */}
       {batch.topDenialTriggers.length > 0 && (
         <Card>
@@ -246,6 +251,73 @@ function CaseRow({ caseData, onSelect, onDelete, onPacket }: {
             </Button>
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
           </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MonthlyRevenueCard({ batch }: { batch: PsychBatchSummary }) {
+  const [expanded, setExpanded] = useState(false);
+  const topLanes = expanded ? batch.revenueLanes : batch.revenueLanes.slice(0, 3);
+  const maxMonthly = Math.max(...batch.revenueLanes.map(l => l.monthlyEstimate), 1);
+
+  return (
+    <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-emerald-500" />
+            Monthly Revenue Opportunity
+          </CardTitle>
+          <div className="text-right">
+            <p className="text-2xl font-bold text-emerald-600">${batch.totalMonthlyOpportunity.toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground">estimated per month</p>
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Based on your current case volume, here are revenue lanes you may not be capturing.
+          These are estimates — review each opportunity with your billing team.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {topLanes.map((lane) => (
+          <div key={lane.lane} className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-foreground truncate">{lane.label}</p>
+                <p className="text-[10px] text-muted-foreground line-clamp-1">{lane.description}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold text-emerald-600">+${lane.monthlyEstimate.toLocaleString()}/mo</p>
+                <p className="text-[10px] text-muted-foreground">{lane.caseCount} case{lane.caseCount !== 1 ? 's' : ''} · ~${lane.totalPerCase}/ea</p>
+              </div>
+            </div>
+            <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+              <div
+                className="h-full rounded-full bg-emerald-500/60 transition-all"
+                style={{ width: `${(lane.monthlyEstimate / maxMonthly) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+
+        {batch.revenueLanes.length > 3 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs text-muted-foreground"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? 'Show Less' : `Show ${batch.revenueLanes.length - 3} More Lanes`}
+            {expanded ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+          </Button>
+        )}
+
+        <div className="border-t border-border/50 pt-2 mt-2">
+          <p className="text-[10px] text-muted-foreground italic">
+            Projections based on current batch size extrapolated monthly. Actual revenue depends on payer contracts, patient mix, and clinical appropriateness. This is not billing advice.
+          </p>
         </div>
       </CardContent>
     </Card>
