@@ -16,8 +16,15 @@ import { PsychCaseForm } from './PsychCaseForm';
 import { PsychCaseDetail } from './PsychCaseDetail';
 import { PsychReadinessPacket } from './PsychReadinessPacket';
 import { PsychCaseUpload } from './PsychCaseUpload';
+import type { PsychCaseVersion } from './PsychVersionSwitcher';
 
-type ReviewedCase = { input: PsychCaseInput; result: PsychAuditResult };
+export type ReviewedCase = {
+  input: PsychCaseInput;
+  result: PsychAuditResult;
+  versions: PsychCaseVersion[];
+  activeVersion: number;
+  addedDocuments: { label: string; text: string; addedAt: string }[];
+};
 
 function classColor(c: string) {
   if (c === 'ready') return 'text-emerald-500 bg-emerald-500/10';
