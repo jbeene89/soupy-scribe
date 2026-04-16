@@ -151,8 +151,73 @@ export function ModeSelectionGate({ onSelect }: Props) {
         })}
       </div>
 
+      {/* Hero CTA — Standalone Pre-Submission Check */}
+      <div className="mt-12 w-full max-w-3xl animate-fade-in" style={{ animationDelay: '300ms' }}>
+        <div className="relative rounded-2xl border-2 border-[hsl(270,40%,40%)] bg-gradient-to-br from-[hsl(270,30%,14%)] to-[hsl(260,25%,20%)] p-6 md:p-8 overflow-hidden">
+          {/* Subtle glow */}
+          <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-[hsl(270,50%,40%)]/10 blur-3xl pointer-events-none" />
+
+          <div className="relative flex flex-col md:flex-row md:items-center gap-6">
+            {/* Left — copy */}
+            <div className="flex-1 space-y-3">
+              <div className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-[hsl(270,60%,70%)]" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[hsl(270,50%,65%)]">
+                  No integration required
+                </span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-bold text-foreground leading-tight">
+                Pre-Submission Claim Check
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-md">
+                Upload a claim or session note, get a scored readiness report with denial risk, missed revenue opportunities, and the smallest fix before you file — in under 60 seconds.
+              </p>
+
+              <ul className="space-y-1.5 pt-1">
+                {[
+                  'Denial risk score + curable vs non-curable flags',
+                  'MDM level review & undercoding detection',
+                  'Payer-aware warnings before you submit',
+                  'Downloadable anonymized readiness packet',
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[hsl(270,50%,60%)]" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Right — pricing + CTA */}
+            <div className="flex flex-col items-center gap-3 md:min-w-[180px]">
+              <div className="text-center">
+                <div className="flex items-baseline justify-center gap-1">
+                  <DollarSign className="h-4 w-4 text-[hsl(270,50%,65%)]" />
+                  <span className="text-3xl font-extrabold text-foreground">9</span>
+                  <span className="text-sm text-muted-foreground">/case</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">No subscription. Pay only when you submit.</p>
+              </div>
+
+              <Button
+                size="lg"
+                onClick={() => onSelect('psych')}
+                className="w-full bg-[hsl(270,45%,50%)] hover:bg-[hsl(270,45%,55%)] text-white font-semibold shadow-lg shadow-[hsl(270,50%,30%)]/30"
+              >
+                Try It Now
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+
+              <p className="text-[10px] text-muted-foreground/70 text-center">
+                Works for therapy, psych testing, med management & E/M visits
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Footer */}
-      <p className="mt-6 text-[10px] text-muted-foreground/60 animate-fade-in" style={{ animationDelay: '300ms' }}>
+      <p className="mt-6 text-[10px] text-muted-foreground/60 animate-fade-in" style={{ animationDelay: '450ms' }}>
         You can switch modes at any time from within the application.
       </p>
       </div>
