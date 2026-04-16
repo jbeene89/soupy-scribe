@@ -7,9 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
   Brain, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, DollarSign, FileText, ListChecks,
-  TrendingUp, Clock, ArrowRight, ChevronDown, ChevronUp, Zap, Eye, BadgeAlert, Printer
+  TrendingUp, Clock, ArrowRight, ChevronDown, ChevronUp, Zap, Eye, BadgeAlert, Printer, Sparkles
 } from 'lucide-react';
-import type { PsychCaseInput, PsychAuditResult, PsychBatchSummary } from '@/lib/psychTypes';
+import type { PsychCaseInput, PsychAuditResult, PsychBatchSummary, RevenueLaneSummary } from '@/lib/psychTypes';
 import { runPsychAudit, computeBatchSummary } from '@/lib/psychAuditEngine';
 import { DEMO_PSYCH_CASES } from '@/lib/psychDemoData';
 import { PsychCaseForm } from './PsychCaseForm';
@@ -132,6 +132,11 @@ export function PsychPracticeModule() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Monthly Revenue Opportunity */}
+      {batch.revenueLanes.length > 0 && (
+        <MonthlyRevenueCard batch={batch} />
+      )}
 
       {/* Top Issues */}
       {batch.topDenialTriggers.length > 0 && (
