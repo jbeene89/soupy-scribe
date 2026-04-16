@@ -330,3 +330,52 @@ function MonthlyRevenueCard({ batch }: { batch: PsychBatchSummary }) {
     </Card>
   );
 }
+
+function CPTReferenceCard() {
+  const [expanded, setExpanded] = useState(false);
+  const coreRates = ['90834', '90837', '90832', '90791', '99214', '96127'];
+  const allCodes = Object.keys(CPT_REFERENCE_RATES);
+  const displayCodes = expanded ? allCodes : coreRates;
+
+  return (
+    <Card className="border-border/50">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Info className="h-4 w-4 text-muted-foreground" />
+          2026 CPT Reference Rates
+        </CardTitle>
+        <p className="text-[10px] text-muted-foreground">
+          Medicare CY2026 Final Rule rates. Commercial payer rates vary by contract — ranges shown are typical.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-1">
+          {displayCodes.map(code => {
+            const r = CPT_REFERENCE_RATES[code];
+            if (!r) return null;
+            return (
+              <div key={code} className="flex items-center gap-3 text-xs py-1.5 border-b border-border/30 last:border-0">
+                <Badge variant="outline" className="font-mono text-[10px] shrink-0 w-14 justify-center">{r.code}</Badge>
+                <span className="text-muted-foreground flex-1 min-w-0 truncate">{r.description}</span>
+                <span className="font-semibold text-foreground shrink-0">${r.medicare2026.toFixed(2)}</span>
+                <span className="text-[10px] text-muted-foreground shrink-0 w-20 text-right">{r.commercialRange}</span>
+              </div>
+            );
+          })}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs text-muted-foreground mt-2"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? 'Show Core Codes' : `Show All ${allCodes.length} Codes`}
+          {expanded ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+        </Button>
+        <p className="text-[9px] text-muted-foreground mt-1 italic">
+          Source: CMS CY2026 Physician Fee Schedule Final Rule (10/31/2025). Rates are national averages — actual reimbursement varies by locality (GPCI).
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
