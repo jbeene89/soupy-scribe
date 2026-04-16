@@ -7,14 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
   Brain, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, DollarSign, FileText, ListChecks,
-  TrendingUp, Clock, ArrowRight, ChevronDown, ChevronUp, Zap, Eye, BadgeAlert, Printer, Sparkles
+  TrendingUp, Clock, ArrowRight, ChevronDown, ChevronUp, Zap, Eye, BadgeAlert, Printer, Sparkles, Info
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult, PsychBatchSummary, RevenueLaneSummary } from '@/lib/psychTypes';
-import { runPsychAudit, computeBatchSummary } from '@/lib/psychAuditEngine';
+import { runPsychAudit, computeBatchSummary, CPT_REFERENCE_RATES } from '@/lib/psychAuditEngine';
 import { DEMO_PSYCH_CASES } from '@/lib/psychDemoData';
 import { PsychCaseForm } from './PsychCaseForm';
 import { PsychCaseDetail } from './PsychCaseDetail';
 import { PsychReadinessPacket } from './PsychReadinessPacket';
+import { PsychCaseUpload } from './PsychCaseUpload';
 
 type ReviewedCase = { input: PsychCaseInput; result: PsychAuditResult };
 
@@ -96,9 +97,12 @@ export function PsychPracticeModule() {
             <p className="text-xs text-muted-foreground">Pre-submission checks · Denial prevention · Revenue capture</p>
           </div>
         </div>
-        <Button size="sm" onClick={() => setShowForm(true)}>
-          <ListChecks className="h-4 w-4 mr-1.5" /> Add Claim
-        </Button>
+        <div className="flex gap-2">
+          <PsychCaseUpload onCaseCreated={handleAddCase} />
+          <Button size="sm" variant="outline" onClick={() => setShowForm(true)}>
+            <ListChecks className="h-4 w-4 mr-1.5" /> Manual Entry
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
