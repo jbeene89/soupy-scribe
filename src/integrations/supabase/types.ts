@@ -872,6 +872,54 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          admin_replied_at: string | null
+          admin_reply: string | null
+          body: string
+          created_at: string
+          id: string
+          replied_by: string | null
+          sender_email: string | null
+          sender_id: string | null
+          sender_name: string | null
+          status: string
+          subject: string
+          thread_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_replied_at?: string | null
+          admin_reply?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          replied_by?: string | null
+          sender_email?: string | null
+          sender_id?: string | null
+          sender_name?: string | null
+          status?: string
+          subject: string
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_replied_at?: string | null
+          admin_reply?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          replied_by?: string | null
+          sender_email?: string | null
+          sender_id?: string | null
+          sender_name?: string | null
+          status?: string
+          subject?: string
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       minimal_winning_packets: {
         Row: {
           case_id: string
@@ -1532,6 +1580,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      is_soupy_admin: { Args: { _user_id: string }; Returns: boolean }
       user_org_ids: { Args: { _user_id: string }; Returns: string[] }
     }
     Enums: {
