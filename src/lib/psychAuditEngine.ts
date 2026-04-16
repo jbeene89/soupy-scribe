@@ -130,6 +130,12 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       type: 'psychotherapy-time', description: `Session lasted ${input.sessionDurationMinutes} minutes but billed as ${input.cptCode}. Documentation may support 90837.`,
       currentCode: input.cptCode, suggestedCode: '90837', estimatedDifference: 35,
       confidence: 'likely', requiredAction: 'Verify documented time supports 90837 (53+ minutes) and update CPT.',
+      complexity: 'same-day', timeToImplement: 'Immediate — can fix on the current claim before submission',
+      implementationPlan: [
+        { step: 1, action: 'Verify start/stop times in notes', detail: 'Confirm the documented session ran 53+ minutes face-to-face.' },
+        { step: 2, action: 'Update CPT code to 90837', detail: 'Change the code in your billing system or clearinghouse before submission.' },
+        { step: 3, action: 'Ensure note content depth matches', detail: 'Payers may review whether the note content justifies extended time — add detail if thin.' },
+      ],
     });
   }
   if (input.cptCode === '90832' && input.sessionDurationMinutes >= 38) {
@@ -137,6 +143,11 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       type: 'psychotherapy-time', description: `Session lasted ${input.sessionDurationMinutes} minutes. Documentation may support 90834 instead of 90832.`,
       currentCode: '90832', suggestedCode: '90834', estimatedDifference: 20,
       confidence: 'likely', requiredAction: 'Verify documented time supports 90834 (38-52 minutes).',
+      complexity: 'same-day', timeToImplement: 'Immediate — update code before submission',
+      implementationPlan: [
+        { step: 1, action: 'Confirm documented time is 38–52 minutes', detail: 'Check start/stop times in the progress note.' },
+        { step: 2, action: 'Update CPT from 90832 to 90834', detail: 'Change in your billing system before claim goes out.' },
+      ],
     });
   }
 
@@ -146,6 +157,12 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       type: 'higher-em', description: `Documentation appears to support ${mdm.supportedEMCode} but ${mdm.selectedEMCode} was selected.`,
       currentCode: mdm.selectedEMCode, suggestedCode: mdm.supportedEMCode, estimatedDifference: 40,
       confidence: 'review-recommended', requiredAction: 'Review MDM components to confirm higher-level code is justified.',
+      complexity: 'same-day', timeToImplement: 'Immediate — review and update before submission',
+      implementationPlan: [
+        { step: 1, action: 'Review MDM documentation', detail: 'Confirm number of problems, data reviewed, and risk level support the higher code.' },
+        { step: 2, action: 'Strengthen note if borderline', detail: 'Add missing data elements (e.g., independent interpretation, additional problem complexity).' },
+        { step: 3, action: 'Update E/M code', detail: `Change from ${mdm.selectedEMCode} to ${mdm.supportedEMCode} in your billing system.` },
+      ],
     });
   }
 
@@ -156,6 +173,12 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       type: 'add-on-code', description: 'E/M visit includes therapy time that may qualify for a psychotherapy add-on code (90833/90836/90838).',
       currentCode: input.emInput.selectedEMCode, suggestedCode: '90833',
       confidence: 'possible', requiredAction: 'If psychotherapy was provided during the E/M visit, consider adding the appropriate add-on code.',
+      complexity: 'same-day', timeToImplement: 'Immediate — add the code to the current claim',
+      implementationPlan: [
+        { step: 1, action: 'Verify psychotherapy was provided during E/M', detail: 'The note must document both an E/M component and a separate psychotherapy component.' },
+        { step: 2, action: 'Document components separately', detail: 'Split the note into E/M (problems, data, risk) and psychotherapy (interventions, response) sections.' },
+        { step: 3, action: 'Select the right add-on code', detail: '90833 (16–37 min therapy), 90836 (38–52 min), or 90838 (53+ min) based on therapy time.' },
+      ],
     });
   }
 
@@ -168,6 +191,14 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       currentCode: input.cptCode, suggestedCode: '99492',
       estimatedDifference: 150, confidence: 'review-recommended',
       requiredAction: 'Explore CoCM agreements with local PCPs. You provide monthly consult time and bill 99492 (first 70 min/month) or 99493 (subsequent months).',
+      complexity: '1-3 months', timeToImplement: '6–12 weeks to establish first PCP partnership and start billing',
+      implementationPlan: [
+        { step: 1, action: 'Learn the CoCM billing model', detail: 'CoCM requires a PCP, a behavioral health care manager, and a psychiatric consultant (you). The PCP bills 99492/99493; you provide monthly caseload reviews.' },
+        { step: 2, action: 'Identify PCP partners', detail: 'Reach out to 3–5 local primary care practices. Many are actively looking for psychiatric consultants for their CoCM programs.' },
+        { step: 3, action: 'Execute a CoCM agreement', detail: 'Formalize the consulting relationship with a contract covering responsibilities, compensation, and patient consent.' },
+        { step: 4, action: 'Set up the workflow', detail: 'Establish a weekly or biweekly caseload review process. Typical commitment is 1–2 hours per week per PCP practice.' },
+        { step: 5, action: 'Start billing', detail: 'Bill for your consulting time. Revenue scales with each PCP you partner with — $500–$2,000/month per practice is common.' },
+      ],
     });
   }
 
@@ -178,6 +209,12 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       currentCode: input.cptCode, suggestedCode: '90847',
       estimatedDifference: 60, confidence: 'possible',
       requiredAction: 'If a caregiver participated in the session, consider whether a family therapy code is appropriate.',
+      complexity: 'this-week', timeToImplement: '1–3 days to update your session workflow',
+      implementationPlan: [
+        { step: 1, action: 'Identify sessions with caregiver involvement', detail: 'Review your schedule for sessions where a spouse, parent, or caregiver joins. These happen more often than most practices realize.' },
+        { step: 2, action: 'Document the family/caregiver component separately', detail: 'Note what was discussed with the caregiver, how it relates to treatment goals, and the clinical rationale for their involvement.' },
+        { step: 3, action: 'Bill 90846 or 90847 instead of individual therapy', detail: '90847 = family therapy with patient present. 90846 = without patient. Both typically reimburse similarly to individual therapy.' },
+      ],
     });
   }
 
@@ -188,6 +225,12 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       currentCode: input.cptCode, suggestedCode: '96127',
       estimatedDifference: 20, confidence: 'likely',
       requiredAction: 'Add 96127 for each screening instrument administered and scored (PHQ-9, GAD-7, PCL-5, etc.). Up to 4 units per visit.',
+      complexity: 'same-day', timeToImplement: 'Immediate — add 96127 to today\'s claim',
+      implementationPlan: [
+        { step: 1, action: 'Confirm you scored and documented the tool', detail: 'The score and clinical interpretation must be in the note (e.g., "PHQ-9 = 14, moderate depression, improved from 18").' },
+        { step: 2, action: 'Add 96127 to the claim', detail: 'Bill one unit of 96127 per instrument administered and scored in the session.' },
+        { step: 3, action: 'Make it routine', detail: 'Build screening tools into your intake and periodic review workflow. PHQ-9 + GAD-7 at every 4th session is a common cadence.' },
+      ],
     });
   } else if (!input.hasScreeningTools && ['individual_therapy','medication_management','telehealth'].includes(input.sessionType)) {
     items.push({
@@ -195,6 +238,13 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       currentCode: input.cptCode, suggestedCode: '96127',
       estimatedDifference: 15, confidence: 'possible',
       requiredAction: 'Consider adding standardized screening tools to your workflow. Each scored instrument qualifies as a separate 96127 unit.',
+      complexity: 'this-week', timeToImplement: '2–5 days to set up the workflow',
+      implementationPlan: [
+        { step: 1, action: 'Choose your screening tools', detail: 'PHQ-9 (depression), GAD-7 (anxiety), PCL-5 (PTSD), and AUDIT (alcohol) are the most common. All are free and public domain.' },
+        { step: 2, action: 'Set up digital delivery', detail: 'Use your EHR\'s built-in forms, or send via a secure patient portal before the session. Many telehealth platforms support pre-session questionnaires.' },
+        { step: 3, action: 'Build into your session flow', detail: 'Administer at intake, then every 4–6 sessions to track progress. Document the score and your clinical interpretation in the note.' },
+        { step: 4, action: 'Add 96127 to claims', detail: 'Each scored instrument = 1 unit of 96127. Up to 4 units per encounter. Reimbursement is typically $5–8 per unit.' },
+      ],
     });
   }
 
@@ -205,6 +255,12 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       currentCode: '90791', suggestedCode: '90792',
       estimatedDifference: 45, confidence: 'review-recommended',
       requiredAction: 'If the intake included a medical evaluation component (vitals, physical exam, medication prescribing), 90792 may be appropriate.',
+      complexity: 'this-week', timeToImplement: '1–2 days to adjust your intake workflow',
+      implementationPlan: [
+        { step: 1, action: 'Determine if you qualify', detail: '90792 requires a medical evaluation component — review of systems, vitals, physical exam findings, or medication prescribing as part of the evaluation.' },
+        { step: 2, action: 'Update your intake template', detail: 'Add a medical evaluation section to your intake note template if you routinely prescribe or evaluate medical factors.' },
+        { step: 3, action: 'Bill 90792 for qualifying intakes', detail: 'Use 90792 when the intake includes medical services. No modifier needed — it\'s a distinct code from 90791.' },
+      ],
     });
   }
 
@@ -215,6 +271,14 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       currentCode: input.cptCode, suggestedCode: '0029U',
       estimatedDifference: 200, confidence: 'review-recommended',
       requiredAction: 'For patients who have failed 2+ medications, consider whether pharmacogenomic testing is clinically indicated and covered by the payer.',
+      complexity: '2-4 weeks', timeToImplement: '2–4 weeks to set up vendor relationship and workflow',
+      implementationPlan: [
+        { step: 1, action: 'Partner with a pharmacogenomic testing vendor', detail: 'Companies like GeneSight, Genomind, or Tempus offer kits and handle lab processing. Most provide free enrollment and training. Many work well with telehealth — kits ship to the patient directly.' },
+        { step: 2, action: 'Verify payer coverage for your patients', detail: 'Coverage varies widely. Medicare covers for some indications. Most commercial plans cover after 2+ medication failures. The testing vendor typically handles prior auth.' },
+        { step: 3, action: 'Identify eligible patients', detail: 'Patients who have failed 2+ psychiatric medications, have significant side effects, or are on complex polypharmacy are the strongest candidates.' },
+        { step: 4, action: 'Order the test', detail: 'The vendor ships a saliva kit to the patient\'s home. Patient collects the sample and mails it back. Results in 5–7 business days typically.' },
+        { step: 5, action: 'Bill for interpretation', detail: 'You may bill 0029U or the vendor-specific PLA code for the test, plus a separate E/M visit for reviewing results and adjusting the treatment plan. The results review visit itself is often the bigger revenue opportunity.' },
+      ],
     });
   }
 
@@ -225,6 +289,14 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       currentCode: input.cptCode, suggestedCode: '99490',
       estimatedDifference: 42, confidence: 'review-recommended',
       requiredAction: 'Review whether the patient has 2+ chronic conditions expected to last 12+ months. CCM billing covers non-face-to-face coordination time.',
+      complexity: '2-4 weeks', timeToImplement: '2–3 weeks to set up tracking and consent process',
+      implementationPlan: [
+        { step: 1, action: 'Identify eligible patients', detail: 'Patients need 2+ chronic conditions expected to last 12+ months. Common in psych: MDD + GAD, bipolar + substance use, PTSD + chronic pain. Many med management patients already qualify.' },
+        { step: 2, action: 'Get patient consent', detail: 'CCM requires documented patient consent (verbal is OK for most payers). Explain that you\'ll be coordinating their care between visits and that there may be a cost-share.' },
+        { step: 3, action: 'Track non-face-to-face time', detail: 'Log time spent on care coordination: reviewing lab results, coordinating with PCP, medication prior auths, between-visit patient messages. You need 20+ minutes per month for 99490.' },
+        { step: 4, action: 'Set up time tracking', detail: 'Use your EHR\'s time tracking, a spreadsheet, or a dedicated CCM platform. Document what you did, when, and how long.' },
+        { step: 5, action: 'Bill monthly', detail: '99490 = first 20 minutes of CCM per month (~$42). 99491 = each additional 20 minutes (~$37). Bill on the last day of the month. Only one provider can bill CCM per patient per month.' },
+      ],
     });
   }
 
