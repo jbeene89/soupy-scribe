@@ -142,6 +142,9 @@ export function PsychPracticeModule() {
         <MonthlyRevenueCard batch={batch} />
       )}
 
+      {/* CPT Reference Rates */}
+      <CPTReferenceCard />
+
       {/* Top Issues */}
       {batch.topDenialTriggers.length > 0 && (
         <Card>
