@@ -130,6 +130,12 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       type: 'psychotherapy-time', description: `Session lasted ${input.sessionDurationMinutes} minutes but billed as ${input.cptCode}. Documentation may support 90837.`,
       currentCode: input.cptCode, suggestedCode: '90837', estimatedDifference: 35,
       confidence: 'likely', requiredAction: 'Verify documented time supports 90837 (53+ minutes) and update CPT.',
+      complexity: 'same-day', timeToImplement: 'Immediate — can fix on the current claim before submission',
+      implementationPlan: [
+        { step: 1, action: 'Verify start/stop times in notes', detail: 'Confirm the documented session ran 53+ minutes face-to-face.' },
+        { step: 2, action: 'Update CPT code to 90837', detail: 'Change the code in your billing system or clearinghouse before submission.' },
+        { step: 3, action: 'Ensure note content depth matches', detail: 'Payers may review whether the note content justifies extended time — add detail if thin.' },
+      ],
     });
   }
   if (input.cptCode === '90832' && input.sessionDurationMinutes >= 38) {
@@ -137,6 +143,11 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       type: 'psychotherapy-time', description: `Session lasted ${input.sessionDurationMinutes} minutes. Documentation may support 90834 instead of 90832.`,
       currentCode: '90832', suggestedCode: '90834', estimatedDifference: 20,
       confidence: 'likely', requiredAction: 'Verify documented time supports 90834 (38-52 minutes).',
+      complexity: 'same-day', timeToImplement: 'Immediate — update code before submission',
+      implementationPlan: [
+        { step: 1, action: 'Confirm documented time is 38–52 minutes', detail: 'Check start/stop times in the progress note.' },
+        { step: 2, action: 'Update CPT from 90832 to 90834', detail: 'Change in your billing system before claim goes out.' },
+      ],
     });
   }
 
@@ -146,6 +157,12 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       type: 'higher-em', description: `Documentation appears to support ${mdm.supportedEMCode} but ${mdm.selectedEMCode} was selected.`,
       currentCode: mdm.selectedEMCode, suggestedCode: mdm.supportedEMCode, estimatedDifference: 40,
       confidence: 'review-recommended', requiredAction: 'Review MDM components to confirm higher-level code is justified.',
+      complexity: 'same-day', timeToImplement: 'Immediate — review and update before submission',
+      implementationPlan: [
+        { step: 1, action: 'Review MDM documentation', detail: 'Confirm number of problems, data reviewed, and risk level support the higher code.' },
+        { step: 2, action: 'Strengthen note if borderline', detail: 'Add missing data elements (e.g., independent interpretation, additional problem complexity).' },
+        { step: 3, action: 'Update E/M code', detail: `Change from ${mdm.selectedEMCode} to ${mdm.supportedEMCode} in your billing system.` },
+      ],
     });
   }
 
@@ -156,6 +173,12 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
       type: 'add-on-code', description: 'E/M visit includes therapy time that may qualify for a psychotherapy add-on code (90833/90836/90838).',
       currentCode: input.emInput.selectedEMCode, suggestedCode: '90833',
       confidence: 'possible', requiredAction: 'If psychotherapy was provided during the E/M visit, consider adding the appropriate add-on code.',
+      complexity: 'same-day', timeToImplement: 'Immediate — add the code to the current claim',
+      implementationPlan: [
+        { step: 1, action: 'Verify psychotherapy was provided during E/M', detail: 'The note must document both an E/M component and a separate psychotherapy component.' },
+        { step: 2, action: 'Document components separately', detail: 'Split the note into E/M (problems, data, risk) and psychotherapy (interventions, response) sections.' },
+        { step: 3, action: 'Select the right add-on code', detail: '90833 (16–37 min therapy), 90836 (38–52 min), or 90838 (53+ min) based on therapy time.' },
+      ],
     });
   }
 
