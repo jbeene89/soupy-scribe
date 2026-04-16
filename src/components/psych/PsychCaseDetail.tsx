@@ -11,6 +11,7 @@ import {
   ChevronDown, ChevronUp, Clock, ListChecks
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult, MissedRevenueItem } from '@/lib/psychTypes';
+import { PsychTLDRCard } from './PsychTLDRCard';
 
 type CaseData = { input: PsychCaseInput; result: PsychAuditResult };
 
@@ -42,6 +43,10 @@ export function PsychCaseDetail({ caseData, onBack, onViewPacket }: {
         <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
         <Button variant="outline" size="sm" onClick={onViewPacket}><Printer className="h-4 w-4 mr-1" /> Submission Packet</Button>
       </div>
+
+      {/* TL;DR — top-of-page bullet summary for non-coders */}
+      <PsychTLDRCard result={result} />
+
 
       {/* Score */}
       <Card>
