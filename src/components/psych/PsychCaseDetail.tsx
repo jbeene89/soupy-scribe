@@ -11,6 +11,7 @@ import {
   ChevronDown, ChevronUp, Clock, ListChecks
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult, MissedRevenueItem } from '@/lib/psychTypes';
+import { PsychTLDRCard } from './PsychTLDRCard';
 
 type CaseData = { input: PsychCaseInput; result: PsychAuditResult };
 
