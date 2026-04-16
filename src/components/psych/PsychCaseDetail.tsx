@@ -12,8 +12,17 @@ import {
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult, MissedRevenueItem } from '@/lib/psychTypes';
 import { PsychTLDRCard } from './PsychTLDRCard';
+import { PsychAddDocumentDialog } from './PsychAddDocumentDialog';
+import { PsychVersionSwitcher, type PsychCaseVersion } from './PsychVersionSwitcher';
+import { Paperclip } from 'lucide-react';
 
-type CaseData = { input: PsychCaseInput; result: PsychAuditResult };
+type CaseData = {
+  input: PsychCaseInput;
+  result: PsychAuditResult;
+  versions?: PsychCaseVersion[];
+  activeVersion?: number;
+  addedDocuments?: { label: string; text: string; addedAt: string }[];
+};
 
 function StatusIcon({ status }: { status: 'pass' | 'fail' | 'warning' }) {
   if (status === 'pass') return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
@@ -27,10 +36,14 @@ function readinessInfo(r: PsychAuditResult) {
   return { color: 'text-destructive', label: 'Not Ready — Fix Issues First', bg: 'bg-destructive/10' };
 }
 
-export function PsychCaseDetail({ caseData, onBack, onViewPacket }: {
-  caseData: CaseData; onBack: () => void; onViewPacket: () => void;
+export function PsychCaseDetail({ caseData, onBack, onViewPacket, onAddDocument, onSelectVersion }: {
+  caseData: CaseData;
+  onBack: () => void;
+  onViewPacket: () => void;
+  onAddDocument?: (label: string, text: string) => void;
+  onSelectVersion?: (version: number) => void;
 }) {
-  const { input, result } = caseData;
+  const { input, result, versions = [], activeVersion = 1, addedDocuments = [] } = caseData;
   const ri = readinessInfo(result);
   const fails = result.checklist.filter(c => c.status === 'fail');
   const warnings = result.checklist.filter(c => c.status === 'warning');
@@ -41,11 +54,46 @@ export function PsychCaseDetail({ caseData, onBack, onViewPacket }: {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-        <Button variant="outline" size="sm" onClick={onViewPacket}><Printer className="h-4 w-4 mr-1" /> Submission Packet</Button>
+        <div className="flex items-center gap-2">
+          {onAddDocument && (
+            <PsychAddDocumentDialog
+              caseLabel={input.patientLabel || input.id || 'case'}
+              currentVersion={versions.length || 1}
+              onAddDocument={onAddDocument}
+            />
+          )}
+          <Button variant="outline" size="sm" onClick={onViewPacket}><Printer className="h-4 w-4 mr-1" /> Submission Packet</Button>
+        </div>
       </div>
+
+      {/* Version switcher (only shows when 2+ versions exist) */}
+      {versions.length > 1 && onSelectVersion && (
+        <PsychVersionSwitcher
+          versions={versions}
+          activeVersion={activeVersion}
+          onSelectVersion={onSelectVersion}
+        />
+      )}
+
+      {/* Attached documents indicator */}
+      {addedDocuments.length > 0 && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary/50 rounded-md px-3 py-2">
+          <Paperclip className="h-3.5 w-3.5" />
+          <span>
+            <span className="font-medium text-foreground">{addedDocuments.length}</span> additional document{addedDocuments.length !== 1 ? 's' : ''} attached:{' '}
+            {addedDocuments.map((d, i) => (
+              <span key={i}>
+                {i > 0 && ', '}
+                <span className="font-medium">{d.label}</span>
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
 
       {/* TL;DR — top-of-page bullet summary for non-coders */}
       <PsychTLDRCard result={result} />
+
 
 
       {/* Score */}

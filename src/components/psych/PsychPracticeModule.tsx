@@ -16,8 +16,15 @@ import { PsychCaseForm } from './PsychCaseForm';
 import { PsychCaseDetail } from './PsychCaseDetail';
 import { PsychReadinessPacket } from './PsychReadinessPacket';
 import { PsychCaseUpload } from './PsychCaseUpload';
+import type { PsychCaseVersion } from './PsychVersionSwitcher';
 
-type ReviewedCase = { input: PsychCaseInput; result: PsychAuditResult };
+export type ReviewedCase = {
+  input: PsychCaseInput;
+  result: PsychAuditResult;
+  versions: PsychCaseVersion[];
+  activeVersion: number;
+  addedDocuments: { label: string; text: string; addedAt: string }[];
+};
 
 function classColor(c: string) {
   if (c === 'ready') return 'text-emerald-500 bg-emerald-500/10';
@@ -33,9 +40,20 @@ function classLabel(c: string) {
   return map[c] || c;
 }
 
+function buildInitialCase(input: PsychCaseInput): ReviewedCase {
+  const result = runPsychAudit(input);
+  return {
+    input,
+    result,
+    versions: [{ version: 1, createdAt: new Date().toISOString(), result }],
+    activeVersion: 1,
+    addedDocuments: [],
+  };
+}
+
 export function PsychPracticeModule() {
   const [cases, setCases] = useState<ReviewedCase[]>(() =>
-    DEMO_PSYCH_CASES.map(input => ({ input, result: runPsychAudit(input) }))
+    DEMO_PSYCH_CASES.map(buildInitialCase)
   );
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -47,7 +65,7 @@ export function PsychPracticeModule() {
   const handleAddCase = (input: PsychCaseInput) => {
     const id = input.id || `case-${Date.now()}`;
     const newInput = { ...input, id };
-    setCases(prev => [...prev, { input: newInput, result: runPsychAudit(newInput) }]);
+    setCases(prev => [...prev, buildInitialCase(newInput)]);
     setShowForm(false);
   };
 
@@ -56,10 +74,51 @@ export function PsychPracticeModule() {
     if (selectedCaseId === id) setSelectedCaseId(null);
   };
 
+  /**
+   * Add a new document to a case, re-run audit, store as new version.
+   * Latest version becomes active automatically.
+   */
+  const handleAddDocument = (caseId: string, docLabel: string, docText: string) => {
+    setCases(prev => prev.map(c => {
+      if (c.input.id !== caseId) return c;
+      const addedAt = new Date().toISOString();
+      const newDocs = [...c.addedDocuments, { label: docLabel, text: docText, addedAt }];
+      // Re-run engine. (Future: parse the new doc to update structured input fields like CPT
+      // from a superbill. For now we re-run on the same input but snapshot the result so the
+      // user sees the audit was refreshed and the doc is on file.)
+      const result = runPsychAudit(c.input);
+      const nextVersion = c.versions.length + 1;
+      const newVersion = { version: nextVersion, createdAt: addedAt, result, addedDocLabel: docLabel };
+      return {
+        ...c,
+        result,
+        versions: [...c.versions, newVersion],
+        activeVersion: nextVersion,
+        addedDocuments: newDocs,
+      };
+    }));
+  };
+
+  /** Switch which version of a case is displayed. Other versions remain stored. */
+  const handleSelectVersion = (caseId: string, version: number) => {
+    setCases(prev => prev.map(c => {
+      if (c.input.id !== caseId) return c;
+      const v = c.versions.find(vv => vv.version === version);
+      if (!v) return c;
+      return { ...c, activeVersion: version, result: v.result };
+    }));
+  };
+
   // Show readiness packet
   if (showPacket) {
     const pc = cases.find(c => c.input.id === showPacket);
-    if (pc) return <PsychReadinessPacket caseData={pc} onBack={() => setShowPacket(null)} />;
+    if (pc) return (
+      <PsychReadinessPacket
+        caseData={pc}
+        onBack={() => setShowPacket(null)}
+        onAddDocument={(label, text) => handleAddDocument(pc.input.id!, label, text)}
+      />
+    );
   }
 
   // Show case detail
@@ -69,6 +128,8 @@ export function PsychPracticeModule() {
         caseData={selectedCase}
         onBack={() => setSelectedCaseId(null)}
         onViewPacket={() => { setShowPacket(selectedCaseId); setSelectedCaseId(null); }}
+        onAddDocument={(label, text) => handleAddDocument(selectedCase.input.id!, label, text)}
+        onSelectVersion={(version) => handleSelectVersion(selectedCase.input.id!, version)}
       />
     );
   }
