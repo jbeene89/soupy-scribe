@@ -4,6 +4,29 @@ import type {
   CaseClassification, PsychBatchSummary, RevenueLaneSummary,
 } from './psychTypes';
 
+// ── 2026 Medicare National Payment Amounts (CY2026 Final Rule) ──
+// Commercial payers typically reimburse 120-160% of Medicare rates
+export const CPT_REFERENCE_RATES: Record<string, { code: string; description: string; medicare2026: number; commercialRange: string }> = {
+  '90832': { code: '90832', description: 'Individual Therapy (16-37 min)', medicare2026: 85.84, commercialRange: '$95–$140' },
+  '90834': { code: '90834', description: 'Individual Therapy (38-52 min)', medicare2026: 113.89, commercialRange: '$130–$180' },
+  '90837': { code: '90837', description: 'Individual Therapy (53+ min)', medicare2026: 167.00, commercialRange: '$180–$240' },
+  '90791': { code: '90791', description: 'Psychiatric Diagnostic Evaluation', medicare2026: 173.35, commercialRange: '$190–$280' },
+  '90792': { code: '90792', description: 'Psych Eval with Medical Services', medicare2026: 195.00, commercialRange: '$210–$310' },
+  '90853': { code: '90853', description: 'Group Psychotherapy', medicare2026: 30.39, commercialRange: '$35–$60' },
+  '90846': { code: '90846', description: 'Family Therapy (w/o patient)', medicare2026: 113.00, commercialRange: '$130–$175' },
+  '90847': { code: '90847', description: 'Family Therapy (w/ patient)', medicare2026: 117.00, commercialRange: '$135–$185' },
+  '90839': { code: '90839', description: 'Crisis Psychotherapy (first 60 min)', medicare2026: 155.00, commercialRange: '$170–$230' },
+  '99213': { code: '99213', description: 'E/M Office Visit — Low (20 min)', medicare2026: 95.19, commercialRange: '$105–$155' },
+  '99214': { code: '99214', description: 'E/M Office Visit — Moderate (30 min)', medicare2026: 135.61, commercialRange: '$150–$200' },
+  '99215': { code: '99215', description: 'E/M Office Visit — High (40 min)', medicare2026: 185.00, commercialRange: '$200–$275' },
+  '96127': { code: '96127', description: 'Screening Tool (per instrument)', medicare2026: 7.52, commercialRange: '$5–$12' },
+  '96130': { code: '96130', description: 'Psych Testing Eval (first hour)', medicare2026: 122.24, commercialRange: '$140–$200' },
+  '90833': { code: '90833', description: 'Psychotherapy Add-On (16-37 min)', medicare2026: 57.00, commercialRange: '$60–$90' },
+  '90836': { code: '90836', description: 'Psychotherapy Add-On (38-52 min)', medicare2026: 87.00, commercialRange: '$95–$135' },
+  '99490': { code: '99490', description: 'Chronic Care Management (20 min/mo)', medicare2026: 42.00, commercialRange: '$40–$55' },
+  '99492': { code: '99492', description: 'Collaborative Care (first 70 min/mo)', medicare2026: 161.00, commercialRange: '$170–$220' },
+};
+
 // ── Master checklist ──
 const MASTER_CHECKLIST: PsychChecklistItem[] = [
   // Documentation
