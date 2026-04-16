@@ -44,6 +44,10 @@ export function PsychCaseDetail({ caseData, onBack, onViewPacket }: {
         <Button variant="outline" size="sm" onClick={onViewPacket}><Printer className="h-4 w-4 mr-1" /> Submission Packet</Button>
       </div>
 
+      {/* TL;DR — top-of-page bullet summary for non-coders */}
+      <PsychTLDRCard result={result} />
+
+
       {/* Score */}
       <Card>
         <CardContent className="pt-5">
