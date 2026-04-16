@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Shield, Stethoscope, ArrowRight, Brain, Scale, HeartPulse } from 'lucide-react';
+import { Shield, Stethoscope, ArrowRight, Brain, Scale, HeartPulse, Zap, CheckCircle2, DollarSign } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 
