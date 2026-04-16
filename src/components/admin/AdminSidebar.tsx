@@ -32,6 +32,7 @@ import {
   Siren,
   HeartHandshake,
   HeartPulse,
+  ClipboardCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
