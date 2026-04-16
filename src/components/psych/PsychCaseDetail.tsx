@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,9 +7,10 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, DollarSign,
-  TrendingUp, Zap, FileText, Brain, Printer, BadgeAlert, Lightbulb, Wrench
+  TrendingUp, Zap, FileText, Brain, Printer, BadgeAlert, Lightbulb, Wrench,
+  ChevronDown, ChevronUp, Clock, ListChecks
 } from 'lucide-react';
-import type { PsychCaseInput, PsychAuditResult } from '@/lib/psychTypes';
+import type { PsychCaseInput, PsychAuditResult, MissedRevenueItem } from '@/lib/psychTypes';
 
 type CaseData = { input: PsychCaseInput; result: PsychAuditResult };
 
