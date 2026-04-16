@@ -148,11 +148,31 @@ export default function AppInbox() {
         status: 'replied',
       })
       .eq('id', msg.id);
-    setSending(false);
     if (error) {
+      setSending(false);
       toast.error('Reply failed: ' + error.message);
       return;
     }
+    // Email the user a copy of the reply — non-blocking
+    if (msg.sender_email) {
+      supabase.functions
+        .invoke('send-transactional-email', {
+          body: {
+            templateName: 'inbox-reply',
+            recipientEmail: msg.sender_email,
+            idempotencyKey: `inbox-reply-${msg.id}-${Date.now()}`,
+            templateData: {
+              recipientName: msg.sender_name || undefined,
+              originalSubject: msg.subject,
+              originalBody: msg.body,
+              replyBody: parsed.data.reply,
+              repliedAt: new Date().toLocaleString(),
+            },
+          },
+        })
+        .catch((e) => console.warn('user reply email failed', e));
+    }
+    setSending(false);
     toast.success('Reply sent');
     setReply('');
     loadMessages();

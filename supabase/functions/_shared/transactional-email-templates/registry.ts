@@ -10,7 +10,9 @@ export interface TemplateEntry {
 }
 
 import { template as inboxNotification } from './inbox-notification.tsx'
+import { template as inboxReply } from './inbox-reply.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'inbox-notification': inboxNotification,
+  'inbox-reply': inboxReply,
 }
