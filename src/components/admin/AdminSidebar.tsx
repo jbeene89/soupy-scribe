@@ -31,6 +31,7 @@ import {
   Settings,
   Siren,
   HeartHandshake,
+  HeartPulse,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -60,6 +61,10 @@ const PROVIDER_NAV = [
   { title: 'Education Insights', path: '/app/education', icon: GraduationCap },
 ];
 
+const PSYCH_NAV = [
+  { title: 'Pre-Submission Audit', path: '/app', icon: ClipboardCheck },
+];
+
 export function AdminSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -72,7 +77,7 @@ export function AdminSidebar() {
     return location.pathname.startsWith(path);
   };
 
-  const mainNav = appMode === 'provider' ? PROVIDER_NAV : PAYER_NAV;
+  const mainNav = appMode === 'psych' ? PSYCH_NAV : appMode === 'provider' ? PROVIDER_NAV : PAYER_NAV;
 
   return (
     <Sidebar collapsible="icon">
