@@ -305,6 +305,34 @@ export function runPsychAudit(input: PsychCaseInput): PsychAuditResult {
       case 'addon-documentation':
         if (input.hasAddOnPsychotherapy && !input.addOnMinutes) status = 'fail';
         break;
+      // Telehealth-specific checks
+      case 'pos-02-vs-10':
+        if (input.isTelehealth && input.placeOfService === '02') status = 'warning';
+        break;
+      case 'audio-only-billing':
+        if (input.isAudioOnly && ['90834','90837','90832'].includes(input.cptCode)) status = 'fail';
+        break;
+      case 'interstate-license':
+        if (input.isTelehealth && input.patientState && input.providerState && input.patientState !== input.providerState) status = 'fail';
+        else if (input.isTelehealth && !input.patientState) status = 'warning';
+        break;
+      case 'telehealth-platform-doc':
+        if (input.isTelehealth && input.telehealthPlatformDocumented === false) status = 'warning';
+        break;
+      case 'crisis-safety-plan':
+        if (input.isTelehealth && !input.hasCrisisSafetyPlan) status = 'fail';
+        else if (input.isTelehealth && !input.hasPatientLocationDocumented) status = 'warning';
+        break;
+      case 'consent-reattestion':
+        if (input.isTelehealth && input.consentReattestationDue) {
+          const due = new Date(input.consentReattestationDue);
+          if (due.getTime() < Date.now()) status = 'fail';
+          else if ((due.getTime() - Date.now()) / 864e5 < 30) status = 'warning';
+        }
+        break;
+      case 'telehealth-parity-warning':
+        // Informational — always pass but payer warnings handle this
+        break;
       // Note quality items
       case 'functional-impairment':
         if (input.noteQuality && !input.noteQuality.hasFunctionalImpairment) status = 'fail';
