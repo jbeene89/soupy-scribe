@@ -20,20 +20,41 @@ export type DenialReason =
   | 'place_of_service'
   | 'timely_filing'
   | 'credential_issue'
-  | 'bundling';
+  | 'bundling'
+  | 'cloned_notes'
+  | 'missing_start_stop_time'
+  | 'diagnosis_service_mismatch'
+  | 'non_covered_diagnosis'
+  | 'missing_supervision'
+  | 'telehealth_consent'
+  | 'em_documentation_gap'
+  | 'frequency_acuity_mismatch';
+
+export type CaseClassification =
+  | 'ready'
+  | 'curable'
+  | 'admin-fix'
+  | 'high-denial-risk'
+  | 'human-review';
+
+export type MDMLevel = 'straightforward' | 'low' | 'moderate' | 'high';
 
 export interface PsychChecklistItem {
   id: string;
-  category: 'documentation' | 'coding' | 'authorization' | 'billing';
+  category: 'documentation' | 'coding' | 'authorization' | 'billing' | 'note-quality' | 'em-coding' | 'revenue';
   label: string;
   detail: string;
-  severity: 'critical' | 'high' | 'medium';
+  severity: 'critical' | 'high' | 'medium' | 'low';
   sessionTypes: SessionType[];
   commonDenialReason?: DenialReason;
   whyItMatters: string;
+  correction?: string;
+  isCurable?: boolean;
 }
 
 export interface PsychCaseInput {
+  id?: string;
+  patientLabel?: string;
   sessionType: SessionType;
   cptCode: string;
   diagnosisCodes: string[];
@@ -48,12 +69,99 @@ export interface PsychCaseInput {
   placeOfService: string;
   isTelehealth: boolean;
   payerName?: string;
+  claimAmount?: number;
+  dateOfService?: string;
+  // Extended fields
+  hasStartStopTime?: boolean;
+  hasTelehealthConsent?: boolean;
+  hasSupervisingProvider?: boolean;
+  requiresSupervision?: boolean;
+  noteQuality?: NoteQualityInput;
+  emInput?: EMInput;
+  sessionFrequencyPerWeek?: number;
+  documentedAcuityLevel?: 'mild' | 'moderate' | 'severe';
+  hasAddOnPsychotherapy?: boolean;
+  addOnCptCode?: string;
+  addOnMinutes?: number;
+}
+
+export interface NoteQualityInput {
+  hasFunctionalImpairment: boolean;
+  hasSymptomSeverity: boolean;
+  hasTreatmentResponse: boolean;
+  hasMoodAffectDetail: boolean;
+  hasSessionJustification: boolean;
+  hasContinuedCareRationale: boolean;
+  appearsCloned: boolean;
+}
+
+export interface EMInput {
+  selectedEMCode: string;
+  problemsAddressed: number;
+  isNewProblem: boolean;
+  dataReviewed: ('labs' | 'imaging' | 'records' | 'consult' | 'medication_history')[];
+  riskLevel: 'minimal' | 'low' | 'moderate' | 'high';
+  hasIndependentInterpretation: boolean;
+  totalTimeFaceToFace?: number;
+  hasAssessmentPlan: boolean;
+  documentedComplexity?: string;
+}
+
+export interface MDMReview {
+  problemComplexity: MDMLevel;
+  dataComplexity: MDMLevel;
+  riskLevel: MDMLevel;
+  overallMDM: MDMLevel;
+  supportedEMCode: string;
+  selectedEMCode: string;
+  isUndercoded: boolean;
+  isOvercoded: boolean;
+  explanation: string;
+  higherCodeOpportunity?: string;
+  downgradeRisk?: string;
+  supportStrength: 'strong' | 'moderate' | 'weak';
+}
+
+export interface MissedRevenueItem {
+  type: 'higher-em' | 'psychotherapy-time' | 'add-on-code' | 'complexity-undercoded' | 'prolonged-service';
+  description: string;
+  currentCode: string;
+  suggestedCode?: string;
+  estimatedDifference?: number;
+  confidence: 'likely' | 'possible' | 'review-recommended';
+  requiredAction: string;
+}
+
+export interface SmallestFix {
+  priority: number;
+  description: string;
+  effort: 'quick' | 'moderate' | 'involved';
+  impact: 'high' | 'medium' | 'low';
 }
 
 export interface PsychAuditResult {
   overallReadiness: 'ready' | 'needs-attention' | 'not-ready';
+  classification: CaseClassification;
   score: number;
   checklist: (PsychChecklistItem & { status: 'pass' | 'fail' | 'warning' })[];
   denialRiskFactors: string[];
   recommendations: string[];
+  mdmReview?: MDMReview;
+  missedRevenue: MissedRevenueItem[];
+  smallestFixes: SmallestFix[];
+  payerWarnings: string[];
+  noteQualityIssues: string[];
+  submitRecommendation: 'submit-now' | 'fix-first' | 'human-review';
+}
+
+export interface PsychBatchSummary {
+  totalCases: number;
+  readyToSubmit: number;
+  needsFix: number;
+  highRisk: number;
+  undercoded: number;
+  totalRevenueAtRisk: number;
+  totalMissedRevenue: number;
+  topDenialTriggers: { trigger: string; count: number }[];
+  topMissingDocs: { doc: string; count: number }[];
 }
