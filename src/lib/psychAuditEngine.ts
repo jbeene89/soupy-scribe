@@ -159,6 +159,75 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
     });
   }
 
+  // ── Telehealth-only practice missed lanes ──
+
+  // Collaborative Care Model (CoCM) — 99492/99493/99494
+  if (!input.hasCollaborativeCareAgreement && input.sessionType !== 'psych_testing') {
+    items.push({
+      type: 'collaborative-care', description: 'Collaborative Care Model (CoCM) codes 99492-99494 allow billing for psychiatric consultation to PCPs. Telehealth-only practices can participate as the consulting psychiatrist.',
+      currentCode: input.cptCode, suggestedCode: '99492',
+      estimatedDifference: 150, confidence: 'review-recommended',
+      requiredAction: 'Explore CoCM agreements with local PCPs. You provide monthly consult time and bill 99492 (first 70 min/month) or 99493 (subsequent months).',
+    });
+  }
+
+  // Caregiver/family session billing
+  if (input.hasCaregiverSessionDocumented && !['family_therapy'].includes(input.sessionType)) {
+    items.push({
+      type: 'caregiver-session', description: 'Documented caregiver involvement may support 90847 (family therapy with patient present) or 90846 (without patient). Many telehealth practices miss this billable service.',
+      currentCode: input.cptCode, suggestedCode: '90847',
+      estimatedDifference: 60, confidence: 'possible',
+      requiredAction: 'If a caregiver participated in the session, consider whether a family therapy code is appropriate.',
+    });
+  }
+
+  // Screening tool add-on — 96127
+  if (input.hasScreeningTools && input.screeningToolsUsed?.length) {
+    items.push({
+      type: 'screening-tools', description: `You used ${input.screeningToolsUsed.join(', ')} — standardized screening instruments can be billed separately as 96127 (up to 4 units per encounter).`,
+      currentCode: input.cptCode, suggestedCode: '96127',
+      estimatedDifference: 20, confidence: 'likely',
+      requiredAction: 'Add 96127 for each screening instrument administered and scored (PHQ-9, GAD-7, PCL-5, etc.). Up to 4 units per visit.',
+    });
+  } else if (!input.hasScreeningTools && ['individual_therapy','medication_management','telehealth'].includes(input.sessionType)) {
+    items.push({
+      type: 'screening-tools', description: 'Validated screening tools (PHQ-9, GAD-7, AUDIT, PCL-5) can be billed as 96127 when administered and scored. Many telehealth practices skip this $5-8 per-unit add-on.',
+      currentCode: input.cptCode, suggestedCode: '96127',
+      estimatedDifference: 15, confidence: 'possible',
+      requiredAction: 'Consider adding standardized screening tools to your workflow. Each scored instrument qualifies as a separate 96127 unit.',
+    });
+  }
+
+  // Extended intake opportunity — 90792 vs 90791
+  if (input.sessionType === 'intake_evaluation' && input.totalIntakeMinutes && input.totalIntakeMinutes >= 60 && input.cptCode === '90791') {
+    items.push({
+      type: 'extended-intake', description: 'Intake lasted 60+ minutes. If medical exam components were included, 90792 (with medical services) reimburses higher than 90791.',
+      currentCode: '90791', suggestedCode: '90792',
+      estimatedDifference: 45, confidence: 'review-recommended',
+      requiredAction: 'If the intake included a medical evaluation component (vitals, physical exam, medication prescribing), 90792 may be appropriate.',
+    });
+  }
+
+  // Pharmacogenomic testing
+  if (input.hasPharmacogenomicTesting === false && input.sessionType === 'medication_management') {
+    items.push({
+      type: 'pharmacogenomic', description: 'Pharmacogenomic testing (0029U/0030U) is increasingly covered for patients with treatment-resistant conditions or multiple medication trials. This is a high-value telehealth-friendly service.',
+      currentCode: input.cptCode, suggestedCode: '0029U',
+      estimatedDifference: 200, confidence: 'review-recommended',
+      requiredAction: 'For patients who have failed 2+ medications, consider whether pharmacogenomic testing is clinically indicated and covered by the payer.',
+    });
+  }
+
+  // Chronic Care Management — 99490/99491
+  if (input.sessionType === 'medication_management' && input.diagnosisCodes.length >= 2) {
+    items.push({
+      type: 'chronic-care', description: 'Patients with 2+ chronic conditions may qualify for Chronic Care Management (99490/99491). This covers care coordination time between visits — ideal for telehealth practices.',
+      currentCode: input.cptCode, suggestedCode: '99490',
+      estimatedDifference: 42, confidence: 'review-recommended',
+      requiredAction: 'Review whether the patient has 2+ chronic conditions expected to last 12+ months. CCM billing covers non-face-to-face coordination time.',
+    });
+  }
+
   return items;
 }
 
