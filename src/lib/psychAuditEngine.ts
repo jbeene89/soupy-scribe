@@ -1,7 +1,7 @@
 import type {
   PsychCaseInput, PsychAuditResult, PsychChecklistItem,
   MDMReview, MissedRevenueItem, SmallestFix, MDMLevel,
-  CaseClassification, PsychBatchSummary,
+  CaseClassification, PsychBatchSummary, RevenueLaneSummary,
 } from './psychTypes';
 
 // ── Master checklist ──
@@ -488,6 +488,19 @@ export function runPsychAudit(input: PsychCaseInput): PsychAuditResult {
   };
 }
 
+// ── Revenue lane definitions ──
+const LANE_META: Record<string, { label: string; description: string; weeklyMultiplier: number }> = {
+  'screening-tools': { label: 'Screening Tool Add-Ons (96127)', description: 'Bill separately for PHQ-9, GAD-7, PCL-5, AUDIT, etc. — up to 4 units per visit.', weeklyMultiplier: 4.3 },
+  'collaborative-care': { label: 'Collaborative Care (99492–99494)', description: 'Monthly psychiatric consult billing for PCP partnerships. High-value recurring revenue.', weeklyMultiplier: 1 },
+  'caregiver-session': { label: 'Caregiver/Family Sessions (90846/90847)', description: 'Bill when a caregiver or family member participates in a telehealth session.', weeklyMultiplier: 4.3 },
+  'extended-intake': { label: 'Extended Intake (90792)', description: 'If intakes include medical evaluation components, 90792 reimburses higher than 90791.', weeklyMultiplier: 4.3 },
+  'pharmacogenomic': { label: 'Pharmacogenomic Testing (0029U)', description: 'For patients who have failed 2+ medications. High per-test reimbursement.', weeklyMultiplier: 4.3 },
+  'chronic-care': { label: 'Chronic Care Management (99490)', description: 'Non-face-to-face coordination time for patients with 2+ chronic conditions. Monthly billing.', weeklyMultiplier: 1 },
+  'higher-em': { label: 'E/M Undercoding Correction', description: 'Documentation supports a higher E/M level than currently billed.', weeklyMultiplier: 4.3 },
+  'psychotherapy-time': { label: 'Psychotherapy Time Correction', description: 'Session duration supports a higher CPT code than billed.', weeklyMultiplier: 4.3 },
+  'add-on-code': { label: 'Psychotherapy Add-On (90833/90836)', description: 'E/M visit includes therapy time billable as a separate add-on.', weeklyMultiplier: 4.3 },
+};
+
 // ── Batch summary ──
 export function computeBatchSummary(cases: { input: PsychCaseInput; result: PsychAuditResult }[]): PsychBatchSummary {
   const triggerMap = new Map<string, number>();
@@ -495,13 +508,42 @@ export function computeBatchSummary(cases: { input: PsychCaseInput; result: Psyc
   let totalRisk = 0;
   let totalMissed = 0;
 
+  // Aggregate missed revenue by lane
+  const laneAgg = new Map<string, { total: number; count: number }>();
+
   for (const { input, result } of cases) {
     result.denialRiskFactors.forEach(f => triggerMap.set(f, (triggerMap.get(f) || 0) + 1));
     result.checklist.filter(c => c.status === 'fail' && c.category === 'documentation')
       .forEach(c => docMap.set(c.label, (docMap.get(c.label) || 0) + 1));
     if (result.overallReadiness !== 'ready') totalRisk += (input.claimAmount || 150);
-    result.missedRevenue.forEach(m => totalMissed += (m.estimatedDifference || 0));
+    result.missedRevenue.forEach(m => {
+      totalMissed += (m.estimatedDifference || 0);
+      const agg = laneAgg.get(m.type) || { total: 0, count: 0 };
+      agg.total += (m.estimatedDifference || 0);
+      agg.count += 1;
+      laneAgg.set(m.type, agg);
+    });
   }
+
+  // Build revenue lane summaries with monthly projections
+  const revenueLanes: RevenueLaneSummary[] = [...laneAgg.entries()]
+    .map(([lane, { total, count }]) => {
+      const meta = LANE_META[lane] || { label: lane, description: '', weeklyMultiplier: 4.3 };
+      const avgPerCase = total / count;
+      // Monthly estimate: avg per case × cases that could use it × weekly multiplier
+      const monthlyEstimate = Math.round(avgPerCase * count * meta.weeklyMultiplier);
+      return {
+        lane,
+        label: meta.label,
+        totalPerCase: Math.round(avgPerCase),
+        caseCount: count,
+        monthlyEstimate,
+        description: meta.description,
+      };
+    })
+    .sort((a, b) => b.monthlyEstimate - a.monthlyEstimate);
+
+  const totalMonthlyOpportunity = revenueLanes.reduce((s, l) => s + l.monthlyEstimate, 0);
 
   return {
     totalCases: cases.length,
@@ -513,5 +555,7 @@ export function computeBatchSummary(cases: { input: PsychCaseInput; result: Psyc
     totalMissedRevenue: totalMissed,
     topDenialTriggers: [...triggerMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([trigger, count]) => ({ trigger, count })),
     topMissingDocs: [...docMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([doc, count]) => ({ doc, count })),
+    revenueLanes,
+    totalMonthlyOpportunity,
   };
 }
