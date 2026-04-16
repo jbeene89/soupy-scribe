@@ -268,3 +268,84 @@ function MDMCell({ label, level }: { label: string; level: string }) {
     </div>
   );
 }
+
+const COMPLEXITY_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  'same-day': { bg: 'bg-emerald-500/10', text: 'text-emerald-600', label: 'Same Day' },
+  'this-week': { bg: 'bg-blue-500/10', text: 'text-blue-600', label: 'This Week' },
+  '2-4 weeks': { bg: 'bg-amber-500/10', text: 'text-amber-600', label: '2–4 Weeks' },
+  '1-3 months': { bg: 'bg-violet-500/10', text: 'text-violet-600', label: '1–3 Months' },
+};
+
+function RevenueOpportunityCard({ item }: { item: MissedRevenueItem }) {
+  const [expanded, setExpanded] = useState(false);
+  const cx = item.complexity ? COMPLEXITY_COLORS[item.complexity] : null;
+
+  return (
+    <div className="rounded-md border p-3 space-y-2">
+      {/* Header row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs flex-wrap">
+          <Badge variant="outline" className="text-[9px]">{item.currentCode}</Badge>
+          {item.suggestedCode && <><span>→</span><Badge className="text-[9px] bg-blue-500/10 text-blue-600 border-0">{item.suggestedCode}</Badge></>}
+          {item.estimatedDifference && <span className="text-blue-500 font-medium">+${item.estimatedDifference}</span>}
+        </div>
+        {cx && (
+          <Badge className={cn('text-[9px] border-0 shrink-0', cx.bg, cx.text)}>
+            <Clock className="h-2.5 w-2.5 mr-1" />
+            {cx.label}
+          </Badge>
+        )}
+      </div>
+
+      {/* Description */}
+      <p className="text-xs text-foreground">{item.description}</p>
+
+      {/* Timeline */}
+      {item.timeToImplement && (
+        <div className="flex items-start gap-2 text-[10px] text-muted-foreground bg-secondary/50 rounded px-2.5 py-1.5">
+          <Clock className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground/70" />
+          <span><span className="font-medium text-foreground/80">Timeline:</span> {item.timeToImplement}</span>
+        </div>
+      )}
+
+      {/* Action + confidence */}
+      <p className="text-[10px] text-muted-foreground">{item.requiredAction}</p>
+      <Badge variant="secondary" className="text-[9px] capitalize">{item.confidence.replace('-', ' ')}</Badge>
+
+      {/* Implementation plan toggle */}
+      {item.implementationPlan && item.implementationPlan.length > 0 && (
+        <>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-[10px] text-muted-foreground h-7 mt-1"
+            onClick={() => setExpanded(!expanded)}
+          >
+            <ListChecks className="h-3 w-3 mr-1" />
+            {expanded ? 'Hide' : 'Show'} Implementation Plan ({item.implementationPlan.length} steps)
+            {expanded ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+          </Button>
+
+          {expanded && (
+            <div className="space-y-2 pt-1 border-t border-border/50">
+              {item.implementationPlan.map((step) => (
+                <div key={step.step} className="flex gap-2.5">
+                  <div className="flex flex-col items-center shrink-0">
+                    <div className="h-5 w-5 rounded-full bg-blue-500/10 flex items-center justify-center text-[9px] font-bold text-blue-600">
+                      {step.step}
+                    </div>
+                    {step.step < item.implementationPlan!.length && <div className="w-px flex-1 bg-border/50 mt-0.5" />}
+                  </div>
+                  <div className="pb-2 min-w-0">
+                    <p className="text-[11px] font-semibold text-foreground">{step.action}</p>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">{step.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
