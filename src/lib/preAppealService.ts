@@ -1,16 +1,17 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { PreAppealResolution } from "@/lib/preAppealTypes";
+import { extractEdgeError } from "@/lib/edgeErrors";
 
 export async function runPreAppealAnalysis(caseId: string): Promise<PreAppealResolution> {
   const response = await supabase.functions.invoke("pre-appeal-analyze", {
     body: { caseId },
   });
 
-  if (response.error) throw new Error(response.error.message || "Pre-appeal analysis failed");
-  const data = response.data;
-  if (!data?.success) throw new Error(data?.error || "Pre-appeal analysis failed");
+  if (response.error || !response.data?.success) {
+    throw new Error(await extractEdgeError(response, "Pre-appeal analysis failed"));
+  }
 
-  return data.resolution as PreAppealResolution;
+  return response.data.resolution as PreAppealResolution;
 }
 
 export async function getStoredPreAppealResolution(caseId: string): Promise<PreAppealResolution | null> {

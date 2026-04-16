@@ -4,14 +4,17 @@ import {
   enrichThemes, buildCorrectablePatterns, buildHighRiskBehaviors,
   generateInterventions, computeDenialBreakdown,
 } from "@/lib/providerReadinessEngine";
+import { extractEdgeError } from "@/lib/edgeErrors";
+
 export async function submitProviderCase(sourceText: string): Promise<{ caseId: string; extracted: any; linkedTo?: { caseId: string } }> {
   const response = await supabase.functions.invoke("provider-analyze", {
     body: { action: "submit", sourceText },
   });
 
-  if (response.error) throw new Error(response.error.message || "Submission failed");
+  if (response.error || !response.data?.success) {
+    throw new Error(await extractEdgeError(response, "Submission failed"));
+  }
   const data = response.data;
-  if (!data?.success) throw new Error(data?.error || "Submission failed");
   return { caseId: data.caseId, extracted: data.extracted, linkedTo: data.linkedTo || undefined };
 }
 
@@ -20,11 +23,11 @@ export async function runProviderAnalysis(caseId: string): Promise<ProviderCaseR
     body: { action: "analyze", caseId },
   });
 
-  if (response.error) throw new Error(response.error.message || "Analysis failed");
-  const data = response.data;
-  if (!data?.success) throw new Error(data?.error || "Analysis failed");
+  if (response.error || !response.data?.success) {
+    throw new Error(await extractEdgeError(response, "Analysis failed"));
+  }
 
-  const r = data.review;
+  const r = response.data.review;
   const evidenceReadiness: EvidenceReadinessItem[] = (r.evidenceReadiness || []).map((item: any, idx: number) => ({
     ...item,
     id: `er-${caseId}-${idx}`,

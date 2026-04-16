@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { AuditCase, AIRoleAnalysis, RiskScore, CaseStatus } from "@/lib/types";
+import { extractEdgeError } from "@/lib/edgeErrors";
 
 // Transform DB row to app type
 function dbCaseToAuditCase(row: any): AuditCase {
@@ -130,11 +131,11 @@ export async function submitCaseText(sourceText: string): Promise<{ caseId: stri
     body: { action: "extract", sourceText },
   });
 
-  if (response.error) throw new Error(response.error.message || "Extraction failed");
-  
-  const data = response.data;
-  if (!data?.success) throw new Error(data?.error || "Extraction failed");
+  if (response.error || !response.data?.success) {
+    throw new Error(await extractEdgeError(response, "Extraction failed"));
+  }
 
+  const data = response.data;
   return { caseId: data.case.id, extracted: data.extracted, linkedTo: data.linkedTo || undefined };
 }
 
@@ -144,10 +145,11 @@ export async function runSOUPYAnalysis(caseId: string, payerCode?: string): Prom
     body: { action: "analyze", caseId, payerCode },
   });
 
-  if (response.error) throw new Error(response.error.message || "Analysis failed");
-  
+  if (response.error || !response.data?.success) {
+    throw new Error(await extractEdgeError(response, "Analysis failed"));
+  }
+
   const data = response.data;
-  if (!data?.success) throw new Error(data?.error || "Analysis failed");
 
   // Phase 2: Run v3 modules (drift, consensus integrity, evidence sufficiency, etc.)
   try {
