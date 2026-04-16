@@ -151,7 +151,8 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
   if (['90834', '90832'].includes(input.cptCode) && input.sessionDurationMinutes >= 53) {
     items.push({
       type: 'psychotherapy-time', description: `Session lasted ${input.sessionDurationMinutes} minutes but billed as ${input.cptCode}. Documentation may support 90837.`,
-      currentCode: input.cptCode, suggestedCode: '90837', estimatedDifference: 35,
+      currentCode: input.cptCode, suggestedCode: '90837',
+      estimatedDifference: Math.round((CPT_REFERENCE_RATES['90837']?.medicare2026 || 167) - (CPT_REFERENCE_RATES[input.cptCode]?.medicare2026 || 114)),
       confidence: 'likely', requiredAction: 'Verify documented time supports 90837 (53+ minutes) and update CPT.',
       complexity: 'same-day', timeToImplement: 'Immediate — can fix on the current claim before submission',
       implementationPlan: [
@@ -164,7 +165,8 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
   if (input.cptCode === '90832' && input.sessionDurationMinutes >= 38) {
     items.push({
       type: 'psychotherapy-time', description: `Session lasted ${input.sessionDurationMinutes} minutes. Documentation may support 90834 instead of 90832.`,
-      currentCode: '90832', suggestedCode: '90834', estimatedDifference: 20,
+      currentCode: '90832', suggestedCode: '90834',
+      estimatedDifference: Math.round((CPT_REFERENCE_RATES['90834']?.medicare2026 || 114) - (CPT_REFERENCE_RATES['90832']?.medicare2026 || 86)),
       confidence: 'likely', requiredAction: 'Verify documented time supports 90834 (38-52 minutes).',
       complexity: 'same-day', timeToImplement: 'Immediate — update code before submission',
       implementationPlan: [
@@ -178,7 +180,8 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
   if (mdm?.isUndercoded) {
     items.push({
       type: 'higher-em', description: `Documentation appears to support ${mdm.supportedEMCode} but ${mdm.selectedEMCode} was selected.`,
-      currentCode: mdm.selectedEMCode, suggestedCode: mdm.supportedEMCode, estimatedDifference: 40,
+      currentCode: mdm.selectedEMCode, suggestedCode: mdm.supportedEMCode,
+      estimatedDifference: Math.round((CPT_REFERENCE_RATES[mdm.supportedEMCode]?.medicare2026 || 136) - (CPT_REFERENCE_RATES[mdm.selectedEMCode]?.medicare2026 || 95)),
       confidence: 'review-recommended', requiredAction: 'Review MDM components to confirm higher-level code is justified.',
       complexity: 'same-day', timeToImplement: 'Immediate — review and update before submission',
       implementationPlan: [
