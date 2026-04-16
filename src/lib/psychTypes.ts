@@ -41,7 +41,7 @@ export type MDMLevel = 'straightforward' | 'low' | 'moderate' | 'high';
 
 export interface PsychChecklistItem {
   id: string;
-  category: 'documentation' | 'coding' | 'authorization' | 'billing' | 'note-quality' | 'em-coding' | 'revenue';
+  category: 'documentation' | 'coding' | 'authorization' | 'billing' | 'note-quality' | 'em-coding' | 'revenue' | 'telehealth';
   label: string;
   detail: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
@@ -83,6 +83,23 @@ export interface PsychCaseInput {
   hasAddOnPsychotherapy?: boolean;
   addOnCptCode?: string;
   addOnMinutes?: number;
+  // Telehealth-specific fields
+  isAudioOnly?: boolean;
+  patientState?: string;
+  providerState?: string;
+  telehealthPlatformDocumented?: boolean;
+  hasCrisisSafetyPlan?: boolean;
+  hasPatientLocationDocumented?: boolean;
+  telehealthConsentDate?: string;
+  consentReattestationDue?: string;
+  hasEmergencyContactOnFile?: boolean;
+  // Revenue lane fields
+  hasCollaborativeCareAgreement?: boolean;
+  hasCaregiverSessionDocumented?: boolean;
+  hasPharmacogenomicTesting?: boolean;
+  totalIntakeMinutes?: number;
+  hasScreeningTools?: boolean;
+  screeningToolsUsed?: string[];
 }
 
 export interface NoteQualityInput {
@@ -123,7 +140,7 @@ export interface MDMReview {
 }
 
 export interface MissedRevenueItem {
-  type: 'higher-em' | 'psychotherapy-time' | 'add-on-code' | 'complexity-undercoded' | 'prolonged-service';
+  type: 'higher-em' | 'psychotherapy-time' | 'add-on-code' | 'complexity-undercoded' | 'prolonged-service' | 'collaborative-care' | 'caregiver-session' | 'screening-tools' | 'extended-intake' | 'pharmacogenomic' | 'chronic-care';
   description: string;
   currentCode: string;
   suggestedCode?: string;
