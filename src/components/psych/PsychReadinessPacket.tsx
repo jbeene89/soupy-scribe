@@ -36,7 +36,11 @@ export function PsychReadinessPacket({ caseData, onBack }: { caseData: CaseData;
         </p>
       </div>
 
+      {/* TL;DR — first thing the reader sees in the printed packet */}
+      <PsychTLDRCard result={result} />
+
       {/* Score & Recommendation */}
+
       <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="pt-4 text-center">
