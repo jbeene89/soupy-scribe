@@ -165,16 +165,7 @@ export function PsychCaseDetail({ caseData, onBack, onViewPacket }: {
             <p className="text-[10px] text-muted-foreground mb-3 italic">These are coding opportunities for review — not automatic billing advice.</p>
             <div className="space-y-3">
               {result.missedRevenue.map((m, i) => (
-                <div key={i} className="rounded-md border p-3 space-y-1">
-                  <div className="flex items-center gap-2 text-xs">
-                    <Badge variant="outline" className="text-[9px]">{m.currentCode}</Badge>
-                    {m.suggestedCode && <><span>→</span><Badge className="text-[9px] bg-blue-500/10 text-blue-600 border-0">{m.suggestedCode}</Badge></>}
-                    {m.estimatedDifference && <span className="text-blue-500 font-medium">+${m.estimatedDifference}</span>}
-                  </div>
-                  <p className="text-xs text-foreground">{m.description}</p>
-                  <p className="text-[10px] text-muted-foreground">{m.requiredAction}</p>
-                  <Badge variant="secondary" className="text-[9px] capitalize">{m.confidence.replace('-', ' ')}</Badge>
-                </div>
+                <RevenueOpportunityCard key={i} item={m} />
               ))}
             </div>
           </CardContent>
