@@ -15,6 +15,7 @@ import AppPatterns from "./pages/AppPatterns";
 import { AppORReadiness, AppTriageAccuracy, AppPostOpFlow, AppERAcute, AppPatientAdvocate } from "./pages/AppOperational";
 import { AppComparison, AppEnhancementMap, AppAIPipeline, AppPlatformValue, AppGhostCases, AppEducation } from "./pages/AppPlatform";
 import AppHistory from "./pages/AppHistory";
+import AppInbox from "./pages/AppInbox";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="advocate" element={<AppPatientAdvocate />} />
               <Route path="education" element={<AppEducation />} />
               <Route path="history" element={<AppHistory />} />
+              <Route path="inbox" element={<AppInbox />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
