@@ -16,6 +16,7 @@ import { AppORReadiness, AppTriageAccuracy, AppPostOpFlow, AppERAcute, AppPatien
 import { AppComparison, AppEnhancementMap, AppAIPipeline, AppPlatformValue, AppGhostCases, AppEducation } from "./pages/AppPlatform";
 import AppHistory from "./pages/AppHistory";
 import AppInbox from "./pages/AppInbox";
+import Unsubscribe from "./pages/Unsubscribe";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
             {/* Public routes */}
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
 
             {/* Protected admin routes */}
             <Route path="/app" element={
