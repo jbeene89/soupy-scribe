@@ -171,6 +171,15 @@ export interface PsychAuditResult {
   submitRecommendation: 'submit-now' | 'fix-first' | 'human-review';
 }
 
+export interface RevenueLaneSummary {
+  lane: string;
+  label: string;
+  totalPerCase: number;
+  caseCount: number;
+  monthlyEstimate: number;
+  description: string;
+}
+
 export interface PsychBatchSummary {
   totalCases: number;
   readyToSubmit: number;
@@ -181,4 +190,6 @@ export interface PsychBatchSummary {
   totalMissedRevenue: number;
   topDenialTriggers: { trigger: string; count: number }[];
   topMissingDocs: { doc: string; count: number }[];
+  revenueLanes: RevenueLaneSummary[];
+  totalMonthlyOpportunity: number;
 }
