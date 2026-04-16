@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, Stethoscope, ArrowRight, Brain, Scale } from 'lucide-react';
+import { Shield, Stethoscope, ArrowRight, Brain, Scale, HeartPulse } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -46,6 +46,24 @@ const MODES = [
     accentBg: 'bg-[hsl(190,40%,45%)]',
     hoverRing: 'hover:ring-[hsl(190,40%,45%)]',
   },
+  {
+    id: 'psych' as AppMode,
+    title: 'Behavioral Health',
+    subtitle: 'Private Practice',
+    description: 'Pre-submission audit checks and denial defense built for therapy, testing, and medication management claims.',
+    icon: HeartPulse,
+    highlights: [
+      'Session documentation checklist',
+      'CPT / time-match validation',
+      'Authorization & credential tracking',
+      'Denial risk scoring before filing',
+    ],
+    gradient: 'from-[hsl(270,40%,22%)] to-[hsl(270,35%,32%)]',
+    accentBorder: 'border-[hsl(270,40%,50%)]',
+    accentText: 'text-[hsl(270,40%,55%)]',
+    accentBg: 'bg-[hsl(270,40%,50%)]',
+    hoverRing: 'hover:ring-[hsl(270,40%,50%)]',
+  },
 ] as const;
 
 export function ModeSelectionGate({ onSelect }: Props) {
@@ -75,7 +93,7 @@ export function ModeSelectionGate({ onSelect }: Props) {
       </div>
 
       {/* Mode Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl w-full animate-fade-in" style={{ animationDelay: '150ms' }}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl w-full animate-fade-in" style={{ animationDelay: '150ms' }}>
         {MODES.map((mode) => {
           const Icon = mode.icon;
           const isHovered = hoveredMode === mode.id;
