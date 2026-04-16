@@ -191,12 +191,8 @@ export function ModeSelectionGate({ onSelect }: Props) {
             {/* Right — pricing + CTA */}
             <div className="flex flex-col items-center gap-3 md:min-w-[180px]">
               <div className="text-center">
-                <div className="flex items-baseline justify-center gap-1">
-                  <DollarSign className="h-4 w-4 text-[hsl(270,50%,65%)]" />
-                  <span className="text-3xl font-extrabold text-foreground">9</span>
-                  <span className="text-sm text-muted-foreground">/case</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-0.5">No subscription. Pay only when you submit.</p>
+                <span className="text-2xl font-extrabold text-foreground">Free</span>
+                <p className="text-[10px] text-muted-foreground mt-0.5">No account required. Try it right now.</p>
               </div>
 
               <Button
@@ -204,7 +200,7 @@ export function ModeSelectionGate({ onSelect }: Props) {
                 onClick={() => onSelect('psych')}
                 className="w-full bg-[hsl(270,45%,50%)] hover:bg-[hsl(270,45%,55%)] text-white font-semibold shadow-lg shadow-[hsl(270,50%,30%)]/30"
               >
-                Try It Now
+                Try It Free
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
 
