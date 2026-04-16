@@ -9,6 +9,7 @@ import {
   DollarSign, TrendingUp, Zap, Brain, BadgeAlert, Lightbulb, Wrench, Printer, FileText
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult } from '@/lib/psychTypes';
+import { PsychTLDRCard } from './PsychTLDRCard';
 
 type CaseData = { input: PsychCaseInput; result: PsychAuditResult };
 
