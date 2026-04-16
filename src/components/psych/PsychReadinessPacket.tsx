@@ -10,11 +10,21 @@ import {
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult } from '@/lib/psychTypes';
 import { PsychTLDRCard } from './PsychTLDRCard';
+import { PsychAddDocumentDialog } from './PsychAddDocumentDialog';
 
-type CaseData = { input: PsychCaseInput; result: PsychAuditResult };
+type CaseData = {
+  input: PsychCaseInput;
+  result: PsychAuditResult;
+  versions?: { version: number }[];
+  addedDocuments?: { label: string; text: string; addedAt: string }[];
+};
 
-export function PsychReadinessPacket({ caseData, onBack }: { caseData: CaseData; onBack: () => void }) {
-  const { input, result } = caseData;
+export function PsychReadinessPacket({ caseData, onBack, onAddDocument }: {
+  caseData: CaseData;
+  onBack: () => void;
+  onAddDocument?: (label: string, text: string) => void;
+}) {
+  const { input, result, versions = [], addedDocuments = [] } = caseData;
   const fails = result.checklist.filter(c => c.status === 'fail');
   const warnings = result.checklist.filter(c => c.status === 'warning');
 
@@ -22,8 +32,18 @@ export function PsychReadinessPacket({ caseData, onBack }: { caseData: CaseData;
     <div className="space-y-4 max-w-3xl mx-auto print:max-w-full">
       <div className="flex items-center justify-between print:hidden">
         <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-        <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" /> Print</Button>
+        <div className="flex items-center gap-2">
+          {onAddDocument && (
+            <PsychAddDocumentDialog
+              caseLabel={input.patientLabel || input.id || 'case'}
+              currentVersion={versions.length || 1}
+              onAddDocument={onAddDocument}
+            />
+          )}
+          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" /> Print</Button>
+        </div>
       </div>
+
 
       {/* Header */}
       <div className="text-center py-4 border-b">
