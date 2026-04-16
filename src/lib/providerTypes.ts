@@ -1,6 +1,6 @@
 // Provider Readiness Mode types
 
-export type AppMode = 'payer' | 'provider';
+export type AppMode = 'payer' | 'provider' | 'psych';
 
 export type ReadinessLevel = 'strong' | 'moderate' | 'weak' | 'insufficient';
 export type AppealViability = 'recommended' | 'conditional' | 'not-recommended';
