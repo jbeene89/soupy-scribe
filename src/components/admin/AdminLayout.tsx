@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -6,21 +6,49 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { AdminSidebar } from './AdminSidebar';
-import { Scale, LogOut, Database, Brain, Stethoscope } from 'lucide-react';
+import { Scale, LogOut, Database, Brain, Stethoscope, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminContext } from './AdminContext';
 
 export function AdminLayout() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, session } = useAuth();
   const navigate = useNavigate();
   const { appMode, liveCases } = useAdminContext();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/auth', { replace: true });
     }
   }, [isAuthenticated, loading, navigate]);
+
+  useEffect(() => {
+    if (!session?.user) return;
+    const loadUnread = async () => {
+      const { data: isAdmin } = await supabase.rpc('is_soupy_admin', { _user_id: session.user.id });
+      const query = supabase.from('messages').select('id', { count: 'exact', head: true }).eq('status', 'unread');
+      // Admin sees all unread; user sees their own replies (replied messages they haven't opened)
+      if (!isAdmin) {
+        // For users: show count of replies received (status=replied) where they haven't viewed yet — using updated_at proxy
+        const { count } = await supabase
+          .from('messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('sender_id', session.user.id)
+          .eq('status', 'replied');
+        setUnreadCount(count || 0);
+      } else {
+        const { count } = await query;
+        setUnreadCount(count || 0);
+      }
+    };
+    loadUnread();
+    const channel = supabase
+      .channel('header-unread')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, loadUnread)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session]);
 
   if (loading) {
     return (
@@ -71,6 +99,22 @@ export function AdminLayout() {
                 </div>
               )}
             </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground relative"
+              onClick={() => navigate('/app/inbox')}
+              title="Inbox"
+            >
+              <Inbox className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Inbox</span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
+            </Button>
 
             <Button
               variant="ghost"

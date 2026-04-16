@@ -217,7 +217,7 @@ export default function AppInbox() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-medium text-sm truncate">{m.subject}</div>
                     {m.status === 'unread' && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
-                    {m.status === 'replied' && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />}
+                    {m.status === 'replied' && <CheckCircle2 className="h-3.5 w-3.5 text-consensus shrink-0" />}
                   </div>
                   {isAdmin && (
                     <div className="text-[11px] text-muted-foreground truncate mt-0.5">
