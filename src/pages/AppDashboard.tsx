@@ -5,6 +5,7 @@ import { ProviderDashboard } from '@/components/provider/ProviderDashboard';
 import { ProviderCaseDetail } from '@/components/provider/ProviderCaseDetail';
 import { CaseUpload } from '@/components/CaseUpload';
 import { ProviderCaseUpload } from '@/components/provider/ProviderCaseUpload';
+import { PsychPracticeModule } from '@/components/psych/PsychPracticeModule';
 import { Scale } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,6 +25,11 @@ export default function AppDashboard() {
     ) : (
       <AuditDetail auditCase={selectedCase} onBack={handleBack} posture={posture} onDecisionMade={handleDecisionMade} />
     );
+  }
+
+  // Psych mode
+  if (appMode === 'psych') {
+    return <PsychPracticeModule />;
   }
 
   // Provider mode: show dashboard with case queue
