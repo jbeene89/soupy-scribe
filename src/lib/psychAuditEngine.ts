@@ -35,7 +35,15 @@ const MASTER_CHECKLIST: PsychChecklistItem[] = [
   { id: 'timely-filing', category: 'billing', label: 'Within timely filing deadline', detail: 'Most payers require claims within 90–180 days. Medicare allows 365 days. Check each payer.', severity: 'critical', sessionTypes: ['individual_therapy','group_therapy','family_therapy','psych_testing','medication_management','telehealth','intake_evaluation','crisis_intervention'], commonDenialReason: 'timely_filing', whyItMatters: 'Timely filing denials are almost never overturnable. This is money lost permanently.', correction: 'Submit the claim immediately if approaching the filing deadline.', isCurable: false },
   { id: 'credential-active', category: 'billing', label: 'Provider credentialed with payer', detail: 'Verify active credentialing status before seeing patients. Retroactive credentialing is rarely granted.', severity: 'critical', sessionTypes: ['individual_therapy','group_therapy','family_therapy','psych_testing','medication_management','telehealth','intake_evaluation','crisis_intervention'], commonDenialReason: 'credential_issue', whyItMatters: 'Seeing patients before credentialing is complete means you may never get paid for those sessions.', correction: 'Verify credentialing status with the payer before submitting.', isCurable: false },
 
-  // Note Quality
+  // ── Telehealth-specific checks ──
+  { id: 'pos-02-vs-10', category: 'telehealth', label: 'Place of service 02 vs 10 verified', detail: 'Medicare and some payers require POS 10 (patient at home) since 2022. POS 02 (telehealth facility) pays at facility rate which is lower. Verify payer rules.', severity: 'high', sessionTypes: ['telehealth','individual_therapy','group_therapy','family_therapy','medication_management'], whyItMatters: 'Wrong POS on telehealth claims can mean lower reimbursement (POS 02 vs 10) or outright denial. Post-2022 Medicare rules specifically distinguish these.', correction: 'Verify payer POS requirements. Use POS 10 for patient-at-home telehealth unless the payer specifically requires 02.', isCurable: true },
+  { id: 'audio-only-billing', category: 'telehealth', label: 'Audio-only session billed correctly', detail: 'Phone-only sessions may require different CPT codes (98966-98968 for non-physician, 99441-99443 for physician) or modifier 93. Not all payers cover audio-only.', severity: 'high', sessionTypes: ['telehealth','individual_therapy','medication_management'], commonDenialReason: 'wrong_modifier', whyItMatters: 'Billing standard therapy codes (90834/90837) for audio-only sessions gets denied by payers that distinguish audio from video.', correction: 'If the session was audio-only, verify the payer covers it and use the correct code or modifier (e.g., modifier 93 for audio-only).', isCurable: true },
+  { id: 'interstate-license', category: 'telehealth', label: 'Provider licensed in patient state', detail: 'Telehealth requires the provider to be licensed in the state where the patient is located at time of service, not where the provider sits.', severity: 'critical', sessionTypes: ['telehealth','individual_therapy','group_therapy','family_therapy','medication_management'], whyItMatters: 'Providing services to a patient in a state where you are not licensed is a compliance risk that can result in board action and claim recoupment.', correction: 'Confirm patient location and verify your license covers that state. Document patient state in the session record.', isCurable: false },
+  { id: 'telehealth-platform-doc', category: 'telehealth', label: 'HIPAA-compliant platform documented', detail: 'Some payers and state boards require documentation that the telehealth platform used is HIPAA-compliant.', severity: 'medium', sessionTypes: ['telehealth','individual_therapy','group_therapy','family_therapy','medication_management'], whyItMatters: 'Audit findings sometimes include technology compliance. Documenting the platform proactively protects against recoupment.', correction: 'Add a note identifying the telehealth platform used (e.g., "Session conducted via [Platform], a HIPAA-compliant video platform").', isCurable: true },
+  { id: 'crisis-safety-plan', category: 'telehealth', label: 'Crisis/safety plan and patient location documented', detail: 'Telehealth sessions should document the patient\'s physical location and emergency contact in case of crisis, since the provider cannot physically intervene.', severity: 'high', sessionTypes: ['telehealth','individual_therapy','crisis_intervention'], whyItMatters: 'Missing patient location and safety plan documentation is a growing audit and liability concern for telehealth-only practices.', correction: 'Document patient physical location (city/state) and confirm emergency contact is on file at the start of each session.', isCurable: true },
+  { id: 'consent-reattestion', category: 'telehealth', label: 'Telehealth consent re-attestation current', detail: 'Many payers and states require annual re-consent for telehealth services. Initial consent is not sufficient indefinitely.', severity: 'medium', sessionTypes: ['telehealth','individual_therapy','group_therapy','family_therapy','medication_management'], whyItMatters: 'Expired telehealth consent can be flagged during audits, especially for Medicare and Medicaid patients.', correction: 'Check the original consent date and obtain re-attestation if more than 12 months have passed.', isCurable: true },
+  { id: 'telehealth-parity-warning', category: 'telehealth', label: 'Telehealth reimbursement parity checked', detail: 'Some payers reimburse telehealth at reduced rates compared to in-person. Know your contracted rates.', severity: 'low', sessionTypes: ['telehealth','individual_therapy','group_therapy','family_therapy','medication_management'], whyItMatters: 'If a payer applies telehealth rate reductions, you may be leaving money on the table or need to adjust your scheduling volume.', correction: 'Review your payer contracts for telehealth rate parity. If rates are reduced, factor this into scheduling decisions.', isCurable: false },
+
   { id: 'functional-impairment', category: 'note-quality', label: 'Functional impairment documented', detail: 'Notes should describe how symptoms impact daily functioning — work, relationships, self-care, etc.', severity: 'high', sessionTypes: ['individual_therapy','group_therapy','family_therapy','telehealth','medication_management'], commonDenialReason: 'medical_necessity', whyItMatters: 'Payers use functional impairment as the key measure of medical necessity. Without it, continued care looks unjustified.', correction: 'Add 1-2 sentences describing how symptoms affect the patient\'s daily functioning.', isCurable: true },
   { id: 'symptom-severity', category: 'note-quality', label: 'Symptom severity documented', detail: 'Use specific severity descriptors or validated scales (PHQ-9, GAD-7) rather than vague language.', severity: 'high', sessionTypes: ['individual_therapy','group_therapy','family_therapy','telehealth','medication_management'], commonDenialReason: 'medical_necessity', whyItMatters: 'Saying "patient reports anxiety" without severity context makes it hard to justify ongoing treatment.', correction: 'Add severity rating, scale score, or specific symptom frequency/intensity descriptors.', isCurable: true },
   { id: 'treatment-response', category: 'note-quality', label: 'Treatment response documented', detail: 'Notes should show whether the patient is improving, stable, or declining and what is being done about it.', severity: 'medium', sessionTypes: ['individual_therapy','group_therapy','family_therapy','telehealth','medication_management'], whyItMatters: 'Without treatment response, payers question whether continued sessions are warranted.', correction: 'Document patient progress relative to treatment goals and any plan adjustments.', isCurable: true },
@@ -151,6 +159,75 @@ function detectMissedRevenue(input: PsychCaseInput, mdm?: MDMReview): MissedReve
     });
   }
 
+  // ── Telehealth-only practice missed lanes ──
+
+  // Collaborative Care Model (CoCM) — 99492/99493/99494
+  if (!input.hasCollaborativeCareAgreement && input.sessionType !== 'psych_testing') {
+    items.push({
+      type: 'collaborative-care', description: 'Collaborative Care Model (CoCM) codes 99492-99494 allow billing for psychiatric consultation to PCPs. Telehealth-only practices can participate as the consulting psychiatrist.',
+      currentCode: input.cptCode, suggestedCode: '99492',
+      estimatedDifference: 150, confidence: 'review-recommended',
+      requiredAction: 'Explore CoCM agreements with local PCPs. You provide monthly consult time and bill 99492 (first 70 min/month) or 99493 (subsequent months).',
+    });
+  }
+
+  // Caregiver/family session billing
+  if (input.hasCaregiverSessionDocumented && !['family_therapy'].includes(input.sessionType)) {
+    items.push({
+      type: 'caregiver-session', description: 'Documented caregiver involvement may support 90847 (family therapy with patient present) or 90846 (without patient). Many telehealth practices miss this billable service.',
+      currentCode: input.cptCode, suggestedCode: '90847',
+      estimatedDifference: 60, confidence: 'possible',
+      requiredAction: 'If a caregiver participated in the session, consider whether a family therapy code is appropriate.',
+    });
+  }
+
+  // Screening tool add-on — 96127
+  if (input.hasScreeningTools && input.screeningToolsUsed?.length) {
+    items.push({
+      type: 'screening-tools', description: `You used ${input.screeningToolsUsed.join(', ')} — standardized screening instruments can be billed separately as 96127 (up to 4 units per encounter).`,
+      currentCode: input.cptCode, suggestedCode: '96127',
+      estimatedDifference: 20, confidence: 'likely',
+      requiredAction: 'Add 96127 for each screening instrument administered and scored (PHQ-9, GAD-7, PCL-5, etc.). Up to 4 units per visit.',
+    });
+  } else if (!input.hasScreeningTools && ['individual_therapy','medication_management','telehealth'].includes(input.sessionType)) {
+    items.push({
+      type: 'screening-tools', description: 'Validated screening tools (PHQ-9, GAD-7, AUDIT, PCL-5) can be billed as 96127 when administered and scored. Many telehealth practices skip this $5-8 per-unit add-on.',
+      currentCode: input.cptCode, suggestedCode: '96127',
+      estimatedDifference: 15, confidence: 'possible',
+      requiredAction: 'Consider adding standardized screening tools to your workflow. Each scored instrument qualifies as a separate 96127 unit.',
+    });
+  }
+
+  // Extended intake opportunity — 90792 vs 90791
+  if (input.sessionType === 'intake_evaluation' && input.totalIntakeMinutes && input.totalIntakeMinutes >= 60 && input.cptCode === '90791') {
+    items.push({
+      type: 'extended-intake', description: 'Intake lasted 60+ minutes. If medical exam components were included, 90792 (with medical services) reimburses higher than 90791.',
+      currentCode: '90791', suggestedCode: '90792',
+      estimatedDifference: 45, confidence: 'review-recommended',
+      requiredAction: 'If the intake included a medical evaluation component (vitals, physical exam, medication prescribing), 90792 may be appropriate.',
+    });
+  }
+
+  // Pharmacogenomic testing
+  if (input.hasPharmacogenomicTesting === false && input.sessionType === 'medication_management') {
+    items.push({
+      type: 'pharmacogenomic', description: 'Pharmacogenomic testing (0029U/0030U) is increasingly covered for patients with treatment-resistant conditions or multiple medication trials. This is a high-value telehealth-friendly service.',
+      currentCode: input.cptCode, suggestedCode: '0029U',
+      estimatedDifference: 200, confidence: 'review-recommended',
+      requiredAction: 'For patients who have failed 2+ medications, consider whether pharmacogenomic testing is clinically indicated and covered by the payer.',
+    });
+  }
+
+  // Chronic Care Management — 99490/99491
+  if (input.sessionType === 'medication_management' && input.diagnosisCodes.length >= 2) {
+    items.push({
+      type: 'chronic-care', description: 'Patients with 2+ chronic conditions may qualify for Chronic Care Management (99490/99491). This covers care coordination time between visits — ideal for telehealth practices.',
+      currentCode: input.cptCode, suggestedCode: '99490',
+      estimatedDifference: 42, confidence: 'review-recommended',
+      requiredAction: 'Review whether the patient has 2+ chronic conditions expected to last 12+ months. CCM billing covers non-face-to-face coordination time.',
+    });
+  }
+
   return items;
 }
 
@@ -217,9 +294,24 @@ function generatePayerWarnings(input: PsychCaseInput): string[] {
     warnings.push('TRICARE: Requires referral from PCM for behavioral health services. Verify referral is on file.');
   }
 
-  // General warnings
-  if (input.isTelehealth && !payer) {
-    warnings.push('Telehealth billing rules vary significantly by payer. Verify modifier and POS requirements before submission.');
+  // Telehealth-specific payer warnings
+  if (input.isTelehealth) {
+    if (!payer) {
+      warnings.push('Telehealth billing rules vary significantly by payer. Verify modifier and POS requirements before submission.');
+    }
+    if (input.isAudioOnly) {
+      warnings.push('Audio-only sessions have limited payer coverage. Medicare covers 99441-99443 for established patients; commercial plans vary widely.');
+      if (payer.includes('medicare')) warnings.push('Medicare: Audio-only is limited to established patients for behavioral health. Must use 99441-99443, not standard therapy codes.');
+    }
+    if (input.patientState && input.providerState && input.patientState !== input.providerState) {
+      warnings.push(`Patient is in ${input.patientState} but provider is in ${input.providerState}. Verify you hold an active license in the patient's state and that the payer covers interstate telehealth.`);
+    }
+    if (payer.includes('medicare') || payer.includes('medicaid')) {
+      warnings.push('Medicare/Medicaid: POS 10 is required for patient-at-home telehealth since 2022. POS 02 pays at the lower facility rate.');
+    }
+    if (!input.hasEmergencyContactOnFile) {
+      warnings.push('Telehealth best practice: Ensure emergency contact and patient physical location are documented each session for crisis protocol.');
+    }
   }
   if (input.sessionFrequencyPerWeek && input.sessionFrequencyPerWeek > 1) {
     warnings.push('Based on common payer review behavior: sessions more than 1x/week typically require documented clinical justification.');
@@ -296,6 +388,34 @@ export function runPsychAudit(input: PsychCaseInput): PsychAuditResult {
       }
       case 'addon-documentation':
         if (input.hasAddOnPsychotherapy && !input.addOnMinutes) status = 'fail';
+        break;
+      // Telehealth-specific checks
+      case 'pos-02-vs-10':
+        if (input.isTelehealth && input.placeOfService === '02') status = 'warning';
+        break;
+      case 'audio-only-billing':
+        if (input.isAudioOnly && ['90834','90837','90832'].includes(input.cptCode)) status = 'fail';
+        break;
+      case 'interstate-license':
+        if (input.isTelehealth && input.patientState && input.providerState && input.patientState !== input.providerState) status = 'fail';
+        else if (input.isTelehealth && !input.patientState) status = 'warning';
+        break;
+      case 'telehealth-platform-doc':
+        if (input.isTelehealth && input.telehealthPlatformDocumented === false) status = 'warning';
+        break;
+      case 'crisis-safety-plan':
+        if (input.isTelehealth && !input.hasCrisisSafetyPlan) status = 'fail';
+        else if (input.isTelehealth && !input.hasPatientLocationDocumented) status = 'warning';
+        break;
+      case 'consent-reattestion':
+        if (input.isTelehealth && input.consentReattestationDue) {
+          const due = new Date(input.consentReattestationDue);
+          if (due.getTime() < Date.now()) status = 'fail';
+          else if ((due.getTime() - Date.now()) / 864e5 < 30) status = 'warning';
+        }
+        break;
+      case 'telehealth-parity-warning':
+        // Informational — always pass but payer warnings handle this
         break;
       // Note quality items
       case 'functional-impairment':
