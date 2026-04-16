@@ -294,9 +294,24 @@ function generatePayerWarnings(input: PsychCaseInput): string[] {
     warnings.push('TRICARE: Requires referral from PCM for behavioral health services. Verify referral is on file.');
   }
 
-  // General warnings
-  if (input.isTelehealth && !payer) {
-    warnings.push('Telehealth billing rules vary significantly by payer. Verify modifier and POS requirements before submission.');
+  // Telehealth-specific payer warnings
+  if (input.isTelehealth) {
+    if (!payer) {
+      warnings.push('Telehealth billing rules vary significantly by payer. Verify modifier and POS requirements before submission.');
+    }
+    if (input.isAudioOnly) {
+      warnings.push('Audio-only sessions have limited payer coverage. Medicare covers 99441-99443 for established patients; commercial plans vary widely.');
+      if (payer.includes('medicare')) warnings.push('Medicare: Audio-only is limited to established patients for behavioral health. Must use 99441-99443, not standard therapy codes.');
+    }
+    if (input.patientState && input.providerState && input.patientState !== input.providerState) {
+      warnings.push(`Patient is in ${input.patientState} but provider is in ${input.providerState}. Verify you hold an active license in the patient's state and that the payer covers interstate telehealth.`);
+    }
+    if (payer.includes('medicare') || payer.includes('medicaid')) {
+      warnings.push('Medicare/Medicaid: POS 10 is required for patient-at-home telehealth since 2022. POS 02 pays at the lower facility rate.');
+    }
+    if (!input.hasEmergencyContactOnFile) {
+      warnings.push('Telehealth best practice: Ensure emergency contact and patient physical location are documented each session for crisis protocol.');
+    }
   }
   if (input.sessionFrequencyPerWeek && input.sessionFrequencyPerWeek > 1) {
     warnings.push('Based on common payer review behavior: sessions more than 1x/week typically require documented clinical justification.');
