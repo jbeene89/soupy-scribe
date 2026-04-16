@@ -91,18 +91,40 @@ export default function AppInbox() {
       return;
     }
     setSending(true);
-    const { error } = await supabase.from('messages').insert({
-      sender_id: session.user.id,
-      sender_email: session.user.email,
-      sender_name: session.user.user_metadata?.full_name || session.user.email,
-      subject: parsed.data.subject,
-      body: parsed.data.body,
-    });
-    setSending(false);
+    const { data: inserted, error } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: session.user.id,
+        sender_email: session.user.email,
+        sender_name: session.user.user_metadata?.full_name || session.user.email,
+        subject: parsed.data.subject,
+        body: parsed.data.body,
+      })
+      .select()
+      .single();
     if (error) {
+      setSending(false);
       toast.error('Failed to send: ' + error.message);
       return;
     }
+    // Notify admin by email — non-blocking
+    supabase.functions
+      .invoke('send-transactional-email', {
+        body: {
+          templateName: 'inbox-notification',
+          idempotencyKey: `inbox-msg-${inserted.id}`,
+          templateData: {
+            senderName:
+              session.user.user_metadata?.full_name || session.user.email,
+            senderEmail: session.user.email,
+            subject: parsed.data.subject,
+            body: parsed.data.body,
+            sentAt: new Date().toLocaleString(),
+          },
+        },
+      })
+      .catch((e) => console.warn('admin notify failed', e));
+    setSending(false);
     toast.success('Message sent');
     setSubject('');
     setBody('');
@@ -126,11 +148,31 @@ export default function AppInbox() {
         status: 'replied',
       })
       .eq('id', msg.id);
-    setSending(false);
     if (error) {
+      setSending(false);
       toast.error('Reply failed: ' + error.message);
       return;
     }
+    // Email the user a copy of the reply — non-blocking
+    if (msg.sender_email) {
+      supabase.functions
+        .invoke('send-transactional-email', {
+          body: {
+            templateName: 'inbox-reply',
+            recipientEmail: msg.sender_email,
+            idempotencyKey: `inbox-reply-${msg.id}-${Date.now()}`,
+            templateData: {
+              recipientName: msg.sender_name || undefined,
+              originalSubject: msg.subject,
+              originalBody: msg.body,
+              replyBody: parsed.data.reply,
+              repliedAt: new Date().toLocaleString(),
+            },
+          },
+        })
+        .catch((e) => console.warn('user reply email failed', e));
+    }
+    setSending(false);
     toast.success('Reply sent');
     setReply('');
     loadMessages();
