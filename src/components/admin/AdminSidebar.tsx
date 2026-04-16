@@ -120,7 +120,7 @@ export function AdminSidebar() {
 
         {/* Main navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel>{appMode === 'provider' ? 'Provider' : 'Payer'}</SidebarGroupLabel>
+          <SidebarGroupLabel>{appMode === 'psych' ? 'Behavioral Health' : appMode === 'provider' ? 'Provider' : 'Payer'}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNav.map((item) => (
