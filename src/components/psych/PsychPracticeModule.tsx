@@ -15,7 +15,7 @@ import { DEMO_PSYCH_CASES } from '@/lib/psychDemoData';
 import { PsychCaseForm } from './PsychCaseForm';
 import { PsychCaseDetail } from './PsychCaseDetail';
 import { PsychReadinessPacket } from './PsychReadinessPacket';
-import { PsychCaseUpload } from './PsychCaseUpload';
+import { ClaimParserView } from '../claim-parser/ClaimParserView';
 import type { PsychCaseVersion } from './PsychVersionSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -61,6 +61,7 @@ export function PsychPracticeModule() {
   );
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
   const [showPacket, setShowPacket] = useState<string | null>(null);
 
   const batch = useMemo(() => computeBatchSummary(cases), [cases]);
@@ -150,6 +151,16 @@ export function PsychPracticeModule() {
     );
   }
 
+  // Show Claim Upload Parser (multi-file + 5-perspective)
+  if (showUpload) {
+    return (
+      <ClaimParserView
+        onBack={() => setShowUpload(false)}
+        onCaseCreated={(input) => handleAddCase(input)}
+      />
+    );
+  }
+
   // Dashboard
   return (
     <div className="space-y-6">
@@ -165,7 +176,9 @@ export function PsychPracticeModule() {
           </div>
         </div>
         <div className="flex gap-2">
-          <PsychCaseUpload onCaseCreated={handleAddCase} />
+          <Button size="sm" onClick={() => setShowUpload(true)} className="gap-1.5">
+            <FileText className="h-4 w-4" /> Upload Claims
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setShowForm(true)}>
             <ListChecks className="h-4 w-4 mr-1.5" /> Manual Entry
           </Button>
