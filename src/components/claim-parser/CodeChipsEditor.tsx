@@ -39,6 +39,7 @@ export function CodeChipsEditor({
   const codes = field?.value ?? [];
   const lowConf = (field?.confidence ?? 1) < 0.8;
   const hasEvidence = !!field?.evidence_snippet || !!field?.source_location;
+  const sourceLabel = formatSourceLocation(field?.source_location);
 
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
