@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
   Brain, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, DollarSign, FileText, ListChecks,
-  TrendingUp, Clock, ArrowRight, ChevronDown, ChevronUp, Zap, Eye, BadgeAlert, Printer, Sparkles, Info
+  TrendingUp, Clock, ArrowRight, ChevronDown, ChevronUp, Zap, Eye, BadgeAlert, Printer, Sparkles, Info, FileSearch
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult, PsychBatchSummary, RevenueLaneSummary } from '@/lib/psychTypes';
 import { runPsychAudit, computeBatchSummary, CPT_REFERENCE_RATES } from '@/lib/psychAuditEngine';
@@ -18,6 +18,10 @@ import { PsychReadinessPacket } from './PsychReadinessPacket';
 import { ClaimParserView } from '../claim-parser/ClaimParserView';
 import type { PsychCaseVersion } from './PsychVersionSwitcher';
 import { useAuth } from '@/hooks/useAuth';
+import type { ParsedClaim } from '@/lib/parsedClaimTypes';
+import type { LensResult, PerspectiveSynthesis } from '../claim-parser/PerspectivesPanel';
+import { fetchParsedClaims, deleteParsedClaim } from '@/lib/parsedClaimService';
+import { toast } from 'sonner';
 
 export type ReviewedCase = {
   input: PsychCaseInput;
@@ -25,6 +29,13 @@ export type ReviewedCase = {
   versions: PsychCaseVersion[];
   activeVersion: number;
   addedDocuments: { label: string; text: string; addedAt: string }[];
+  /** Present when this case originated from the Claim Upload Parser. */
+  parsedClaim?: ParsedClaim;
+  perspectives?: LensResult[];
+  synthesis?: PerspectiveSynthesis | null;
+  sourceFileName?: string;
+  /** audit_cases.id when persisted. */
+  persistedCaseId?: string;
 };
 
 function classColor(c: string) {
@@ -63,22 +74,71 @@ export function PsychPracticeModule() {
   const [showForm, setShowForm] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showPacket, setShowPacket] = useState<string | null>(null);
+  // When set, opens the parser pre-loaded with this saved claim (re-view mode).
+  const [reviewingParsedId, setReviewingParsedId] = useState<string | null>(null);
 
   const batch = useMemo(() => computeBatchSummary(cases), [cases]);
   const selectedCase = cases.find(c => c.input.id === selectedCaseId);
+  const reviewingCase = cases.find(c => c.input.id === reviewingParsedId);
 
-  const handleAddCase = (input: PsychCaseInput) => {
+  // Hydrate previously-saved parsed claims from the database for signed-in users.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const persisted = await fetchParsedClaims();
+        if (cancelled || persisted.length === 0) return;
+        setCases(prev => {
+          const existingIds = new Set(prev.map(c => c.input.id));
+          const hydrated: ReviewedCase[] = persisted
+            .filter(p => !existingIds.has(p.caseId))
+            .map(p => {
+              const input = { ...p.psychInput, id: p.caseId };
+              const result = runPsychAudit(input);
+              return {
+                input,
+                result,
+                versions: [{ version: 1, createdAt: p.createdAt, result }],
+                activeVersion: 1,
+                addedDocuments: [],
+                parsedClaim: p.parsedClaim,
+                perspectives: p.perspectives,
+                synthesis: p.synthesis,
+                sourceFileName: p.sourceFileName,
+                persistedCaseId: p.caseId,
+              };
+            });
+          return [...hydrated, ...prev];
+        });
+      } catch (e: any) {
+        console.error("Failed to load saved parsed claims:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthenticated]);
+
+  const handleAddCase = (input: PsychCaseInput, extras?: Partial<ReviewedCase>) => {
     const id = input.id || `case-${Date.now()}`;
     const newInput = { ...input, id };
-    setCases(prev => [...prev, buildInitialCase(newInput)]);
+    const base = buildInitialCase(newInput);
+    setCases(prev => [...prev, { ...base, ...extras }]);
     setShowForm(false);
     // Auto-open the new case so the user immediately sees the audit report.
     setSelectedCaseId(id);
   };
 
   const handleDeleteCase = (id: string) => {
+    const target = cases.find(c => c.input.id === id);
     setCases(prev => prev.filter(c => c.input.id !== id));
     if (selectedCaseId === id) setSelectedCaseId(null);
+    // Best-effort: also delete the persisted row in the background.
+    if (target?.persistedCaseId) {
+      deleteParsedClaim(target.persistedCaseId).catch(e => {
+        console.error("Failed to delete persisted claim:", e);
+        toast.error("Removed locally but failed to delete saved copy");
+      });
+    }
   };
 
   /**
@@ -151,12 +211,37 @@ export function PsychPracticeModule() {
     );
   }
 
+  // Re-view a previously saved parsed claim (full parser UI in saved-mode)
+  if (reviewingCase?.parsedClaim) {
+    return (
+      <ClaimParserView
+        onBack={() => setReviewingParsedId(null)}
+        onCaseCreated={() => { /* already saved; no-op */ }}
+        initialClaim={{
+          caseId: reviewingCase.persistedCaseId || reviewingCase.input.id!,
+          parsedClaim: reviewingCase.parsedClaim,
+          sourceFileName: reviewingCase.sourceFileName || 'Saved claim',
+          perspectives: reviewingCase.perspectives,
+          synthesis: reviewingCase.synthesis ?? null,
+        }}
+      />
+    );
+  }
+
   // Show Claim Upload Parser (multi-file + 5-perspective)
   if (showUpload) {
     return (
       <ClaimParserView
         onBack={() => setShowUpload(false)}
-        onCaseCreated={(input) => handleAddCase(input)}
+        onCaseCreated={(input, parsedClaim, caseId) =>
+          handleAddCase(input, {
+            parsedClaim,
+            persistedCaseId: caseId,
+            sourceFileName: parsedClaim.claim_header.payer_name?.value
+              ? `Claim · ${parsedClaim.claim_header.payer_name.value}`
+              : 'Parsed claim',
+          })
+        }
       />
     );
   }
@@ -273,6 +358,7 @@ export function PsychPracticeModule() {
                   onSelect={() => setSelectedCaseId(c.input.id!)}
                   onDelete={() => handleDeleteCase(c.input.id!)}
                   onPacket={() => setShowPacket(c.input.id!)}
+                  onViewParsed={c.parsedClaim ? () => setReviewingParsedId(c.input.id!) : undefined}
                 />
               ))}
           </TabsContent>
@@ -298,8 +384,9 @@ function SummaryCard({ icon: Icon, label, value, color, bg }: { icon: any; label
   );
 }
 
-function CaseRow({ caseData, onSelect, onDelete, onPacket }: {
+function CaseRow({ caseData, onSelect, onDelete, onPacket, onViewParsed }: {
   caseData: ReviewedCase; onSelect: () => void; onDelete: () => void; onPacket: () => void;
+  onViewParsed?: () => void;
 }) {
   const { input, result } = caseData;
   const fails = result.checklist.filter(c => c.status === 'fail').length;
@@ -319,6 +406,11 @@ function CaseRow({ caseData, onSelect, onDelete, onPacket }: {
                 <Badge className={cn('text-[9px] border-0', classColor(result.classification))}>
                   {classLabel(result.classification)}
                 </Badge>
+                {onViewParsed && (
+                  <Badge variant="outline" className="text-[9px] gap-1 border-primary/40 text-primary">
+                    <FileSearch className="h-2.5 w-2.5" /> Parsed claim
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
                 <span>{input.sessionDurationMinutes} min</span>
@@ -330,6 +422,17 @@ function CaseRow({ caseData, onSelect, onDelete, onPacket }: {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {onViewParsed && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-primary"
+                title="Re-open parsed claim & perspectives"
+                onClick={(e) => { e.stopPropagation(); onViewParsed(); }}
+              >
+                <FileSearch className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); onPacket(); }}>
               <Printer className="h-3.5 w-3.5" />
             </Button>
