@@ -43,171 +43,54 @@ Safety: No SI/HI. Crisis safety plan reviewed and current.
 
 Charge: $150.00`;
 
-// Simple parser that extracts structured data from pasted notes
-function parseSessionNote(text: string): PsychCaseInput {
-  const t = text.toLowerCase();
+// Map AI extraction output to PsychCaseInput. Defaults assume "on file" when AI returns null
+// (clinician's EHR has the record even if note doesn't restate it). False means AI saw explicit
+// evidence the item is missing/expired.
+function mapExtractionToInput(extracted: any): PsychCaseInput {
+  const orTrue = (v: boolean | null | undefined) => v === false ? false : true;
+  const sessionType = (extracted.session_type as SessionType) || 'individual_therapy';
+  const duration = extracted.session_duration_minutes ?? 45;
+  const isTelehealth = extracted.is_telehealth ?? false;
+
   const input: PsychCaseInput = {
-    sessionType: 'individual_therapy',
-    cptCode: '90834',
-    diagnosisCodes: [],
-    sessionDurationMinutes: 45,
-    hasCurrentTreatmentPlan: true,
-    hasAuthorizationOnFile: true,
-    hasProgressNotes: true,
-    hasMedicalNecessityStatement: true,
-    placeOfService: '10',
-    isTelehealth: true,
-    hasStartStopTime: true,
-    claimAmount: 150,
-    payerName: '',
+    sessionType,
+    cptCode: extracted.cpt_code || '90834',
+    diagnosisCodes: Array.isArray(extracted.diagnosis_codes) ? extracted.diagnosis_codes : [],
+    sessionDurationMinutes: duration,
+    placeOfService: extracted.place_of_service || (isTelehealth ? '10' : '11'),
+    isTelehealth,
+    isAudioOnly: extracted.is_audio_only ?? false,
+    payerName: extracted.payer_name || '',
+    patientLabel: extracted.patient_name || undefined,
+    patientState: extracted.patient_state || undefined,
+    providerState: 'FL',
+    claimAmount: extracted.claim_amount ?? 150,
+
+    // Documentation flags — default to "on file" unless AI explicitly saw it missing
+    hasCurrentTreatmentPlan: orTrue(extracted.has_current_treatment_plan),
+    hasAuthorizationOnFile: orTrue(extracted.has_authorization_on_file),
+    hasProgressNotes: true, // they uploaded a note
+    hasMedicalNecessityStatement: extracted.medical_necessity_statement_present ?? true,
+    hasStartStopTime: extracted.has_start_stop_time ?? !!(extracted.session_start_time && extracted.session_stop_time),
+    hasTelehealthConsent: isTelehealth ? orTrue(extracted.has_telehealth_consent) : true,
+    telehealthPlatformDocumented: !isTelehealth || !!extracted.telehealth_platform,
+    hasCrisisSafetyPlan: orTrue(extracted.has_crisis_safety_plan),
+    hasPatientLocationDocumented: !isTelehealth || orTrue(extracted.has_patient_location_documented),
+    hasEmergencyContactOnFile: orTrue(extracted.has_emergency_contact),
+
+    hasScreeningTools: Array.isArray(extracted.screening_tools_used) && extracted.screening_tools_used.length > 0,
+    screeningToolsUsed: Array.isArray(extracted.screening_tools_used) ? extracted.screening_tools_used : [],
+
     noteQuality: {
-      hasFunctionalImpairment: false,
-      hasSymptomSeverity: false,
-      hasTreatmentResponse: false,
-      hasMoodAffectDetail: false,
-      hasSessionJustification: false,
-      hasContinuedCareRationale: false,
-      appearsCloned: false,
+      hasFunctionalImpairment: extracted.functional_impairment_documented ?? false,
+      hasSymptomSeverity: extracted.symptom_severity_documented ?? false,
+      hasTreatmentResponse: extracted.treatment_response_documented ?? false,
+      hasMoodAffectDetail: extracted.mood_affect_documented ?? false,
+      hasSessionJustification: duration < 53,
+      hasContinuedCareRationale: extracted.continued_care_rationale_documented ?? false,
+      appearsCloned: extracted.copy_forward_risk ?? false,
     },
   };
-
-  // Patient label — try several common note formats
-  // Examples: "Patient: Jane Doe", "Patient Name: John Smith", "Pt: J. Smith",
-  // "Client: Maria Garcia-Lopez", "Name: Robert O'Brien"
-  const nameRegexes = [
-    /(?:patient name|patient|client name|client|pt\.?|name)[:\s]+([A-Z][A-Za-z'’\-\.]+(?:\s+[A-Z][A-Za-z'’\-\.]+){0,3})/,
-    /(?:^|\n)\s*(?:patient|client|pt\.?|name)\s*[-–]\s*([A-Z][A-Za-z'’\-\.]+(?:\s+[A-Z][A-Za-z'’\-\.]+){0,3})/i,
-  ];
-  for (const rx of nameRegexes) {
-    const m = text.match(rx);
-    if (m) {
-      const candidate = m[1].trim().replace(/\s+/g, ' ');
-      // Reject obvious non-names (single common words)
-      const lower = candidate.toLowerCase();
-      const stopWords = ['home', 'location', 'jacksonville', 'miami', 'orlando', 'tampa', 'state', 'date', 'session', 'video', 'audio'];
-      if (!stopWords.includes(lower) && candidate.length >= 2) {
-        input.patientLabel = candidate;
-        break;
-      }
-    }
-  }
-
-  // CPT code
-  const cptMatch = text.match(/(?:cpt|code)[:\s]*(\d{5})/i);
-  if (cptMatch) input.cptCode = cptMatch[1];
-
-  // Diagnosis codes
-  const dxMatches = text.match(/[FGZ]\d{2,3}\.\d{1,2}/gi);
-  if (dxMatches) input.diagnosisCodes = [...new Set(dxMatches.map(d => d.toUpperCase()))];
-
-  // Duration
-  const durMatch = text.match(/(?:duration|time)[:\s]*(\d+)\s*min/i);
-  if (durMatch) input.sessionDurationMinutes = parseInt(durMatch[1]);
-
-  // Payer
-  const payers = ['UnitedHealthcare', 'Aetna', 'Cigna', 'Anthem BCBS', 'Medicaid', 'Medicare', 'TRICARE', 'Humana'];
-  for (const p of payers) {
-    if (t.includes(p.toLowerCase())) { input.payerName = p; break; }
-  }
-
-  // Session type detection
-  if (t.includes('group therapy') || t.includes('group session')) input.sessionType = 'group_therapy';
-  else if (t.includes('family') || t.includes('couples')) input.sessionType = 'family_therapy';
-  else if (t.includes('psych testing') || t.includes('psychological testing')) input.sessionType = 'psych_testing';
-  else if (t.includes('medication management') || t.includes('med management')) input.sessionType = 'medication_management';
-  else if (t.includes('crisis')) input.sessionType = 'crisis_intervention';
-  else if (t.includes('intake') || t.includes('evaluation') || t.includes('90791') || t.includes('90792')) input.sessionType = 'intake_evaluation';
-
-  // Telehealth flags
-  input.isTelehealth = t.includes('telehealth') || t.includes('video') || t.includes('doxy') || t.includes('zoom') || ['10', '02'].includes(input.placeOfService);
-  if (t.includes('audio only') || t.includes('phone only') || t.includes('audio-only')) input.isAudioOnly = true;
-
-  // POS
-  const posMatch = text.match(/(?:pos|place of service)[:\s]*(\d{1,2})/i);
-  if (posMatch) input.placeOfService = posMatch[1].padStart(2, '0');
-
-  // Documentation — assume present unless clearly absent. The clinician is uploading
-  // a real note from their EHR, so these are typically on file even if the note text
-  // doesn't restate them. Flagging them as missing creates false-positive "fix" lists.
-  const mentionsTxPlan = t.includes('treatment plan') || t.includes('tx plan') || t.includes('plan of care');
-  const mentionsTxPlanExpired = /treatment plan[^.]*(expired|outdated|needs (?:update|renewal)|overdue)/i.test(text);
-  input.hasCurrentTreatmentPlan = mentionsTxPlan ? !mentionsTxPlanExpired : true;
-
-  const mentionsAuth = t.includes('authorization') || t.includes('auth #') || t.includes('auth:') || t.includes('prior auth') || t.includes('precert');
-  const mentionsAuthMissing = /(?:no|missing|expired|pending)\s+(?:prior\s+)?authorization/i.test(text) || /authorization[^.]*(expired|denied|pending)/i.test(text);
-  // If payer is Medicare or self-pay, auth typically not required
-  const noAuthNeeded = /medicare|self[- ]?pay|cash pay/i.test(text);
-  input.hasAuthorizationOnFile = noAuthNeeded ? true : (mentionsAuth ? !mentionsAuthMissing : true);
-
-  input.hasProgressNotes = true; // They're pasting a note, so it exists
-  input.hasMedicalNecessityStatement =
-    t.includes('medical necessity') || t.includes('medically necessary') ||
-    t.includes('functional impairment') || t.includes('symptom') ||
-    t.includes('impairment') || t.includes('continued care') ||
-    t.includes('treatment response') || t.includes('phq') || t.includes('gad');
-
-  input.hasStartStopTime =
-    /\b(?:start|begin)[:\s]*\d{1,2}[:.]\d{2}/i.test(text) ||
-    /\b(?:stop|end)[:\s]*\d{1,2}[:.]\d{2}/i.test(text) ||
-    /\d{1,2}[:.]\d{2}\s*(?:am|pm)?\s*[-–to]+\s*\d{1,2}[:.]\d{2}/i.test(text) ||
-    t.includes('start time') || t.includes('start:') || t.includes('time in') ||
-    /duration[:\s]+\d+/i.test(text); // Duration documented implies time tracked
-
-  // Consent — only flag missing if telehealth AND there's an explicit signal of missing consent
-  if (input.isTelehealth) {
-    const consentMentioned = t.includes('consent');
-    const consentMissing = /(?:no|missing|pending)\s+(?:telehealth\s+)?consent/i.test(text);
-    input.hasTelehealthConsent = consentMentioned ? !consentMissing : true; // assume on file unless flagged
-  } else {
-    input.hasTelehealthConsent = true;
-  }
-
-  input.telehealthPlatformDocumented = !input.isTelehealth ||
-    t.includes('doxy') || t.includes('zoom') || t.includes('simplepractice') ||
-    t.includes('therapynotes') || t.includes('hipaa') || t.includes('platform') ||
-    t.includes('video') || t.includes('telehealth');
-
-  // Safety plan — assume in place unless SI/HI mentioned without safety plan
-  const hasSIHI = /\b(?:si|hi|suicidal|homicidal|self[- ]harm)\b/i.test(text);
-  input.hasCrisisSafetyPlan = !hasSIHI || t.includes('safety plan') || t.includes('crisis plan') || t.includes('no si') || t.includes('denies si');
-
-  input.hasPatientLocationDocumented = !input.isTelehealth ||
-    /(?:patient )?location[:\s]/i.test(text) ||
-    /\b(?:[A-Z][a-z]+,\s*[A-Z]{2})\b/.test(text) || // City, ST
-    /jacksonville|miami|orlando|tampa|tallahassee|atlanta|chicago|houston|dallas|austin|phoenix|seattle|portland|denver|boston/i.test(text);
-
-  input.hasEmergencyContactOnFile = t.includes('emergency contact') || t.includes('emergency #') || t.includes('crisis contact') || !input.isTelehealth;
-
-  // Patient/provider state
-  const stateMatch = text.match(/(?:location|state)[:\s]*(?:\w+,?\s*)?(FL|GA|TX|NY|CA|NC|SC|AL|TN|OH|PA|IL|VA|MD|NJ)/i);
-  if (stateMatch) input.patientState = stateMatch[1].toUpperCase();
-  input.providerState = 'FL'; // Default for Jackie's practice
-
-  // Screening tools
-  const screeningTools: string[] = [];
-  if (t.includes('phq-9') || t.includes('phq9')) screeningTools.push('PHQ-9');
-  if (t.includes('gad-7') || t.includes('gad7')) screeningTools.push('GAD-7');
-  if (t.includes('pcl-5') || t.includes('pcl5')) screeningTools.push('PCL-5');
-  if (t.includes('audit')) screeningTools.push('AUDIT');
-  if (screeningTools.length > 0) {
-    input.hasScreeningTools = true;
-    input.screeningToolsUsed = screeningTools;
-  }
-
-  // Note quality signals
-  if (input.noteQuality) {
-    input.noteQuality.hasFunctionalImpairment = t.includes('functional') || t.includes('impairment') || t.includes('difficulty') || t.includes('unable to');
-    input.noteQuality.hasSymptomSeverity = t.includes('moderate') || t.includes('severe') || t.includes('mild') || /phq-?9[:\s]*\d/i.test(text) || /gad-?7[:\s]*\d/i.test(text);
-    input.noteQuality.hasTreatmentResponse = t.includes('improvement') || t.includes('responding') || t.includes('declining') || t.includes('stable') || t.includes('treatment response');
-    input.noteQuality.hasMoodAffectDetail = t.includes('mood') || t.includes('affect') || t.includes('low mood') || t.includes('anxious') || t.includes('irritable');
-    input.noteQuality.hasSessionJustification = input.sessionDurationMinutes < 53 || t.includes('justified') || t.includes('complexity');
-    input.noteQuality.hasContinuedCareRationale = t.includes('continued') || t.includes('ongoing') || t.includes('recommended') || t.includes('maintain');
-    input.noteQuality.appearsCloned = false;
-  }
-
-  // Claim amount
-  const chargeMatch = text.match(/\$(\d+(?:\.\d{2})?)/);
-  if (chargeMatch) input.claimAmount = parseFloat(chargeMatch[1]);
 
   return input;
 }
