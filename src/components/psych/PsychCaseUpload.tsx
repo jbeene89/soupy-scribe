@@ -109,16 +109,27 @@ export function PsychCaseUpload({ onCaseCreated }: PsychCaseUploadProps) {
     setParsed(null);
   };
 
-  const handleParse = () => {
+  const handleParse = async () => {
     if (!sourceText.trim()) return;
     setStep('parsing');
-    // Simulate brief processing
-    setTimeout(() => {
-      const result = parseSessionNote(sourceText);
+    try {
+      const { data, error } = await supabase.functions.invoke('psych-parse-note', {
+        body: { sourceText },
+      });
+      if (error) throw error;
+      if (!data?.extracted) throw new Error('No data returned from extraction');
+      const result = mapExtractionToInput(data.extracted);
       result.id = `upload-${Date.now()}`;
       setParsed(result);
       setStep('review');
-    }, 800);
+    } catch (e: any) {
+      console.error('Parse error:', e);
+      const msg = e?.message?.includes('429') ? 'Too many requests — try again in a moment.'
+        : e?.message?.includes('402') ? 'AI credits exhausted. Add credits in Workspace Settings.'
+        : 'Could not extract from this note. Please try again or paste a clearer version.';
+      toast.error(msg);
+      setStep('input');
+    }
   };
 
   const handleConfirm = () => {
