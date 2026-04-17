@@ -125,17 +125,57 @@ function parseSessionNote(text: string): PsychCaseInput {
   const posMatch = text.match(/(?:pos|place of service)[:\s]*(\d{1,2})/i);
   if (posMatch) input.placeOfService = posMatch[1].padStart(2, '0');
 
-  // Documentation
-  input.hasCurrentTreatmentPlan = t.includes('treatment plan') && (t.includes('current') || t.includes('updated'));
-  input.hasAuthorizationOnFile = t.includes('authorization') && (t.includes('on file') || t.includes('approved'));
-  input.hasProgressNotes = true; // If they're pasting notes, they exist
-  input.hasMedicalNecessityStatement = t.includes('medical necessity') || t.includes('medically necessary') || t.includes('functional impairment');
-  input.hasStartStopTime = /start[:\s]*\d/i.test(text) || /stop[:\s]*\d/i.test(text) || t.includes('start:') || t.includes('start time');
-  input.hasTelehealthConsent = t.includes('consent') && (t.includes('documented') || t.includes('signed') || t.includes('on file'));
-  input.telehealthPlatformDocumented = t.includes('doxy') || t.includes('zoom') || t.includes('hipaa-compliant') || t.includes('hipaa compliant');
-  input.hasCrisisSafetyPlan = t.includes('safety plan') || t.includes('crisis plan');
-  input.hasPatientLocationDocumented = /(?:patient )?location[:\s]/i.test(text) || /jacksonville|miami|orlando|tampa|tallahassee/i.test(text);
-  input.hasEmergencyContactOnFile = t.includes('emergency contact');
+  // Documentation — assume present unless clearly absent. The clinician is uploading
+  // a real note from their EHR, so these are typically on file even if the note text
+  // doesn't restate them. Flagging them as missing creates false-positive "fix" lists.
+  const mentionsTxPlan = t.includes('treatment plan') || t.includes('tx plan') || t.includes('plan of care');
+  const mentionsTxPlanExpired = /treatment plan[^.]*(expired|outdated|needs (?:update|renewal)|overdue)/i.test(text);
+  input.hasCurrentTreatmentPlan = mentionsTxPlan ? !mentionsTxPlanExpired : true;
+
+  const mentionsAuth = t.includes('authorization') || t.includes('auth #') || t.includes('auth:') || t.includes('prior auth') || t.includes('precert');
+  const mentionsAuthMissing = /(?:no|missing|expired|pending)\s+(?:prior\s+)?authorization/i.test(text) || /authorization[^.]*(expired|denied|pending)/i.test(text);
+  // If payer is Medicare or self-pay, auth typically not required
+  const noAuthNeeded = /medicare|self[- ]?pay|cash pay/i.test(text);
+  input.hasAuthorizationOnFile = noAuthNeeded ? true : (mentionsAuth ? !mentionsAuthMissing : true);
+
+  input.hasProgressNotes = true; // They're pasting a note, so it exists
+  input.hasMedicalNecessityStatement =
+    t.includes('medical necessity') || t.includes('medically necessary') ||
+    t.includes('functional impairment') || t.includes('symptom') ||
+    t.includes('impairment') || t.includes('continued care') ||
+    t.includes('treatment response') || t.includes('phq') || t.includes('gad');
+
+  input.hasStartStopTime =
+    /\b(?:start|begin)[:\s]*\d{1,2}[:.]\d{2}/i.test(text) ||
+    /\b(?:stop|end)[:\s]*\d{1,2}[:.]\d{2}/i.test(text) ||
+    /\d{1,2}[:.]\d{2}\s*(?:am|pm)?\s*[-–to]+\s*\d{1,2}[:.]\d{2}/i.test(text) ||
+    t.includes('start time') || t.includes('start:') || t.includes('time in') ||
+    /duration[:\s]+\d+/i.test(text); // Duration documented implies time tracked
+
+  // Consent — only flag missing if telehealth AND there's an explicit signal of missing consent
+  if (input.isTelehealth) {
+    const consentMentioned = t.includes('consent');
+    const consentMissing = /(?:no|missing|pending)\s+(?:telehealth\s+)?consent/i.test(text);
+    input.hasTelehealthConsent = consentMentioned ? !consentMissing : true; // assume on file unless flagged
+  } else {
+    input.hasTelehealthConsent = true;
+  }
+
+  input.telehealthPlatformDocumented = !input.isTelehealth ||
+    t.includes('doxy') || t.includes('zoom') || t.includes('simplepractice') ||
+    t.includes('therapynotes') || t.includes('hipaa') || t.includes('platform') ||
+    t.includes('video') || t.includes('telehealth');
+
+  // Safety plan — assume in place unless SI/HI mentioned without safety plan
+  const hasSIHI = /\b(?:si|hi|suicidal|homicidal|self[- ]harm)\b/i.test(text);
+  input.hasCrisisSafetyPlan = !hasSIHI || t.includes('safety plan') || t.includes('crisis plan') || t.includes('no si') || t.includes('denies si');
+
+  input.hasPatientLocationDocumented = !input.isTelehealth ||
+    /(?:patient )?location[:\s]/i.test(text) ||
+    /\b(?:[A-Z][a-z]+,\s*[A-Z]{2})\b/.test(text) || // City, ST
+    /jacksonville|miami|orlando|tampa|tallahassee|atlanta|chicago|houston|dallas|austin|phoenix|seattle|portland|denver|boston/i.test(text);
+
+  input.hasEmergencyContactOnFile = t.includes('emergency contact') || t.includes('emergency #') || t.includes('crisis contact') || !input.isTelehealth;
 
   // Patient/provider state
   const stateMatch = text.match(/(?:location|state)[:\s]*(?:\w+,?\s*)?(FL|GA|TX|NY|CA|NC|SC|AL|TN|OH|PA|IL|VA|MD|NJ)/i);
