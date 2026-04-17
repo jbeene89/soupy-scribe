@@ -17,6 +17,7 @@ import { PsychCaseDetail } from './PsychCaseDetail';
 import { PsychReadinessPacket } from './PsychReadinessPacket';
 import { PsychCaseUpload } from './PsychCaseUpload';
 import type { PsychCaseVersion } from './PsychVersionSwitcher';
+import { useAuth } from '@/hooks/useAuth';
 
 export type ReviewedCase = {
   input: PsychCaseInput;
@@ -52,8 +53,11 @@ function buildInitialCase(input: PsychCaseInput): ReviewedCase {
 }
 
 export function PsychPracticeModule() {
+  const { isAuthenticated } = useAuth();
+  // Live users (signed-in) start with an empty caseload — no sample patients.
+  // Demo/visitor mode shows the seeded sample cases so prospects can explore.
   const [cases, setCases] = useState<ReviewedCase[]>(() =>
-    DEMO_PSYCH_CASES.map(buildInitialCase)
+    isAuthenticated ? [] : DEMO_PSYCH_CASES.map(buildInitialCase)
   );
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);

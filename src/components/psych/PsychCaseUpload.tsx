@@ -70,9 +70,26 @@ function parseSessionNote(text: string): PsychCaseInput {
     },
   };
 
-  // Patient label
-  const patMatch = text.match(/patient[:\s]+([A-Z][a-z]*(?:\s+[A-Z])?)/i);
-  if (patMatch) input.patientLabel = patMatch[1].trim();
+  // Patient label — try several common note formats
+  // Examples: "Patient: Jane Doe", "Patient Name: John Smith", "Pt: J. Smith",
+  // "Client: Maria Garcia-Lopez", "Name: Robert O'Brien"
+  const nameRegexes = [
+    /(?:patient name|patient|client name|client|pt\.?|name)[:\s]+([A-Z][A-Za-z'’\-\.]+(?:\s+[A-Z][A-Za-z'’\-\.]+){0,3})/,
+    /(?:^|\n)\s*(?:patient|client|pt\.?|name)\s*[-–]\s*([A-Z][A-Za-z'’\-\.]+(?:\s+[A-Z][A-Za-z'’\-\.]+){0,3})/i,
+  ];
+  for (const rx of nameRegexes) {
+    const m = text.match(rx);
+    if (m) {
+      const candidate = m[1].trim().replace(/\s+/g, ' ');
+      // Reject obvious non-names (single common words)
+      const lower = candidate.toLowerCase();
+      const stopWords = ['home', 'location', 'jacksonville', 'miami', 'orlando', 'tampa', 'state', 'date', 'session', 'video', 'audio'];
+      if (!stopWords.includes(lower) && candidate.length >= 2) {
+        input.patientLabel = candidate;
+        break;
+      }
+    }
+  }
 
   // CPT code
   const cptMatch = text.match(/(?:cpt|code)[:\s]*(\d{5})/i);
