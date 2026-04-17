@@ -275,13 +275,24 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
         body: { claim: activeFile.claim, fileName: activeFile.ingested.source.fileName },
       });
       if (error) throw error;
+      const perspectives = data?.perspectives || [];
+      const synthesis = data?.synthesis || null;
       setFiles(prev => prev.map(f => f.ingested.id === id ? {
         ...f,
         perspectivesLoading: false,
-        perspectives: data?.perspectives || [],
-        synthesis: data?.synthesis || null,
+        perspectives,
+        synthesis,
         perspectivesError: null,
       } : f));
+
+      // If this claim is already persisted, push the new perspectives to the row.
+      if (activeFile.persistedCaseId) {
+        try {
+          await updateParsedClaimPerspectives(activeFile.persistedCaseId, perspectives, synthesis);
+        } catch (e) {
+          console.error("Failed to persist perspectives:", e);
+        }
+      }
       toast.success("5-perspective analysis complete");
     } catch (e: any) {
       const msg = e?.message?.includes("429") ? "Rate limited — try again shortly."
@@ -294,6 +305,68 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
     }
   };
 
+  // Save the active claim into the dashboard (and persist to DB)
+  const handleSaveActive = async () => {
+    if (!activeFile?.claim) return;
+    const input = mapToPsychInput(activeFile.claim);
+    try {
+      let caseId = activeFile.persistedCaseId;
+      if (caseId) {
+        await updateParsedClaimFields(caseId, activeFile.claim);
+      } else {
+        caseId = await persistParsedClaim({
+          parsedClaim: activeFile.claim,
+          psychInput: input,
+          sourceFileName: activeFile.ingested.source.fileName,
+          perspectives: activeFile.perspectives,
+          synthesis: activeFile.synthesis ?? null,
+        });
+      }
+      input.id = caseId;
+      onCaseCreated(input, activeFile.claim, caseId);
+      const persistedId = caseId;
+      setFiles(prev => prev.map(f => f.ingested.id === activeFile.ingested.id
+        ? { ...f, saved: true, persistedCaseId: persistedId }
+        : f));
+      toast.success("Claim saved to dashboard");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Failed to save claim");
+    }
+  };
+
+  // Save all ready (and not-yet-saved) claims at once
+  const handleSaveAll = async () => {
+    const targets = files.filter(f => f.status === "ready" && f.claim && !f.saved);
+    if (targets.length === 0) return;
+    const updates = new Map<string, string>();
+    let savedCount = 0;
+    for (const f of targets) {
+      try {
+        const input = mapToPsychInput(f.claim!);
+        const caseId = await persistParsedClaim({
+          parsedClaim: f.claim!,
+          psychInput: input,
+          sourceFileName: f.ingested.source.fileName,
+          perspectives: f.perspectives,
+          synthesis: f.synthesis ?? null,
+        });
+        input.id = caseId;
+        onCaseCreated(input, f.claim!, caseId);
+        updates.set(f.ingested.id, caseId);
+        savedCount++;
+      } catch (e: any) {
+        console.error("Save failed for", f.ingested.source.fileName, e);
+        toast.error(`Failed to save ${f.ingested.source.fileName}`);
+      }
+    }
+    if (savedCount > 0) {
+      setFiles(prev => prev.map(f => updates.has(f.ingested.id)
+        ? { ...f, saved: true, persistedCaseId: updates.get(f.ingested.id) }
+        : f));
+      toast.success(`Saved ${savedCount} claim${savedCount !== 1 ? "s" : ""} to dashboard`);
+    }
+  };
 
   const claim: ParsedClaim = activeFile?.claim || EMPTY_CLAIM;
   const reviewFlagCount = claim.review_flags.length;
