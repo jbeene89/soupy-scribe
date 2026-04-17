@@ -124,6 +124,16 @@ export function CodeChipsEditor({
           {hint && <span className="text-[10px] text-muted-foreground/70 italic truncate">· {hint}</span>}
         </div>
         <div className="flex items-center gap-1">
+          {sourceLabel && !empty && (
+            <Badge
+              variant="outline"
+              className="text-[9px] h-4 px-1.5 gap-0.5 font-normal text-muted-foreground border-border/60 max-w-[180px]"
+              title={`Parser found these in: ${field?.source_location}`}
+            >
+              <MapPin className="h-2.5 w-2.5 shrink-0" />
+              <span className="truncate">{sourceLabel}</span>
+            </Badge>
+          )}
           {lowConf && (
             <Badge variant="outline" className="text-[9px] h-4 px-1 border-amber-500/40 text-amber-600">
               <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
