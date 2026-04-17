@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.psych-parse-note]
 verify_jwt = false
+
+[functions.claim-parser]
+verify_jwt = false
