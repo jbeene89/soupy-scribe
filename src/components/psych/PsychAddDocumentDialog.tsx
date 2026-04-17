@@ -4,9 +4,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { FilePlus, Loader2, CheckCircle2, FileText } from 'lucide-react';
+import { FilePlus, Loader2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { PsychFileDropzone } from './PsychFileDropzone';
+import { PsychMultiFileDropzone, type ExtractedFile } from './PsychMultiFileDropzone';
 
 interface PsychAddDocumentDialogProps {
   caseLabel: string;
@@ -32,25 +32,45 @@ export function PsychAddDocumentDialog({
 }: PsychAddDocumentDialogProps) {
   const [open, setOpen] = useState(false);
   const [docLabel, setDocLabel] = useState('');
-  const [docText, setDocText] = useState('');
+  const [extractedFiles, setExtractedFiles] = useState<ExtractedFile[]>([]);
+  const [pastedText, setPastedText] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
 
   const reset = () => {
     setDocLabel('');
-    setDocText('');
+    setExtractedFiles([]);
+    setPastedText('');
     setAnalyzing(false);
   };
 
+  // Combine all uploaded files + pasted text into one document blob.
+  const combinedText = (() => {
+    const parts: string[] = [];
+    for (const f of extractedFiles) {
+      parts.push(`=== ${f.fileName} ===\n${f.text}`);
+    }
+    if (pastedText.trim()) {
+      parts.push(`=== Pasted Text ===\n${pastedText.trim()}`);
+    }
+    return parts.join('\n\n');
+  })();
+
+  const totalChars = combinedText.length;
+  const hasContent = totalChars > 0;
+
   const handleSubmit = () => {
-    if (!docLabel.trim() || !docText.trim()) {
-      toast.error('Please add both a document label and document content');
+    if (!docLabel.trim() || !hasContent) {
+      toast.error('Please add a label and at least one file or pasted text');
       return;
     }
     setAnalyzing(true);
-    // Simulated re-analysis delay (the engine itself is synchronous)
     setTimeout(() => {
-      onAddDocument(docLabel.trim(), docText.trim());
-      toast.success(`Re-audited as version ${currentVersion + 1}`);
+      onAddDocument(docLabel.trim(), combinedText);
+      const fileCount = extractedFiles.length;
+      const desc = fileCount > 0
+        ? `${fileCount} file${fileCount !== 1 ? 's' : ''}${pastedText.trim() ? ' + pasted text' : ''} merged`
+        : 'Pasted text added';
+      toast.success(`Re-audited as version ${currentVersion + 1}`, { description: desc });
       setOpen(false);
       reset();
     }, 900);
@@ -70,11 +90,11 @@ export function PsychAddDocumentDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FilePlus className="h-5 w-5 text-violet-500" />
-            Add Document to {caseLabel}
+            Add Document(s) to {caseLabel}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Attach a superbill, addendum, or any supporting document. The audit will re-run with the new
-            information and save as <span className="font-semibold">version {currentVersion + 1}</span>.
+            Upload one or more supporting documents — superbill, addendum, lab report, etc.
+            Everything gets combined and re-audited as <span className="font-semibold">version {currentVersion + 1}</span>.
             Your previous report stays available.
           </DialogDescription>
         </DialogHeader>
@@ -83,7 +103,7 @@ export function PsychAddDocumentDialog({
           <div className="space-y-4">
             {/* Doc type suggestions */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1.5">What kind of document?</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">What kind of document(s)?</p>
               <div className="flex flex-wrap gap-1.5">
                 {DOC_TYPE_SUGGESTIONS.map((s) => (
                   <Badge
@@ -102,43 +122,56 @@ export function PsychAddDocumentDialog({
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1.5">Document label</p>
               <Input
-                placeholder="e.g. Superbill, Updated Treatment Plan..."
+                placeholder="e.g. Superbill, Updated Treatment Plan, Lab Results..."
                 value={docLabel}
                 onChange={(e) => setDocLabel(e.target.value)}
                 className="text-xs"
               />
             </div>
 
-            {/* File upload */}
+            {/* Multi-file upload */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1.5">Upload the document</p>
-              <PsychFileDropzone
-                label="Drop the document here"
-                sublabel="PDF, Word (.docx), or text · up to 20MB"
-                onTextExtracted={(text, fileName) => {
-                  setDocText(text);
-                  // Auto-suggest label from filename if user hasn't picked one
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">Upload files</p>
+              <PsychMultiFileDropzone
+                files={extractedFiles}
+                onFilesChange={setExtractedFiles}
+                onFirstFileName={(fileName) => {
                   if (!docLabel.trim()) {
                     const cleanName = fileName.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
                     setDocLabel(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
                   }
                 }}
+                label="Drop one or more documents here"
+                sublabel="PDF, Word (.docx), or text files · up to 20MB each"
               />
             </div>
 
-            {/* Doc content */}
+            {/* Optional pasted text */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1.5">Or paste document content</p>
-              <Textarea
-                placeholder="Paste the full text of the document here. The audit engine will combine this with the original case text and re-run all checks..."
-                value={docText}
-                onChange={(e) => setDocText(e.target.value)}
-                className="min-h-[180px] font-mono text-xs"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {docText.length > 0 ? `${docText.length.toLocaleString()} characters` : 'Tip: include any billing codes, dates, signatures, or supporting language'}
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">
+                Or paste additional text {extractedFiles.length > 0 && <span className="text-muted-foreground/70">(combined with uploaded files)</span>}
               </p>
+              <Textarea
+                placeholder="Paste any extra notes, billing codes, or supporting language..."
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                className="min-h-[120px] font-mono text-xs"
+              />
             </div>
+
+            {hasContent && (
+              <div className="rounded-md bg-violet-500/5 border border-violet-500/20 px-3 py-2">
+                <p className="text-[11px] text-foreground">
+                  <span className="font-semibold">Ready to re-audit:</span>{' '}
+                  {extractedFiles.length > 0 && (
+                    <span>{extractedFiles.length} file{extractedFiles.length !== 1 ? 's' : ''}</span>
+                  )}
+                  {extractedFiles.length > 0 && pastedText.trim() && <span> + pasted text</span>}
+                  {extractedFiles.length === 0 && pastedText.trim() && <span>pasted text only</span>}
+                  <span className="text-muted-foreground"> · {totalChars.toLocaleString()} total characters</span>
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-2 pt-1">
               <Button variant="outline" className="flex-1" onClick={() => { setOpen(false); reset(); }}>
@@ -147,7 +180,7 @@ export function PsychAddDocumentDialog({
               <Button
                 className="flex-1 gap-2"
                 onClick={handleSubmit}
-                disabled={!docLabel.trim() || !docText.trim()}
+                disabled={!docLabel.trim() || !hasContent}
               >
                 <FileText className="h-4 w-4" />
                 Add & Re-Audit
@@ -157,8 +190,10 @@ export function PsychAddDocumentDialog({
         ) : (
           <div className="py-10 text-center space-y-3">
             <Loader2 className="h-10 w-10 animate-spin mx-auto text-violet-500" />
-            <p className="text-sm font-medium">Re-running audit with new document...</p>
-            <p className="text-xs text-muted-foreground">Combining original case + {docLabel} and re-checking all rules</p>
+            <p className="text-sm font-medium">Re-running audit with new documents...</p>
+            <p className="text-xs text-muted-foreground">
+              Combining {extractedFiles.length > 0 ? `${extractedFiles.length} file${extractedFiles.length !== 1 ? 's' : ''}` : 'pasted text'} with the original case and re-checking all rules
+            </p>
           </div>
         )}
       </DialogContent>
