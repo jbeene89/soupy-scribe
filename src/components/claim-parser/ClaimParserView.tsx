@@ -120,9 +120,28 @@ function mapToPsychInput(claim: ParsedClaim): PsychCaseInput {
   };
 }
 
-export function ClaimParserView({ onCaseCreated, onBack }: Props) {
-  const [files, setFiles] = useState<ParsedFileState[]>([]);
-  const [activeFileId, setActiveFileId] = useState<string | null>(null);
+export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) {
+  // If we're opening with a pre-existing saved claim, seed state from it.
+  const [files, setFiles] = useState<ParsedFileState[]>(() => {
+    if (!initialClaim) return [];
+    const ingested: IngestedFile = {
+      id: `existing-${initialClaim.caseId}`,
+      sourceText: "",
+      source: { fileName: initialClaim.sourceFileName, kind: "text" },
+    };
+    return [{
+      ingested,
+      status: "ready",
+      claim: initialClaim.parsedClaim,
+      perspectives: initialClaim.perspectives,
+      synthesis: initialClaim.synthesis ?? null,
+      saved: true,
+      persistedCaseId: initialClaim.caseId,
+    }];
+  });
+  const [activeFileId, setActiveFileId] = useState<string | null>(
+    initialClaim ? `existing-${initialClaim.caseId}` : null
+  );
   const [parsing, setParsing] = useState(false);
   const [evidence, setEvidence] = useState<EvidenceState>({
     open: false, fieldLabel: "", fieldValue: "", source: null,
