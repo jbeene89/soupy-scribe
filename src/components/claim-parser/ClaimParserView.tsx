@@ -699,13 +699,18 @@ function ClaimReview({
   claim, fileName, lineItemCount, reviewFlagCount, lowConfFields,
   onUpdateField, onUpdateLineItems, onShowFieldEvidence, onShowLineItemEvidence,
 }: ClaimReviewProps) {
+  const cptCount = claim.codes.cpt_codes?.value?.length || 0;
+  const icdCount = claim.codes.icd10_codes?.value?.length || 0;
+  const modCount = claim.codes.modifier_codes?.value?.length || 0;
+  const totalCodes = cptCount + icdCount + modCount;
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <SummaryStat icon={CheckCircle2} label="Line items" value={lineItemCount} tone="emerald" />
+        <SummaryStat icon={CheckCircle2} label={`Codes captured (${cptCount} CPT · ${modCount} mod · ${icdCount} ICD)`} value={totalCodes} tone={totalCodes > 0 ? "emerald" : "amber"} />
+        <SummaryStat icon={CheckCircle2} label="Line items" value={lineItemCount} tone={lineItemCount > 0 ? "emerald" : "amber"} />
         <SummaryStat icon={AlertTriangle} label="Needs review" value={reviewFlagCount} tone={reviewFlagCount > 0 ? "amber" : "muted"} />
         <SummaryStat icon={AlertTriangle} label="Low-confidence fields" value={lowConfFields} tone={lowConfFields > 0 ? "amber" : "muted"} />
-        <SummaryStat icon={FileSearch} label="Source" value={fileName} tone="muted" small />
       </div>
 
       {claim.document_summary && (
