@@ -2,7 +2,7 @@
 // Uses the standardized pdfHelpers theme so it matches every other export in the app.
 import {
   createPDFContext, addDocumentHeader, addSectionHeader, addBody, addBullet,
-  addBadge, addAlertBox, addKeyValueGrid, addTable, addSpacer, addFooter,
+  addAlertBox, addKeyValueGrid, addTable, addSpacer, addFooter,
   addScoreCards, addDivider, addTitle,
 } from "./pdfHelpers";
 import type { ParsedClaim } from "./parsedClaimTypes";
