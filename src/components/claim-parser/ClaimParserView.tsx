@@ -14,7 +14,14 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ClaimMultiFileDropzone, type IngestedFile } from "./ClaimMultiFileDropzone";
 import { ClaimField } from "./ClaimField";
-import { CodeChipsEditor } from "./CodeChipsEditor";
+import { CodeChipsEditor, type CodeSuggestion } from "./CodeChipsEditor";
+import { CPT_DATABASE } from "@/lib/cptCodeInfo";
+
+// Suggestions for the CPT chips editor — built once from the local CPT knowledge base.
+const CPT_SUGGESTIONS: CodeSuggestion[] = Object.values(CPT_DATABASE).map((c) => ({
+  code: c.code,
+  label: c.shortDescriptor,
+}));
 import { LineItemsTable } from "./LineItemsTable";
 import { EvidenceDrawer } from "./EvidenceDrawer";
 import { PerspectivesPanel, type LensResult, type PerspectiveSynthesis } from "./PerspectivesPanel";
