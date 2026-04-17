@@ -586,7 +586,30 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
           </div>
         </div>
         {anyClaim && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {/* Auto-save indicator: only meaningful once the claim is persisted. */}
+            {activeFile?.persistedCaseId && activeFile.autoSaveStatus && activeFile.autoSaveStatus !== "idle" && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-md border",
+                  activeFile.autoSaveStatus === "saving" && "text-muted-foreground border-border bg-muted/40",
+                  activeFile.autoSaveStatus === "saved" && "text-emerald-600 border-emerald-500/30 bg-emerald-500/5",
+                  activeFile.autoSaveStatus === "error" && "text-destructive border-destructive/40 bg-destructive/5",
+                )}
+                title={
+                  activeFile.autoSaveStatus === "saving" ? "Saving your edits…"
+                  : activeFile.autoSaveStatus === "saved" ? "All edits saved to this claim"
+                  : "Couldn't save — your last edit is unsaved"
+                }
+              >
+                {activeFile.autoSaveStatus === "saving" && <Loader2 className="h-3 w-3 animate-spin" />}
+                {activeFile.autoSaveStatus === "saved" && <Cloud className="h-3 w-3" />}
+                {activeFile.autoSaveStatus === "error" && <CloudOff className="h-3 w-3" />}
+                {activeFile.autoSaveStatus === "saving" ? "Saving…"
+                  : activeFile.autoSaveStatus === "saved" ? "Saved"
+                  : "Save failed"}
+              </span>
+            )}
             <Button onClick={handleSaveAll} variant="outline" className="gap-2" disabled={!allReady}>
               <Save className="h-4 w-4" /> Save All
             </Button>
