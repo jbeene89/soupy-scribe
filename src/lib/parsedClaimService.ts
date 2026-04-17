@@ -136,6 +136,9 @@ export async function fetchParsedClaims(): Promise<PersistedParsedClaim[]> {
         synthesis: meta.synthesis || null,
         sourceFileName: meta.sourceFileName,
         createdAt: row.created_at,
+        clinicalNote: (meta.clinicalNote as ParsedNote) || null,
+        clinicalNoteFileName: meta.clinicalNoteFileName || null,
+        crosswalkVerdict: (meta.crosswalkVerdict as CrosswalkVerdict) || null,
       } as PersistedParsedClaim;
     })
     .filter((x): x is PersistedParsedClaim => !!x);
