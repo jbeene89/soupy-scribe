@@ -128,6 +128,7 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
       id: `existing-${initialClaim.caseId}`,
       sourceText: "",
       source: { fileName: initialClaim.sourceFileName, kind: "text" },
+      meta: "Saved claim",
     };
     return [{
       ingested,
