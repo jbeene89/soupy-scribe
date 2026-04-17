@@ -12,6 +12,13 @@ const corsHeaders = {
 
 type Lens = "builder" | "red_team" | "systems" | "frame_breaker" | "empath";
 
+function dateContext(): string {
+  const today = new Date();
+  const isoDate = today.toISOString().slice(0, 10);
+  const humanDate = today.toUTCString().slice(0, 16);
+  return `CONTEXT: Today's date is ${humanDate} (${isoDate}). Do NOT flag current-year dates as "future-dated" unless they are strictly after ${isoDate}.`;
+}
+
 const LENS_PROMPTS: Record<Lens, { label: string; system: string }> = {
   builder: {
     label: "Builder — what's defensible",
@@ -157,13 +164,14 @@ serve(async (req) => {
     }\n\nPARSED_CLAIM:\n${claimJson}`;
 
     const lenses: Lens[] = ["builder", "red_team", "systems", "frame_breaker", "empath"];
+    const dateNote = dateContext();
 
     // Run all 5 lenses in parallel
     const results = await Promise.allSettled(
       lenses.map((lens) =>
         callGateway(
           [
-            { role: "system", content: LENS_PROMPTS[lens].system },
+            { role: "system", content: `${LENS_PROMPTS[lens].system}\n\n${dateNote}` },
             { role: "user", content: userMsg },
           ],
           LENS_TOOL(lens),
@@ -202,7 +210,7 @@ serve(async (req) => {
           {
             role: "system",
             content:
-              "You combine 5 perspective outputs into a single neutral audit posture. Stay grounded. Enterprise tone. No advocacy language.",
+              `You combine 5 perspective outputs into a single neutral audit posture. Stay grounded. Enterprise tone. No advocacy language.\n\n${dateNote}`,
           },
           { role: "user", content: `Combine these lenses into a unified posture:\n\n${synthInput}` },
         ],

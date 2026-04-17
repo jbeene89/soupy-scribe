@@ -190,6 +190,7 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
         body: {
           sourceText: state.ingested.sourceText || undefined,
           imageDataUrl: state.ingested.imageDataUrl,
+          imageDataUrls: state.ingested.imageDataUrls,
           fileName: state.ingested.source.fileName,
         },
       });
@@ -363,6 +364,7 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
         parsedNote = await parseClinicalNote({
           sourceText: note.sourceText,
           imageDataUrl: note.imageDataUrl,
+          imageDataUrls: note.imageDataUrls,
           fileName: note.fileName,
         });
       }

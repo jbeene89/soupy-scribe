@@ -25,11 +25,16 @@ export interface IngestedFile {
   sourceText: string;
   /** First-page (or only) image as data URL when document is scanned/image. */
   imageDataUrl?: string;
+  /** All rendered pages (up to MAX_VISION_PAGES) when a PDF is scanned — gives the vision model every page, not just the first. */
+  imageDataUrls?: string[];
   /** Source document descriptor for the evidence drawer. */
   source: ParsedSourceDocument;
   /** Short human label (e.g. "1,234 chars · 3 pages" or "image — vision parser"). */
   meta: string;
 }
+
+/** Cap on how many pages we render for the vision model — keeps payload reasonable. */
+const MAX_VISION_PAGES = 5;
 
 interface ClaimMultiFileDropzoneProps {
   files: IngestedFile[];
@@ -50,20 +55,27 @@ async function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-async function pdfFirstPageToImage(file: File, maxWidth = 1400): Promise<string> {
+/** Render up to `maxPages` of a scanned PDF as JPEG data URLs so the vision model sees every page, not just page 1. */
+async function pdfPagesToImages(file: File, maxPages = MAX_VISION_PAGES, maxWidth = 1400): Promise<{ images: string[]; totalPages: number }> {
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 1 });
-  const scale = Math.min(maxWidth / viewport.width, 2);
-  const scaled = page.getViewport({ scale });
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.ceil(scaled.width);
-  canvas.height = Math.ceil(scaled.height);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas not available");
-  await page.render({ canvasContext: ctx, viewport: scaled } as any).promise;
-  return canvas.toDataURL("image/jpeg", 0.85);
+  const totalPages = pdf.numPages;
+  const limit = Math.min(totalPages, maxPages);
+  const out: string[] = [];
+  for (let i = 1; i <= limit; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1 });
+    const scale = Math.min(maxWidth / viewport.width, 2);
+    const scaled = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(scaled.width);
+    canvas.height = Math.ceil(scaled.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas not available");
+    await page.render({ canvasContext: ctx, viewport: scaled } as any).promise;
+    out.push(canvas.toDataURL("image/jpeg", 0.82));
+  }
+  return { images: out, totalPages };
 }
 
 async function ingestOne(file: File): Promise<IngestedFile> {
@@ -92,13 +104,16 @@ async function ingestOne(file: File): Promise<IngestedFile> {
     const result = await extractTextFromFile(file);
     const objectUrl = URL.createObjectURL(file);
     if (!result.text || result.text.trim().length < 60) {
-      const imageDataUrl = await pdfFirstPageToImage(file);
+      // Scanned/image-based PDF — render every page (up to MAX_VISION_PAGES) for the vision model.
+      const { images, totalPages } = await pdfPagesToImages(file);
+      const truncated = totalPages > images.length;
       return {
         id,
         sourceText: result.text || "",
-        imageDataUrl,
+        imageDataUrl: images[0],
+        imageDataUrls: images,
         source: { fileName: file.name, kind: "pdf", objectUrl },
-        meta: `${result.pages || 1} page(s) · scanned (vision)`,
+        meta: `${totalPages} page(s) · scanned (vision)${truncated ? ` · first ${images.length} read` : ""}`,
       };
     }
     return {

@@ -7,6 +7,7 @@ import type { ParsedClaim } from "./parsedClaimTypes";
 export interface NoteSourceInput {
   sourceText?: string;
   imageDataUrl?: string;
+  imageDataUrls?: string[];
   fileName: string;
 }
 
@@ -16,6 +17,7 @@ export async function parseClinicalNote(input: NoteSourceInput): Promise<ParsedN
     body: {
       sourceText: input.sourceText,
       imageDataUrl: input.imageDataUrl,
+      imageDataUrls: input.imageDataUrls,
       fileName: input.fileName,
     },
   });

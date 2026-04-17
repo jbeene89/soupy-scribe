@@ -20,8 +20,12 @@ export interface IngestedNote {
   kind: "pdf" | "image" | "text";
   sourceText?: string;
   imageDataUrl?: string;
+  /** All rendered pages when the note PDF is scanned. */
+  imageDataUrls?: string[];
   meta: string;
 }
+
+const MAX_NOTE_VISION_PAGES = 5;
 
 interface NoteDropzoneProps {
   note: IngestedNote | null;
@@ -41,20 +45,27 @@ async function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-async function pdfFirstPageToImage(file: File, maxWidth = 1400): Promise<string> {
+/** Render up to maxPages of a scanned note PDF for the vision model. */
+async function pdfPagesToImages(file: File, maxPages = MAX_NOTE_VISION_PAGES, maxWidth = 1400): Promise<{ images: string[]; totalPages: number }> {
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 1 });
-  const scale = Math.min(maxWidth / viewport.width, 2);
-  const scaled = page.getViewport({ scale });
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.ceil(scaled.width);
-  canvas.height = Math.ceil(scaled.height);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas not available");
-  await page.render({ canvasContext: ctx, viewport: scaled } as any).promise;
-  return canvas.toDataURL("image/jpeg", 0.85);
+  const totalPages = pdf.numPages;
+  const limit = Math.min(totalPages, maxPages);
+  const out: string[] = [];
+  for (let i = 1; i <= limit; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1 });
+    const scale = Math.min(maxWidth / viewport.width, 2);
+    const scaled = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(scaled.width);
+    canvas.height = Math.ceil(scaled.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas not available");
+    await page.render({ canvasContext: ctx, viewport: scaled } as any).promise;
+    out.push(canvas.toDataURL("image/jpeg", 0.82));
+  }
+  return { images: out, totalPages };
 }
 
 async function ingest(file: File): Promise<IngestedNote> {
@@ -71,13 +82,15 @@ async function ingest(file: File): Promise<IngestedNote> {
   if (isPdf) {
     const result = await extractTextFromFile(file);
     if (!result.text || result.text.trim().length < 60) {
-      const imageDataUrl = await pdfFirstPageToImage(file);
+      const { images, totalPages } = await pdfPagesToImages(file);
+      const truncated = totalPages > images.length;
       return {
         fileName: file.name,
         kind: "pdf",
         sourceText: result.text || "",
-        imageDataUrl,
-        meta: `${result.pages || 1} page(s) · scanned (vision)`,
+        imageDataUrl: images[0],
+        imageDataUrls: images,
+        meta: `${totalPages} page(s) · scanned (vision)${truncated ? ` · first ${images.length} read` : ""}`,
       };
     }
     return {
