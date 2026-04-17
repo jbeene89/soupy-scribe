@@ -211,12 +211,37 @@ export function PsychPracticeModule() {
     );
   }
 
+  // Re-view a previously saved parsed claim (full parser UI in saved-mode)
+  if (reviewingCase?.parsedClaim) {
+    return (
+      <ClaimParserView
+        onBack={() => setReviewingParsedId(null)}
+        onCaseCreated={() => { /* already saved; no-op */ }}
+        initialClaim={{
+          caseId: reviewingCase.persistedCaseId || reviewingCase.input.id!,
+          parsedClaim: reviewingCase.parsedClaim,
+          sourceFileName: reviewingCase.sourceFileName || 'Saved claim',
+          perspectives: reviewingCase.perspectives,
+          synthesis: reviewingCase.synthesis ?? null,
+        }}
+      />
+    );
+  }
+
   // Show Claim Upload Parser (multi-file + 5-perspective)
   if (showUpload) {
     return (
       <ClaimParserView
         onBack={() => setShowUpload(false)}
-        onCaseCreated={(input) => handleAddCase(input)}
+        onCaseCreated={(input, parsedClaim, caseId) =>
+          handleAddCase(input, {
+            parsedClaim,
+            persistedCaseId: caseId,
+            sourceFileName: parsedClaim.claim_header.payer_name?.value
+              ? `Claim · ${parsedClaim.claim_header.payer_name.value}`
+              : 'Parsed claim',
+          })
+        }
       />
     );
   }
