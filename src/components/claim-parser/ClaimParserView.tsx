@@ -250,11 +250,72 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
     if (firstReady) setActiveFileId(firstReady.ingested.id);
   };
 
+  // ── Auto-save: debounced per-file persistence of inline edits ─────────
+  // Keyed by ingested file id so each tab gets its own debounce timer.
+  const autoSaveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Cleanup any pending timers on unmount so we don't fire after navigation.
+  useEffect(() => {
+    return () => {
+      autoSaveTimers.current.forEach((t) => clearTimeout(t));
+      autoSaveTimers.current.clear();
+    };
+  }, []);
+
+  /** Schedule a debounced save of the active file's claim back to its audit_cases row. */
+  const scheduleAutoSave = (fileId: string) => {
+    const existing = autoSaveTimers.current.get(fileId);
+    if (existing) clearTimeout(existing);
+
+    // Mark "saving" optimistically so the UI shows progress immediately.
+    setFiles(prev => prev.map(f => f.ingested.id === fileId
+      ? { ...f, autoSaveStatus: "saving" as const }
+      : f));
+
+    const timer = setTimeout(async () => {
+      autoSaveTimers.current.delete(fileId);
+      // Read the latest snapshot from state (not closure) to avoid saving stale data.
+      const current = filesRef.current.find(f => f.ingested.id === fileId);
+      if (!current?.persistedCaseId || !current.claim) {
+        // Not persisted yet — nothing to auto-save. Reset status quietly.
+        setFiles(prev => prev.map(f => f.ingested.id === fileId
+          ? { ...f, autoSaveStatus: "idle" as const }
+          : f));
+        return;
+      }
+      try {
+        await updateParsedClaimFields(current.persistedCaseId, current.claim);
+        setFiles(prev => prev.map(f => f.ingested.id === fileId
+          ? { ...f, autoSaveStatus: "saved" as const }
+          : f));
+        // Fade "Saved" back to idle after a moment.
+        setTimeout(() => {
+          setFiles(prev => prev.map(f => f.ingested.id === fileId && f.autoSaveStatus === "saved"
+            ? { ...f, autoSaveStatus: "idle" as const }
+            : f));
+        }, 2000);
+      } catch (e) {
+        console.error("Auto-save failed:", e);
+        setFiles(prev => prev.map(f => f.ingested.id === fileId
+          ? { ...f, autoSaveStatus: "error" as const }
+          : f));
+        toast.error("Couldn't save your edit. Try again or hit Save.");
+      }
+    }, 800); // 800ms debounce — feels instant but coalesces rapid chip edits.
+
+    autoSaveTimers.current.set(fileId, timer);
+  };
+
+  // Mirror of the latest files state — read inside the debounced save to avoid stale closures.
+  const filesRef = useRef(files);
+  useEffect(() => { filesRef.current = files; }, [files]);
+
   // Update a field on the active file's claim
   const updateField = <S extends keyof ParsedClaim>(section: S, key: string, newValue: any) => {
     if (!activeFile?.claim) return;
+    const fileId = activeFile.ingested.id;
     setFiles(prev => prev.map(f => {
-      if (f.ingested.id !== activeFile.ingested.id || !f.claim) return f;
+      if (f.ingested.id !== fileId || !f.claim) return f;
       const sec: any = { ...(f.claim as any)[section] };
       const existing = sec[key] || {};
       sec[key] = { ...existing, value: newValue };
@@ -262,14 +323,18 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
       const codesDirty = section === "codes" && f.crosswalkVerdict ? true : f.codesDirty;
       return { ...f, claim: { ...f.claim, [section]: sec } as ParsedClaim, codesDirty };
     }));
+    // Only auto-save once the claim has been persisted at least once.
+    if (activeFile.persistedCaseId) scheduleAutoSave(fileId);
   };
 
   const updateLineItems = (items: ParsedLineItem[]) => {
     if (!activeFile?.claim) return;
+    const fileId = activeFile.ingested.id;
     setFiles(prev => prev.map(f => {
-      if (f.ingested.id !== activeFile.ingested.id || !f.claim) return f;
+      if (f.ingested.id !== fileId || !f.claim) return f;
       return { ...f, claim: { ...f.claim, claim_line_items: items } };
     }));
+    if (activeFile.persistedCaseId) scheduleAutoSave(fileId);
   };
 
   const showFieldEvidence = (label: string, field: any) => {
