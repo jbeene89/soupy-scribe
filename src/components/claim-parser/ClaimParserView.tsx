@@ -1,7 +1,7 @@
 // Main Claim Upload Parser screen.
 // Multi-file flow: each uploaded file is parsed INDEPENDENTLY in parallel,
 // reviewed via per-file tabs, and analyzed by the 5-perspective engine on demand.
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
