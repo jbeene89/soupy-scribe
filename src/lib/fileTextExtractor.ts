@@ -1,155 +1,106 @@
 /**
- * Browser-side file text extraction for PDFs, Word docs, plain text, and CSV.
- *
- * Used by Behavioral Health upload + add-document flows so users can attach
- * source files (session notes, superbills, treatment plans) instead of pasting raw text.
- *
- * No server roundtrip — everything runs in the browser. PDFs use pdfjs-dist
- * (already in the bundle for PDF export). DOCX uses mammoth (browser build).
- *
- * Out of scope for v1: scanned-image OCR. Users with scanned PDFs see a
- * helpful prompt to paste text manually or use a text-based PDF.
+ * Browser-side text extraction from uploaded files.
+ * Supports: PDF (with text layer), DOCX, plain text formats.
+ * Returns extracted plain text or throws a friendly error.
  */
-
 import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker?url';
+import mammoth from 'mammoth';
 
-// Wire pdfjs worker once. Vite's ?url import gives us a hashed asset URL.
-if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-}
+// Configure pdf.js worker (Vite-friendly: use the bundled worker)
+// We use the legacy build for max compatibility.
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
-export const SUPPORTED_EXTENSIONS = ['.pdf', '.docx', '.doc', '.txt', '.md', '.csv', '.rtf'] as const;
-export const SUPPORTED_MIME = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/msword',
-  'text/plain',
-  'text/markdown',
-  'text/csv',
-  'application/rtf',
-  'text/rtf',
-];
-
-export const ACCEPT_ATTRIBUTE = SUPPORTED_EXTENSIONS.join(',') + ',' + SUPPORTED_MIME.join(',');
-
-export interface ExtractResult {
+export type ExtractionResult = {
   text: string;
-  fileName: string;
-  fileType: string;
-  pageCount?: number;
+  pages?: number;
   warning?: string;
-}
+};
 
-/**
- * Extract plain text from a File. Throws on unsupported types or unparseable files.
- */
-export async function extractTextFromFile(file: File): Promise<ExtractResult> {
-  const name = file.name.toLowerCase();
-  const type = file.type;
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
-  // Plain text family
-  if (
-    name.endsWith('.txt') ||
-    name.endsWith('.md') ||
-    name.endsWith('.csv') ||
-    name.endsWith('.rtf') ||
-    type.startsWith('text/') ||
-    type === 'application/rtf'
-  ) {
-    const text = await file.text();
-    // RTF has control codes — strip the most obvious ones for readability.
-    const cleaned = name.endsWith('.rtf') ? stripRtfBasic(text) : text;
-    return { text: cleaned.trim(), fileName: file.name, fileType: type || 'text/plain' };
+export async function extractTextFromFile(file: File): Promise<ExtractionResult> {
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max is 20MB.`);
   }
+
+  const name = file.name.toLowerCase();
+  const type = file.type.toLowerCase();
 
   // PDF
-  if (name.endsWith('.pdf') || type === 'application/pdf') {
-    return await extractFromPdf(file);
+  if (type === 'application/pdf' || name.endsWith('.pdf')) {
+    return await extractPdf(file);
   }
 
-  // DOCX (modern Word)
+  // DOCX
   if (
     name.endsWith('.docx') ||
     type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ) {
-    return await extractFromDocx(file);
+    return await extractDocx(file);
   }
 
-  // Legacy .doc isn't supported by mammoth — give clear guidance.
+  // Old .doc — not supported in browser
   if (name.endsWith('.doc') || type === 'application/msword') {
-    throw new Error(
-      'Old-format .doc files aren\'t supported. Please save as .docx or PDF and try again.'
-    );
+    throw new Error('Old .doc format is not supported. Please save as .docx or PDF and try again.');
+  }
+
+  // Plain text formats
+  if (
+    type.startsWith('text/') ||
+    name.endsWith('.txt') ||
+    name.endsWith('.md') ||
+    name.endsWith('.csv') ||
+    name.endsWith('.rtf')
+  ) {
+    const text = await file.text();
+    return { text: cleanText(text) };
   }
 
   throw new Error(
-    `Unsupported file type. Please upload a PDF, Word document (.docx), or text file.`
+    `Unsupported file type: ${file.type || name.split('.').pop()}. Please upload a PDF, Word document, or text file.`
   );
 }
 
-async function extractFromPdf(file: File): Promise<ExtractResult> {
-  const buffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-  const parts: string[] = [];
+async function extractPdf(file: File): Promise<ExtractionResult> {
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const pages: string[] = [];
 
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-    const page = await pdf.getPage(pageNum);
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const pageText = content.items
-      // pdfjs items are TextItem | TextMarkedContent — only TextItem has .str
-      .map((item: any) => (typeof item.str === 'string' ? item.str : ''))
-      .filter(Boolean)
-      .join(' ');
-    if (pageText.trim()) parts.push(pageText.trim());
+    const items = content.items as Array<{ str: string }>;
+    const pageText = items.map(it => it.str).join(' ');
+    pages.push(pageText);
   }
 
-  const text = parts.join('\n\n').trim();
+  const text = cleanText(pages.join('\n\n'));
 
-  // If the PDF has pages but extracted basically nothing, it's almost certainly scanned/image-based.
-  if (pdf.numPages > 0 && text.length < 30) {
+  if (text.trim().length < 30) {
     return {
       text: '',
-      fileName: file.name,
-      fileType: 'application/pdf',
-      pageCount: pdf.numPages,
+      pages: pdf.numPages,
       warning:
-        'This PDF appears to be scanned images (no readable text layer). Please paste the text manually, or save the source document as a text-based PDF.',
+        'This PDF appears to be a scanned image with no readable text layer. Try copy-pasting the note instead, or save the document as a text-based PDF.',
     };
   }
 
-  return {
-    text,
-    fileName: file.name,
-    fileType: 'application/pdf',
-    pageCount: pdf.numPages,
-  };
+  return { text, pages: pdf.numPages };
 }
 
-async function extractFromDocx(file: File): Promise<ExtractResult> {
-  // Lazy-import mammoth so it only loads when the user actually uploads a DOCX.
-  const mammoth = await import('mammoth/mammoth.browser');
-  const buffer = await file.arrayBuffer();
-  const result = await mammoth.extractRawText({ arrayBuffer: buffer });
-  return {
-    text: (result.value || '').trim(),
-    fileName: file.name,
-    fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    warning: result.messages?.length ? `${result.messages.length} formatting note(s) ignored.` : undefined,
-  };
+async function extractDocx(file: File): Promise<ExtractionResult> {
+  const buf = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer: buf });
+  return { text: cleanText(result.value) };
 }
 
-/**
- * Quick-and-dirty RTF cleanup — strips control words and braces.
- * Not perfect, but readable for clinical notes.
- */
-function stripRtfBasic(rtf: string): string {
-  return rtf
-    .replace(/\\[a-z]+-?\d* ?/gi, '') // control words like \par, \fs24
-    .replace(/[{}]/g, '')
-    .replace(/\\\*/g, '')
-    .replace(/\\'[0-9a-f]{2}/gi, '') // hex chars
-    .replace(/\s+\n/g, '\n')
+function cleanText(s: string): string {
+  return s
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }

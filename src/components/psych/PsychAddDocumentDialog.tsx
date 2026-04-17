@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from '@/components/ui/badge';
 import { FilePlus, Loader2, CheckCircle2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { PsychFileDropzone } from './PsychFileDropzone';
 
 interface PsychAddDocumentDialogProps {
   caseLabel: string;
@@ -109,35 +108,17 @@ export function PsychAddDocumentDialog({
               />
             </div>
 
-            {/* File upload */}
-            <PsychFileDropzone
-              label="Upload a file"
-              onExtracted={(r) => {
-                setDocText(r.text);
-                if (!docLabel) {
-                  const stem = r.fileName.replace(/\.[^.]+$/, '');
-                  setDocLabel(stem.length > 60 ? stem.slice(0, 60) : stem);
-                }
-              }}
-            />
-
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">or paste text</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-
             {/* Doc content */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1.5">Document content</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">Paste document content</p>
               <Textarea
-                placeholder="Paste the full text here, or use the upload area above..."
+                placeholder="Paste the full text of the document here. The audit engine will combine this with the original case text and re-run all checks..."
                 value={docText}
                 onChange={(e) => setDocText(e.target.value)}
-                className="min-h-[140px] font-mono text-xs"
+                className="min-h-[180px] font-mono text-xs"
               />
               <p className="text-[10px] text-muted-foreground mt-1">
-                {docText.length > 0 ? `${docText.length.toLocaleString()} characters` : 'Tip: include billing codes, dates, signatures, or supporting language'}
+                {docText.length > 0 ? `${docText.length.toLocaleString()} characters` : 'Tip: include any billing codes, dates, signatures, or supporting language'}
               </p>
             </div>
 

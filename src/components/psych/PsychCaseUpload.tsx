@@ -7,7 +7,6 @@ import { Progress } from '@/components/ui/progress';
 import { Upload, Brain, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PsychCaseInput, SessionType } from '@/lib/psychTypes';
-import { PsychFileDropzone } from './PsychFileDropzone';
 
 interface PsychCaseUploadProps {
   onCaseCreated: (input: PsychCaseInput) => void;
@@ -222,18 +221,6 @@ export function PsychCaseUpload({ onCaseCreated }: PsychCaseUploadProps) {
 
         {step === 'input' && (
           <div className="space-y-3">
-            {/* File upload — primary path */}
-            <PsychFileDropzone
-              label="Upload session note, superbill, or claim PDF"
-              onExtracted={(r) => setSourceText(r.text)}
-            />
-
-            <div className="flex items-center gap-2 py-1">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">or paste text</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-
             <div className="flex justify-between items-center">
               <p className="text-xs text-muted-foreground">Paste a session note, superbill, or claim summary</p>
               <Button
@@ -249,7 +236,7 @@ export function PsychCaseUpload({ onCaseCreated }: PsychCaseUploadProps) {
               placeholder="Paste your session note, progress note, or superbill here..."
               value={sourceText}
               onChange={(e) => setSourceText(e.target.value)}
-              className="min-h-[160px] font-mono text-xs"
+              className="min-h-[200px] font-mono text-xs"
             />
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">
