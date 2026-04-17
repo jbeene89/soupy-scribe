@@ -9,6 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ParsedFieldArray } from "@/lib/parsedClaimTypes";
 
+export interface CodeSuggestion {
+  /** The code value to insert (e.g. "99214"). */
+  code: string;
+  /** Short human label shown next to the code (e.g. "Office visit, established, level 4"). */
+  label?: string;
+}
+
 interface Props {
   label: string;
   /** Short hint shown next to the label, e.g. "Procedures billed". */
@@ -23,6 +30,8 @@ interface Props {
   placeholder?: string;
   /** Force-uppercase entered codes (CPT/ICD style). */
   uppercase?: boolean;
+  /** Optional list of valid codes to suggest as the user types. */
+  suggestions?: CodeSuggestion[];
 }
 
 const TONE_STYLES: Record<string, string> = {
