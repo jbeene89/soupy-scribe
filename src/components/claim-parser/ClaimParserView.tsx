@@ -339,6 +339,11 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
       parsedNote: note ? f.parsedNote : null,
       crosswalkError: null,
     } : f));
+    // Auto-run the crosswalk the moment a note is attached — no extra click needed.
+    if (note) {
+      // Defer slightly so the state update lands first.
+      setTimeout(() => { runCrosswalkAudit(); }, 50);
+    }
   };
 
   const runCrosswalkAudit = async () => {
