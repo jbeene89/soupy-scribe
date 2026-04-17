@@ -41,6 +41,9 @@ interface Props {
     sourceFileName: string;
     perspectives?: LensResult[];
     synthesis?: PerspectiveSynthesis | null;
+    clinicalNote?: ParsedNote | null;
+    clinicalNoteFileName?: string | null;
+    crosswalkVerdict?: CrosswalkVerdict | null;
   };
 }
 
@@ -58,6 +61,13 @@ interface ParsedFileState {
   saved?: boolean;
   /** id of audit_cases row once persisted */
   persistedCaseId?: string;
+  /** Crosswalk state */
+  note?: IngestedNote | null;
+  noteFileName?: string | null;
+  parsedNote?: ParsedNote | null;
+  crosswalkVerdict?: CrosswalkVerdict | null;
+  crosswalkLoading?: boolean;
+  crosswalkError?: string | null;
 }
 
 interface EvidenceState {
