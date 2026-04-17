@@ -153,6 +153,12 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
       synthesis: initialClaim.synthesis ?? null,
       saved: true,
       persistedCaseId: initialClaim.caseId,
+      parsedNote: initialClaim.clinicalNote ?? null,
+      noteFileName: initialClaim.clinicalNoteFileName ?? null,
+      note: initialClaim.clinicalNoteFileName
+        ? { fileName: initialClaim.clinicalNoteFileName, kind: "text", meta: "Saved note" }
+        : null,
+      crosswalkVerdict: initialClaim.crosswalkVerdict ?? null,
     }];
   });
   const [activeFileId, setActiveFileId] = useState<string | null>(
