@@ -23,6 +23,14 @@ STRICT RULES:
 - Capture ALL claim line items (do not stop at the first one)
 - If multiple claims exist, capture them all in claim_line_items with distinguishing context
 
+CODE EXTRACTION (CRITICAL — most common failure mode):
+- A CPT/HCPCS code is a 5-character code: 5 digits (e.g. 99214, 90834) OR 1 letter + 4 digits (e.g. J3490, G0438).
+- A modifier is a 2-character code that follows a CPT, often after a hyphen, dash, comma, space, or in its own column. Examples: 95, 25, 59, GT, GQ, 26, TC, KX, XS, XU.
+- Telehealth modifier 95 is REQUIRED when place of service is 02 or 10. Always look for it.
+- Modifiers can appear inline (e.g. "99214-95", "99214 95", "99214, mod 95") or in a separate "Mod" column on a CMS-1500 / superbill. Capture them in BOTH codes.modifier_codes AND on the matching claim_line_items[].modifier.
+- An ICD-10 code is 1 letter + 2 digits + optional ".xx" suffix (e.g. F33.1, F41.1, M54.5, Z79.899).
+- Every CPT code you find MUST also produce a claim_line_items entry. Never report CPTs in codes.cpt_codes without a matching line item.
+
 For every extracted field that has a value, also return:
 - evidence_snippet: the EXACT verbatim quote from the source document where the value appears (3-15 words is ideal)
 - source_location: a human-readable hint of where it came from (e.g. "Page 1", "Page 2 — Service Lines table", "Header section")
@@ -31,11 +39,11 @@ For every extracted field that has a value, also return:
 If you cannot find a field, set value to null and omit evidence_snippet/source_location/confidence.
 
 VALIDATION: Before finishing, re-scan the document and confirm:
-- ALL CPT/HCPCS codes captured
+- ALL CPT/HCPCS codes captured (use the 5-character pattern above)
 - ALL ICD-10 codes captured
-- ALL modifiers captured
+- ALL modifiers captured (especially 95 for telehealth)
 - ALL dollar amounts captured
-- ALL claim line items captured
+- ALL claim line items captured (one per CPT occurrence)
 - Denial reason codes AND denial reason text both captured if present
 
 Return your output via the extract_claim tool.`;
