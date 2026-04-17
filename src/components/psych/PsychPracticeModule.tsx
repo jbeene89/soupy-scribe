@@ -20,6 +20,8 @@ import type { PsychCaseVersion } from './PsychVersionSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import type { ParsedClaim } from '@/lib/parsedClaimTypes';
 import type { LensResult, PerspectiveSynthesis } from '../claim-parser/PerspectivesPanel';
+import type { ParsedNote, CrosswalkVerdict } from '@/lib/crosswalkTypes';
+import { DECISION_META } from '@/lib/crosswalkTypes';
 import { fetchParsedClaims, deleteParsedClaim } from '@/lib/parsedClaimService';
 import { toast } from 'sonner';
 
@@ -36,6 +38,10 @@ export type ReviewedCase = {
   sourceFileName?: string;
   /** audit_cases.id when persisted. */
   persistedCaseId?: string;
+  /** Crosswalk audit results (when run). */
+  clinicalNote?: ParsedNote | null;
+  clinicalNoteFileName?: string | null;
+  crosswalkVerdict?: CrosswalkVerdict | null;
 };
 
 function classColor(c: string) {
@@ -107,6 +113,9 @@ export function PsychPracticeModule() {
                 synthesis: p.synthesis,
                 sourceFileName: p.sourceFileName,
                 persistedCaseId: p.caseId,
+                clinicalNote: p.clinicalNote ?? null,
+                clinicalNoteFileName: p.clinicalNoteFileName ?? null,
+                crosswalkVerdict: p.crosswalkVerdict ?? null,
               };
             });
           return [...hydrated, ...prev];
@@ -223,6 +232,9 @@ export function PsychPracticeModule() {
           sourceFileName: reviewingCase.sourceFileName || 'Saved claim',
           perspectives: reviewingCase.perspectives,
           synthesis: reviewingCase.synthesis ?? null,
+          clinicalNote: reviewingCase.clinicalNote ?? null,
+          clinicalNoteFileName: reviewingCase.clinicalNoteFileName ?? null,
+          crosswalkVerdict: reviewingCase.crosswalkVerdict ?? null,
         }}
       />
     );
@@ -409,6 +421,17 @@ function CaseRow({ caseData, onSelect, onDelete, onPacket, onViewParsed }: {
                 {onViewParsed && (
                   <Badge variant="outline" className="text-[9px] gap-1 border-primary/40 text-primary">
                     <FileSearch className="h-2.5 w-2.5" /> Parsed claim
+                  </Badge>
+                )}
+                {caseData.crosswalkVerdict && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[9px]",
+                      DECISION_META[caseData.crosswalkVerdict.pre_submission_decision.decision].badge
+                    )}
+                  >
+                    Crosswalk: {DECISION_META[caseData.crosswalkVerdict.pre_submission_decision.decision].label}
                   </Badge>
                 )}
               </div>

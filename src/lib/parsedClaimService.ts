@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { ParsedClaim } from "./parsedClaimTypes";
 import type { LensResult, PerspectiveSynthesis } from "@/components/claim-parser/PerspectivesPanel";
 import type { PsychCaseInput } from "./psychTypes";
+import type { ParsedNote, CrosswalkVerdict } from "./crosswalkTypes";
 
 export const PARSED_CLAIM_KIND = "psych_parsed_claim";
 
@@ -17,6 +18,10 @@ export interface PersistedParsedClaim {
   sourceFileName?: string;
   psychInput: PsychCaseInput;
   createdAt: string;
+  /** Crosswalk extras (may be absent on older rows) */
+  clinicalNote?: ParsedNote | null;
+  clinicalNoteFileName?: string | null;
+  crosswalkVerdict?: CrosswalkVerdict | null;
 }
 
 interface SaveArgs {
@@ -131,6 +136,9 @@ export async function fetchParsedClaims(): Promise<PersistedParsedClaim[]> {
         synthesis: meta.synthesis || null,
         sourceFileName: meta.sourceFileName,
         createdAt: row.created_at,
+        clinicalNote: (meta.clinicalNote as ParsedNote) || null,
+        clinicalNoteFileName: meta.clinicalNoteFileName || null,
+        crosswalkVerdict: (meta.crosswalkVerdict as CrosswalkVerdict) || null,
       } as PersistedParsedClaim;
     })
     .filter((x): x is PersistedParsedClaim => !!x);

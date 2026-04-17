@@ -17,8 +17,13 @@ import { ClaimField } from "./ClaimField";
 import { LineItemsTable } from "./LineItemsTable";
 import { EvidenceDrawer } from "./EvidenceDrawer";
 import { PerspectivesPanel, type LensResult, type PerspectiveSynthesis } from "./PerspectivesPanel";
+import { CrosswalkPanel } from "./CrosswalkPanel";
+import type { IngestedNote } from "./NoteDropzone";
 import type { ParsedClaim, ParsedLineItem, ParsedSourceDocument } from "@/lib/parsedClaimTypes";
 import type { PsychCaseInput, SessionType } from "@/lib/psychTypes";
+import type { CrosswalkVerdict, ParsedNote } from "@/lib/crosswalkTypes";
+import { parseClinicalNote, runCrosswalk, persistCrosswalk } from "@/lib/crosswalkService";
+import { exportAppealPacketPDF } from "@/lib/exportAppealPacketPDF";
 import {
   persistParsedClaim,
   updateParsedClaimPerspectives,
@@ -36,6 +41,9 @@ interface Props {
     sourceFileName: string;
     perspectives?: LensResult[];
     synthesis?: PerspectiveSynthesis | null;
+    clinicalNote?: ParsedNote | null;
+    clinicalNoteFileName?: string | null;
+    crosswalkVerdict?: CrosswalkVerdict | null;
   };
 }
 
@@ -53,6 +61,13 @@ interface ParsedFileState {
   saved?: boolean;
   /** id of audit_cases row once persisted */
   persistedCaseId?: string;
+  /** Crosswalk state */
+  note?: IngestedNote | null;
+  noteFileName?: string | null;
+  parsedNote?: ParsedNote | null;
+  crosswalkVerdict?: CrosswalkVerdict | null;
+  crosswalkLoading?: boolean;
+  crosswalkError?: string | null;
 }
 
 interface EvidenceState {
@@ -138,6 +153,12 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
       synthesis: initialClaim.synthesis ?? null,
       saved: true,
       persistedCaseId: initialClaim.caseId,
+      parsedNote: initialClaim.clinicalNote ?? null,
+      noteFileName: initialClaim.clinicalNoteFileName ?? null,
+      note: initialClaim.clinicalNoteFileName
+        ? { fileName: initialClaim.clinicalNoteFileName, kind: "text", meta: "Saved note" }
+        : null,
+      crosswalkVerdict: initialClaim.crosswalkVerdict ?? null,
     }];
   });
   const [activeFileId, setActiveFileId] = useState<string | null>(
@@ -305,7 +326,93 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
     }
   };
 
-  // Save the active claim into the dashboard (and persist to DB)
+  // ── Crosswalk handlers ────────────────────────────────────────────
+  const setActiveNote = (note: IngestedNote | null) => {
+    if (!activeFile) return;
+    const id = activeFile.ingested.id;
+    setFiles(prev => prev.map(f => f.ingested.id === id ? {
+      ...f,
+      note,
+      noteFileName: note?.fileName ?? null,
+      // Clear stale verdict when the note is removed/replaced
+      crosswalkVerdict: note ? f.crosswalkVerdict : null,
+      parsedNote: note ? f.parsedNote : null,
+      crosswalkError: null,
+    } : f));
+  };
+
+  const runCrosswalkAudit = async () => {
+    if (!activeFile?.claim || !activeFile.note) return;
+    const id = activeFile.ingested.id;
+    const note = activeFile.note;
+    const claim = activeFile.claim;
+
+    setFiles(prev => prev.map(f => f.ingested.id === id ? {
+      ...f, crosswalkLoading: true, crosswalkError: null,
+    } : f));
+
+    try {
+      // Step 1: parse the note into structured ParsedNote (skip if we already have one for this file)
+      let parsedNote = activeFile.parsedNote;
+      if (!parsedNote) {
+        parsedNote = await parseClinicalNote({
+          sourceText: note.sourceText,
+          imageDataUrl: note.imageDataUrl,
+          fileName: note.fileName,
+        });
+      }
+
+      // Step 2: strict-auditor crosswalk
+      const verdict = await runCrosswalk(claim, parsedNote);
+
+      setFiles(prev => prev.map(f => f.ingested.id === id ? {
+        ...f, crosswalkLoading: false, crosswalkError: null, parsedNote, crosswalkVerdict: verdict,
+      } : f));
+
+      // Step 3: persist if claim is already saved
+      if (activeFile.persistedCaseId) {
+        try {
+          await persistCrosswalk(activeFile.persistedCaseId, {
+            note: parsedNote,
+            noteFileName: note.fileName,
+            verdict,
+          });
+        } catch (e) {
+          console.error("Failed to persist crosswalk:", e);
+        }
+      }
+
+      toast.success("Crosswalk audit complete", {
+        description: verdict.pre_submission_decision.headline,
+      });
+    } catch (e: any) {
+      const msg = e?.message?.includes("429") ? "Rate limited — try again shortly."
+        : e?.message?.includes("402") ? "AI credits exhausted. Add credits in Workspace Settings."
+        : e?.message || "Crosswalk failed";
+      setFiles(prev => prev.map(f => f.ingested.id === id ? {
+        ...f, crosswalkLoading: false, crosswalkError: msg,
+      } : f));
+      toast.error(msg);
+    }
+  };
+
+  const exportAppealPacket = () => {
+    if (!activeFile?.claim || !activeFile.crosswalkVerdict) return;
+    try {
+      exportAppealPacketPDF({
+        claim: activeFile.claim,
+        note: activeFile.parsedNote ?? null,
+        verdict: activeFile.crosswalkVerdict,
+        sourceFileName: activeFile.ingested.source.fileName,
+        noteFileName: activeFile.noteFileName ?? undefined,
+      });
+      toast.success("Appeal packet PDF generated");
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Failed to export appeal packet");
+    }
+  };
+
   const handleSaveActive = async () => {
     if (!activeFile?.claim) return;
     const input = mapToPsychInput(activeFile.claim);
@@ -538,6 +645,20 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
                     synthesis={f.synthesis}
                     onRun={runPerspectives}
                     hasRun={!!f.perspectives && f.perspectives.length > 0}
+                  />
+                )}
+
+                {f.status === "ready" && f.claim && (
+                  <CrosswalkPanel
+                    note={f.note ?? null}
+                    parsedNote={f.parsedNote ?? null}
+                    verdict={f.crosswalkVerdict ?? null}
+                    loading={!!f.crosswalkLoading}
+                    error={f.crosswalkError}
+                    onSetNote={(n) => setActiveNote(n)}
+                    onClearNote={() => setActiveNote(null)}
+                    onRun={runCrosswalkAudit}
+                    onExportAppealPacket={exportAppealPacket}
                   />
                 )}
               </TabsContent>
