@@ -19,6 +19,8 @@ interface CrosswalkPanelProps {
   verdict: CrosswalkVerdict | null;
   loading: boolean;
   error?: string | null;
+  /** True when the user edited codes after the last audit run — verdict is stale. */
+  codesDirty?: boolean;
   onSetNote: (note: IngestedNote) => void;
   onClearNote: () => void;
   onRun: () => void;
@@ -26,7 +28,7 @@ interface CrosswalkPanelProps {
 }
 
 export function CrosswalkPanel({
-  note, parsedNote, verdict, loading, error,
+  note, parsedNote, verdict, loading, error, codesDirty,
   onSetNote, onClearNote, onRun, onExportAppealPacket,
 }: CrosswalkPanelProps) {
   const canRun = !!note && !loading;
