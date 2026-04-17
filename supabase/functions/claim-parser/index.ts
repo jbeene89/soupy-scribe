@@ -9,7 +9,110 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are a medical claim parsing engine.
+// ──────────── Deterministic code sweep (safety net for the LLM) ────────────
+// CPT/HCPCS = 5 chars: 5 digits OR 1 letter + 4 digits (e.g. 99214, J3490, G0438).
+const CPT_RE = /\b([0-9]{5}|[A-Z][0-9]{4})\b/g;
+// Modifier = 2 chars after a CPT, separated by hyphen/space/dash/comma. Captures common modifiers.
+// Also matches a column-style "Mod: 95" or "Modifier 95".
+const MOD_AFTER_CPT_RE = /\b(?:[0-9]{5}|[A-Z][0-9]{4})\s*[-–,\s]\s*([0-9A-Z]{2})\b/g;
+const MOD_LABEL_RE = /\bmod(?:ifier)?[:\s-]*([0-9A-Z]{2})\b/gi;
+// ICD-10 = 1 letter + 2 digits + optional .xxx
+const ICD_RE = /\b([A-TV-Z][0-9]{2}(?:\.[0-9A-Z]{1,4})?)\b/g;
+
+// Common CPT codes that should never be filtered out.
+const KNOWN_CPT = new Set<string>([
+  "99202","99203","99204","99205","99211","99212","99213","99214","99215",
+  "99421","99422","99423","99441","99442","99443",
+  "90791","90792","90832","90834","90837","90839","90840","90846","90847","90853",
+  "96127","96130","96131","96136","96137","96138","96139",
+  "G0438","G0439","G0444","G0506",
+]);
+
+// Reasonable modifier whitelist (we don't want to pull random 2-char tokens).
+const KNOWN_MODS = new Set<string>([
+  "22","24","25","26","27","32","33","47","50","51","52","53","54","55","56","57","58","59","62","63","66","73","74","76","77","78","79","80","81","82",
+  "90","91","92","93","95","99",
+  "AA","AD","AS","AT","CR","CS","CT","ET","FX","FY","GA","GC","GE","GG","GH","GJ","GN","GO","GP","GQ","GR","GS","GT","GV","GW","GX","GY","GZ",
+  "HA","HB","HD","HE","HF","HG","HH","HI","HJ","HK","HL","HM","HN","HO","HP","HQ","HR","HS","HT","HU","HV","HW","HX","HY","HZ",
+  "JA","JB","JW","KX","LT","RT","NU","RR","UE","TA","T1","T2","T3","T4","T5","T6","T7","T8","T9","TC","XE","XP","XS","XU",
+]);
+
+function dedupe(arr: string[]): string[] {
+  return Array.from(new Set(arr.filter(Boolean)));
+}
+
+function sweepCodesIntoClaim(claim: any, raw: string): void {
+  if (!claim || typeof claim !== "object") return;
+  claim.codes ??= {};
+  claim.claim_line_items ??= [];
+
+  const text = raw;
+
+  // CPTs
+  const cptHits = dedupe(Array.from(text.matchAll(CPT_RE), (m) => m[1]))
+    .filter((c) => /^[0-9]{5}$/.test(c) ? KNOWN_CPT.has(c) || /^9[09][0-9]{3}$/.test(c) || /^G[0-9]{4}$/i.test(c) || true : true);
+
+  // Modifiers (two passes: after-cpt and labelled)
+  const modHits = dedupe([
+    ...Array.from(text.matchAll(MOD_AFTER_CPT_RE), (m) => m[1].toUpperCase()),
+    ...Array.from(text.matchAll(MOD_LABEL_RE), (m) => m[1].toUpperCase()),
+  ]).filter((m) => KNOWN_MODS.has(m));
+
+  // ICDs
+  const icdHits = dedupe(Array.from(text.matchAll(ICD_RE), (m) => m[1]))
+    .filter((c) => c.includes(".") || /^[FGHIJKLMNRSTZ][0-9]{2}$/.test(c)); // bias toward likely codes
+
+  const wrapField = (existing: any, found: string[], snippetHint: string) => {
+    const current: string[] = Array.isArray(existing?.value) ? existing.value : [];
+    const merged = dedupe([...current, ...found]);
+    if (merged.length === current.length) return existing;
+    return {
+      value: merged,
+      evidence_snippet: existing?.evidence_snippet || snippetHint,
+      source_location: existing?.source_location || "Code sweep (deterministic)",
+      confidence: Math.max(existing?.confidence ?? 0.85, 0.85),
+    };
+  };
+
+  if (cptHits.length) {
+    claim.codes.cpt_codes = wrapField(claim.codes.cpt_codes, cptHits, `Found in document: ${cptHits.slice(0, 3).join(", ")}`);
+  }
+  if (modHits.length) {
+    claim.codes.modifier_codes = wrapField(claim.codes.modifier_codes, modHits, `Found in document: ${modHits.slice(0, 3).join(", ")}`);
+  }
+  if (icdHits.length) {
+    claim.codes.icd10_codes = wrapField(claim.codes.icd10_codes, icdHits, `Found in document: ${icdHits.slice(0, 3).join(", ")}`);
+  }
+
+  // Ensure every CPT has at least a stub line item
+  const existingProcs = new Set<string>(
+    (claim.claim_line_items || []).map((li: any) => (li.procedure_code || "").toString()).filter(Boolean)
+  );
+  const allCpts: string[] = Array.isArray(claim.codes?.cpt_codes?.value) ? claim.codes.cpt_codes.value : [];
+  for (const cpt of allCpts) {
+    if (!existingProcs.has(cpt)) {
+      // Try to attach the most likely modifier — prefer one adjacent to this CPT in the text.
+      const adj = new RegExp(`\\b${cpt}\\s*[-–,\\s]\\s*([0-9A-Z]{2})\\b`).exec(text);
+      const adjMod = adj && KNOWN_MODS.has(adj[1].toUpperCase()) ? adj[1].toUpperCase() : null;
+      claim.claim_line_items.push({
+        service_date: null,
+        procedure_code: cpt,
+        modifier: adjMod,
+        units: null,
+        charge_amount: null,
+        allowed_amount: null,
+        paid_amount: null,
+        denied_amount: null,
+        diagnosis_pointer: null,
+        denial_reason: null,
+        evidence_snippet: `Recovered by code sweep: ${cpt}${adjMod ? ` modifier ${adjMod}` : ""}`,
+        source_location: "Code sweep (deterministic)",
+        confidence: 0.8,
+      });
+    }
+  }
+}
+
 
 Your job is to extract ALL relevant claim data from the provided document with HIGH accuracy.
 
