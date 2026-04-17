@@ -1,17 +1,18 @@
 // Main Claim Upload Parser screen.
 // Multi-file flow: each uploaded file is parsed INDEPENDENTLY in parallel,
 // reviewed via per-file tabs, and analyzed by the 5-perspective engine on demand.
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Brain, Loader2, AlertTriangle, CheckCircle2, FileSearch, ArrowLeft, Save, FileText, Image as ImageIcon, XCircle,
+  Brain, Loader2, AlertTriangle, CheckCircle2, FileSearch, ArrowLeft, Save, FileText, Image as ImageIcon, XCircle, Cloud, CloudOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { ClaimMultiFileDropzone, type IngestedFile } from "./ClaimMultiFileDropzone";
 import { ClaimField } from "./ClaimField";
 import { CodeChipsEditor, type CodeSuggestion } from "./CodeChipsEditor";
@@ -78,6 +79,8 @@ interface ParsedFileState {
   crosswalkError?: string | null;
   /** True when the user has edited codes after the last crosswalk run — verdict is stale. */
   codesDirty?: boolean;
+  /** Auto-save status for inline edits to a persisted claim. */
+  autoSaveStatus?: "idle" | "saving" | "saved" | "error";
 }
 
 interface EvidenceState {
@@ -248,11 +251,72 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
     if (firstReady) setActiveFileId(firstReady.ingested.id);
   };
 
+  // ── Auto-save: debounced per-file persistence of inline edits ─────────
+  // Keyed by ingested file id so each tab gets its own debounce timer.
+  const autoSaveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Cleanup any pending timers on unmount so we don't fire after navigation.
+  useEffect(() => {
+    return () => {
+      autoSaveTimers.current.forEach((t) => clearTimeout(t));
+      autoSaveTimers.current.clear();
+    };
+  }, []);
+
+  /** Schedule a debounced save of the active file's claim back to its audit_cases row. */
+  const scheduleAutoSave = (fileId: string) => {
+    const existing = autoSaveTimers.current.get(fileId);
+    if (existing) clearTimeout(existing);
+
+    // Mark "saving" optimistically so the UI shows progress immediately.
+    setFiles(prev => prev.map(f => f.ingested.id === fileId
+      ? { ...f, autoSaveStatus: "saving" as const }
+      : f));
+
+    const timer = setTimeout(async () => {
+      autoSaveTimers.current.delete(fileId);
+      // Read the latest snapshot from state (not closure) to avoid saving stale data.
+      const current = filesRef.current.find(f => f.ingested.id === fileId);
+      if (!current?.persistedCaseId || !current.claim) {
+        // Not persisted yet — nothing to auto-save. Reset status quietly.
+        setFiles(prev => prev.map(f => f.ingested.id === fileId
+          ? { ...f, autoSaveStatus: "idle" as const }
+          : f));
+        return;
+      }
+      try {
+        await updateParsedClaimFields(current.persistedCaseId, current.claim);
+        setFiles(prev => prev.map(f => f.ingested.id === fileId
+          ? { ...f, autoSaveStatus: "saved" as const }
+          : f));
+        // Fade "Saved" back to idle after a moment.
+        setTimeout(() => {
+          setFiles(prev => prev.map(f => f.ingested.id === fileId && f.autoSaveStatus === "saved"
+            ? { ...f, autoSaveStatus: "idle" as const }
+            : f));
+        }, 2000);
+      } catch (e) {
+        console.error("Auto-save failed:", e);
+        setFiles(prev => prev.map(f => f.ingested.id === fileId
+          ? { ...f, autoSaveStatus: "error" as const }
+          : f));
+        toast.error("Couldn't save your edit. Try again or hit Save.");
+      }
+    }, 800); // 800ms debounce — feels instant but coalesces rapid chip edits.
+
+    autoSaveTimers.current.set(fileId, timer);
+  };
+
+  // Mirror of the latest files state — read inside the debounced save to avoid stale closures.
+  const filesRef = useRef(files);
+  useEffect(() => { filesRef.current = files; }, [files]);
+
   // Update a field on the active file's claim
   const updateField = <S extends keyof ParsedClaim>(section: S, key: string, newValue: any) => {
     if (!activeFile?.claim) return;
+    const fileId = activeFile.ingested.id;
     setFiles(prev => prev.map(f => {
-      if (f.ingested.id !== activeFile.ingested.id || !f.claim) return f;
+      if (f.ingested.id !== fileId || !f.claim) return f;
       const sec: any = { ...(f.claim as any)[section] };
       const existing = sec[key] || {};
       sec[key] = { ...existing, value: newValue };
@@ -260,14 +324,18 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
       const codesDirty = section === "codes" && f.crosswalkVerdict ? true : f.codesDirty;
       return { ...f, claim: { ...f.claim, [section]: sec } as ParsedClaim, codesDirty };
     }));
+    // Only auto-save once the claim has been persisted at least once.
+    if (activeFile.persistedCaseId) scheduleAutoSave(fileId);
   };
 
   const updateLineItems = (items: ParsedLineItem[]) => {
     if (!activeFile?.claim) return;
+    const fileId = activeFile.ingested.id;
     setFiles(prev => prev.map(f => {
-      if (f.ingested.id !== activeFile.ingested.id || !f.claim) return f;
+      if (f.ingested.id !== fileId || !f.claim) return f;
       return { ...f, claim: { ...f.claim, claim_line_items: items } };
     }));
+    if (activeFile.persistedCaseId) scheduleAutoSave(fileId);
   };
 
   const showFieldEvidence = (label: string, field: any) => {
@@ -519,7 +587,30 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
           </div>
         </div>
         {anyClaim && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {/* Auto-save indicator: only meaningful once the claim is persisted. */}
+            {activeFile?.persistedCaseId && activeFile.autoSaveStatus && activeFile.autoSaveStatus !== "idle" && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-md border",
+                  activeFile.autoSaveStatus === "saving" && "text-muted-foreground border-border bg-muted/40",
+                  activeFile.autoSaveStatus === "saved" && "text-emerald-600 border-emerald-500/30 bg-emerald-500/5",
+                  activeFile.autoSaveStatus === "error" && "text-destructive border-destructive/40 bg-destructive/5",
+                )}
+                title={
+                  activeFile.autoSaveStatus === "saving" ? "Saving your edits…"
+                  : activeFile.autoSaveStatus === "saved" ? "All edits saved to this claim"
+                  : "Couldn't save — your last edit is unsaved"
+                }
+              >
+                {activeFile.autoSaveStatus === "saving" && <Loader2 className="h-3 w-3 animate-spin" />}
+                {activeFile.autoSaveStatus === "saved" && <Cloud className="h-3 w-3" />}
+                {activeFile.autoSaveStatus === "error" && <CloudOff className="h-3 w-3" />}
+                {activeFile.autoSaveStatus === "saving" ? "Saving…"
+                  : activeFile.autoSaveStatus === "saved" ? "Saved"
+                  : "Save failed"}
+              </span>
+            )}
             <Button onClick={handleSaveAll} variant="outline" className="gap-2" disabled={!allReady}>
               <Save className="h-4 w-4" /> Save All
             </Button>
