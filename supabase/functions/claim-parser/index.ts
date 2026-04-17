@@ -142,6 +142,34 @@ CODE EXTRACTION (CRITICAL — most common failure mode):
 - An ICD-10 code is 1 letter + 2 digits + optional ".xx" suffix (e.g. F33.1, F41.1, M54.5, Z79.899).
 - Every CPT code you find MUST also produce a claim_line_items entry. Never report CPTs in codes.cpt_codes without a matching line item.
 
+⚠️ BILLED CODES vs REFERENCE CODES — DO NOT CONFUSE THEM:
+A document can contain TWO very different kinds of code listings. You must extract ONLY from the billed-claim region.
+
+EXTRACT CODES ONLY FROM these BILLED regions:
+  • CMS-1500 / HCFA-1500 boxes 24A–24J (the service-lines grid in the lower half of the form).
+  • UB-04 form locators 42–47 (revenue codes / HCPCS / service lines).
+  • A "Service Lines", "Claim Lines", "Procedures Performed", "Procedures Billed", "Charges", or "Line Items" table.
+  • An EOB / remittance advice "Service Detail" or "Claim Detail" section that shows charge → allowed → paid per line.
+  • A superbill section explicitly checked, circled, marked, or filled in by the provider.
+
+NEVER extract codes from these REFERENCE regions (they are NOT what was billed):
+  • Fee schedules — any table titled "Fee Schedule", "CPT Reference Rates", "Medicare Rates", "Allowable Amounts", "Pricing", "Rate Sheet", "2026 CPT Rates", or similar.
+  • Code lookup tables, code dictionaries, or "Common Codes" appendices.
+  • Pre-printed lists of every CPT a practice could bill (e.g. an unmarked superbill template with the full list of psychotherapy codes 90791, 90792, 90832, 90834, 90837, 90846, 90847, 90853, 90785, 90839, 90840, etc.).
+  • A practice-management dashboard that displays a CPT rate reference (e.g. "2026 CPT Reference Rates: 90791 \$173.35, 90832 \$85.84, …") — this is a price list, not a billed claim.
+  • Educational text, footnotes, billing tips, prior authorization forms, or appeal templates that mention codes as examples.
+  • Any code that appears WITHOUT a matching service date, units, OR charge amount tied specifically to that line.
+
+DECISION RULE: For every CPT candidate, ask yourself:
+  1. Is this code inside a billed-claim region (above)? If NO → discard it.
+  2. Does this specific code have a service date OR units OR a charge amount tied to THIS line (not just listed in a price column)? If NO → discard it.
+  3. Does the surrounding context describe what the provider actually performed for THIS patient on THIS date? If NO → discard it.
+Only codes that pass all three checks belong in codes.cpt_codes and claim_line_items.
+
+ADD-ON CODE SANITY: Codes like 90785 (interactive complexity), 90833/90836/90838 (psychotherapy add-ons), 99354–99357, 99417, G0463 add-ons, etc. are ADD-ON codes. They cannot be billed alone. If you only see an add-on code with no companion primary E/M or psychotherapy code in the same billed line, you are almost certainly looking at a reference/fee-schedule list — discard it.
+
+If the document is ENTIRELY a fee schedule, dashboard, or reference sheet with no actual billed claim, return claim_line_items: [] and codes.cpt_codes.value: [], and add a high-severity review_flag explaining "No billed claim detected — document appears to be a reference/fee schedule."
+
 MULTI-PAGE DOCUMENTS:
 - If multiple page images are provided, they are pages of the SAME document in order. Read every page before deciding a field is missing — values often live on page 2 or later (e.g. attached EOBs, remit advice, signature pages).
 
