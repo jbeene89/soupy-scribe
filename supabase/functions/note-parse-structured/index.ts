@@ -14,7 +14,14 @@ const SYSTEM_PROMPT = `You are a strict behavioral-health documentation parser.
 You extract ONLY what is explicitly documented in the clinical note.
 You NEVER infer, summarize loosely, or fabricate clinical content.
 If a section is not present, return it as null/empty — do not guess.
-Every extracted item must have an evidence_quote (verbatim from the note, ≤25 words).`;
+Every extracted item must have an evidence_quote (verbatim from the note, ≤25 words).
+
+CODE CAPTURE (CRITICAL — do not skip):
+- A CPT code is 5 characters: 5 digits (e.g. 99214, 90834, 90837) OR 1 letter + 4 digits (e.g. G0438).
+- A modifier is 2 characters following a CPT, often after a hyphen, dash, comma, space, or in a separate field (e.g. "99214-95", "99214 95", "Modifier: 95"). Capture ALL of them in modifiers_in_note.
+- Telehealth modifier 95 is REQUIRED when the note documents a telehealth visit. Always look for it in the note header, billing section, signature block, or anywhere else.
+- If you see ANY 5-character CPT-shaped token in the note (header, footer, billing line, addendum), include it in cpt_codes_in_note.
+- Do not omit codes just because they appear outside the clinical narrative — billing strips and footers count.`;
 
 const wrappedText = {
   type: "object",
