@@ -281,7 +281,7 @@ export function CodeChipsEditor({
         })}
 
         {adding ? (
-          <div className="inline-flex items-center gap-0.5 rounded-md border border-primary bg-background px-1 py-0.5">
+          <div className="relative inline-flex items-center gap-0.5 rounded-md border border-primary bg-background px-1 py-0.5">
             <Input
               ref={addInputRef}
               value={addDraft}
@@ -300,6 +300,7 @@ export function CodeChipsEditor({
             <Button type="button" variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground" onMouseDown={(e) => e.preventDefault()} onClick={cancelAdd}>
               <X className="h-3 w-3" />
             </Button>
+            <SuggestionList />
           </div>
         ) : (
           <button
