@@ -667,6 +667,7 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
                     verdict={f.crosswalkVerdict ?? null}
                     loading={!!f.crosswalkLoading}
                     error={f.crosswalkError}
+                    codesDirty={!!f.codesDirty}
                     onSetNote={(n) => setActiveNote(n)}
                     onClearNote={() => setActiveNote(null)}
                     onRun={runCrosswalkAudit}
@@ -814,13 +815,44 @@ function ClaimReview({
       </Section>
 
       <Section title="Codes">
-        <Grid>
-          <ClaimField label="CPT codes" kind="array" field={claim.codes.cpt_codes} onChange={(v) => onUpdateField("codes", "cpt_codes", v)} onShowEvidence={() => onShowFieldEvidence("CPT codes", claim.codes.cpt_codes)} />
-          <ClaimField label="HCPCS codes" kind="array" field={claim.codes.hcpcs_codes} onChange={(v) => onUpdateField("codes", "hcpcs_codes", v)} onShowEvidence={() => onShowFieldEvidence("HCPCS codes", claim.codes.hcpcs_codes)} />
-          <ClaimField label="Modifiers" kind="array" field={claim.codes.modifier_codes} onChange={(v) => onUpdateField("codes", "modifier_codes", v)} onShowEvidence={() => onShowFieldEvidence("Modifiers", claim.codes.modifier_codes)} />
-          <ClaimField label="ICD-10 codes" kind="array" field={claim.codes.icd10_codes} onChange={(v) => onUpdateField("codes", "icd10_codes", v)} onShowEvidence={() => onShowFieldEvidence("ICD-10 codes", claim.codes.icd10_codes)} />
-          <ClaimField label="Diagnosis pointers" kind="array" field={claim.codes.diagnosis_pointers} onChange={(v) => onUpdateField("codes", "diagnosis_pointers", v)} onShowEvidence={() => onShowFieldEvidence("Diagnosis pointers", claim.codes.diagnosis_pointers)} />
-        </Grid>
+        <div className="space-y-2">
+          <p className="text-[11px] text-muted-foreground">
+            Each code is editable. Click a chip to fix a parser mis-pull, or use × to remove. Editing codes after a crosswalk audit will prompt you to re-run the audit.
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            <CodeChipsEditor
+              label="CPT codes" hint="Procedures billed" tone="primary" placeholder="e.g. 99214"
+              field={claim.codes.cpt_codes}
+              onChange={(v) => onUpdateField("codes", "cpt_codes", v)}
+              onShowEvidence={() => onShowFieldEvidence("CPT codes", claim.codes.cpt_codes)}
+            />
+            <CodeChipsEditor
+              label="HCPCS codes" hint="Supplies / services" tone="muted" placeholder="e.g. J3490"
+              field={claim.codes.hcpcs_codes}
+              onChange={(v) => onUpdateField("codes", "hcpcs_codes", v)}
+              onShowEvidence={() => onShowFieldEvidence("HCPCS codes", claim.codes.hcpcs_codes)}
+            />
+            <CodeChipsEditor
+              label="Modifiers" hint="e.g. 95 telehealth, 25 separate E/M" tone="accent" placeholder="e.g. 95"
+              field={claim.codes.modifier_codes}
+              onChange={(v) => onUpdateField("codes", "modifier_codes", v)}
+              onShowEvidence={() => onShowFieldEvidence("Modifiers", claim.codes.modifier_codes)}
+            />
+            <CodeChipsEditor
+              label="ICD-10 codes" hint="Diagnoses supporting the claim" tone="warning" placeholder="e.g. F33.1"
+              field={claim.codes.icd10_codes}
+              onChange={(v) => onUpdateField("codes", "icd10_codes", v)}
+              onShowEvidence={() => onShowFieldEvidence("ICD-10 codes", claim.codes.icd10_codes)}
+            />
+            <CodeChipsEditor
+              label="Diagnosis pointers" hint="Links Dx → line item" tone="muted" placeholder="e.g. 1"
+              field={claim.codes.diagnosis_pointers}
+              onChange={(v) => onUpdateField("codes", "diagnosis_pointers", v)}
+              onShowEvidence={() => onShowFieldEvidence("Diagnosis pointers", claim.codes.diagnosis_pointers)}
+              uppercase={false}
+            />
+          </div>
+        </div>
       </Section>
 
       <Section title="Claim Line Items">
