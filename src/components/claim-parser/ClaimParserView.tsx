@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ClaimMultiFileDropzone, type IngestedFile } from "./ClaimMultiFileDropzone";
 import { ClaimField } from "./ClaimField";
+import { CodeChipsEditor } from "./CodeChipsEditor";
 import { LineItemsTable } from "./LineItemsTable";
 import { EvidenceDrawer } from "./EvidenceDrawer";
 import { PerspectivesPanel, type LensResult, type PerspectiveSynthesis } from "./PerspectivesPanel";
@@ -68,6 +69,8 @@ interface ParsedFileState {
   crosswalkVerdict?: CrosswalkVerdict | null;
   crosswalkLoading?: boolean;
   crosswalkError?: string | null;
+  /** True when the user has edited codes after the last crosswalk run — verdict is stale. */
+  codesDirty?: boolean;
 }
 
 interface EvidenceState {
@@ -246,7 +249,9 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
       const sec: any = { ...(f.claim as any)[section] };
       const existing = sec[key] || {};
       sec[key] = { ...existing, value: newValue };
-      return { ...f, claim: { ...f.claim, [section]: sec } as ParsedClaim };
+      // If the user edited a code AND we already have a verdict, mark it stale.
+      const codesDirty = section === "codes" && f.crosswalkVerdict ? true : f.codesDirty;
+      return { ...f, claim: { ...f.claim, [section]: sec } as ParsedClaim, codesDirty };
     }));
   };
 
@@ -373,7 +378,7 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
       const verdict = await runCrosswalk(claim, parsedNote);
 
       setFiles(prev => prev.map(f => f.ingested.id === id ? {
-        ...f, crosswalkLoading: false, crosswalkError: null, parsedNote, crosswalkVerdict: verdict,
+        ...f, crosswalkLoading: false, crosswalkError: null, parsedNote, crosswalkVerdict: verdict, codesDirty: false,
       } : f));
 
       // Step 3: persist if claim is already saved
@@ -662,6 +667,7 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
                     verdict={f.crosswalkVerdict ?? null}
                     loading={!!f.crosswalkLoading}
                     error={f.crosswalkError}
+                    codesDirty={!!f.codesDirty}
                     onSetNote={(n) => setActiveNote(n)}
                     onClearNote={() => setActiveNote(null)}
                     onRun={runCrosswalkAudit}
@@ -809,13 +815,44 @@ function ClaimReview({
       </Section>
 
       <Section title="Codes">
-        <Grid>
-          <ClaimField label="CPT codes" kind="array" field={claim.codes.cpt_codes} onChange={(v) => onUpdateField("codes", "cpt_codes", v)} onShowEvidence={() => onShowFieldEvidence("CPT codes", claim.codes.cpt_codes)} />
-          <ClaimField label="HCPCS codes" kind="array" field={claim.codes.hcpcs_codes} onChange={(v) => onUpdateField("codes", "hcpcs_codes", v)} onShowEvidence={() => onShowFieldEvidence("HCPCS codes", claim.codes.hcpcs_codes)} />
-          <ClaimField label="Modifiers" kind="array" field={claim.codes.modifier_codes} onChange={(v) => onUpdateField("codes", "modifier_codes", v)} onShowEvidence={() => onShowFieldEvidence("Modifiers", claim.codes.modifier_codes)} />
-          <ClaimField label="ICD-10 codes" kind="array" field={claim.codes.icd10_codes} onChange={(v) => onUpdateField("codes", "icd10_codes", v)} onShowEvidence={() => onShowFieldEvidence("ICD-10 codes", claim.codes.icd10_codes)} />
-          <ClaimField label="Diagnosis pointers" kind="array" field={claim.codes.diagnosis_pointers} onChange={(v) => onUpdateField("codes", "diagnosis_pointers", v)} onShowEvidence={() => onShowFieldEvidence("Diagnosis pointers", claim.codes.diagnosis_pointers)} />
-        </Grid>
+        <div className="space-y-2">
+          <p className="text-[11px] text-muted-foreground">
+            Each code is editable. Click a chip to fix a parser mis-pull, or use × to remove. Editing codes after a crosswalk audit will prompt you to re-run the audit.
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            <CodeChipsEditor
+              label="CPT codes" hint="Procedures billed" tone="primary" placeholder="e.g. 99214"
+              field={claim.codes.cpt_codes}
+              onChange={(v) => onUpdateField("codes", "cpt_codes", v)}
+              onShowEvidence={() => onShowFieldEvidence("CPT codes", claim.codes.cpt_codes)}
+            />
+            <CodeChipsEditor
+              label="HCPCS codes" hint="Supplies / services" tone="muted" placeholder="e.g. J3490"
+              field={claim.codes.hcpcs_codes}
+              onChange={(v) => onUpdateField("codes", "hcpcs_codes", v)}
+              onShowEvidence={() => onShowFieldEvidence("HCPCS codes", claim.codes.hcpcs_codes)}
+            />
+            <CodeChipsEditor
+              label="Modifiers" hint="e.g. 95 telehealth, 25 separate E/M" tone="accent" placeholder="e.g. 95"
+              field={claim.codes.modifier_codes}
+              onChange={(v) => onUpdateField("codes", "modifier_codes", v)}
+              onShowEvidence={() => onShowFieldEvidence("Modifiers", claim.codes.modifier_codes)}
+            />
+            <CodeChipsEditor
+              label="ICD-10 codes" hint="Diagnoses supporting the claim" tone="warning" placeholder="e.g. F33.1"
+              field={claim.codes.icd10_codes}
+              onChange={(v) => onUpdateField("codes", "icd10_codes", v)}
+              onShowEvidence={() => onShowFieldEvidence("ICD-10 codes", claim.codes.icd10_codes)}
+            />
+            <CodeChipsEditor
+              label="Diagnosis pointers" hint="Links Dx → line item" tone="muted" placeholder="e.g. 1"
+              field={claim.codes.diagnosis_pointers}
+              onChange={(v) => onUpdateField("codes", "diagnosis_pointers", v)}
+              onShowEvidence={() => onShowFieldEvidence("Diagnosis pointers", claim.codes.diagnosis_pointers)}
+              uppercase={false}
+            />
+          </div>
+        </div>
       </Section>
 
       <Section title="Claim Line Items">
