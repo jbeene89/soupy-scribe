@@ -67,6 +67,8 @@ export function PsychPracticeModule() {
     const newInput = { ...input, id };
     setCases(prev => [...prev, buildInitialCase(newInput)]);
     setShowForm(false);
+    // Auto-open the new case so the user immediately sees the audit report.
+    setSelectedCaseId(id);
   };
 
   const handleDeleteCase = (id: string) => {
