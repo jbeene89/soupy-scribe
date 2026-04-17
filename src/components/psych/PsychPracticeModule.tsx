@@ -423,6 +423,17 @@ function CaseRow({ caseData, onSelect, onDelete, onPacket, onViewParsed }: {
                     <FileSearch className="h-2.5 w-2.5" /> Parsed claim
                   </Badge>
                 )}
+                {caseData.crosswalkVerdict && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[9px]",
+                      DECISION_META[caseData.crosswalkVerdict.pre_submission_decision.decision].badge
+                    )}
+                  >
+                    Crosswalk: {DECISION_META[caseData.crosswalkVerdict.pre_submission_decision.decision].label}
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
                 <span>{input.sessionDurationMinutes} min</span>
