@@ -113,6 +113,7 @@ function sweepCodesIntoClaim(claim: any, raw: string): void {
   }
 }
 
+const SYSTEM_PROMPT = `You are a medical claim parsing engine.
 
 Your job is to extract ALL relevant claim data from the provided document with HIGH accuracy.
 
