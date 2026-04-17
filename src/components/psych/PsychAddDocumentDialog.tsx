@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from '@/components/ui/badge';
 import { FilePlus, Loader2, CheckCircle2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { PsychFileDropzone } from './PsychFileDropzone';
 
 interface PsychAddDocumentDialogProps {
   caseLabel: string;
@@ -108,9 +109,26 @@ export function PsychAddDocumentDialog({
               />
             </div>
 
+            {/* File upload */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">Upload the document</p>
+              <PsychFileDropzone
+                label="Drop the document here"
+                sublabel="PDF, Word (.docx), or text · up to 20MB"
+                onTextExtracted={(text, fileName) => {
+                  setDocText(text);
+                  // Auto-suggest label from filename if user hasn't picked one
+                  if (!docLabel.trim()) {
+                    const cleanName = fileName.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
+                    setDocLabel(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
+                  }
+                }}
+              />
+            </div>
+
             {/* Doc content */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1.5">Paste document content</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">Or paste document content</p>
               <Textarea
                 placeholder="Paste the full text of the document here. The audit engine will combine this with the original case text and re-run all checks..."
                 value={docText}

@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Upload, Brain, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PsychCaseInput, SessionType } from '@/lib/psychTypes';
+import { PsychFileDropzone } from './PsychFileDropzone';
 
 interface PsychCaseUploadProps {
   onCaseCreated: (input: PsychCaseInput) => void;
@@ -221,6 +222,19 @@ export function PsychCaseUpload({ onCaseCreated }: PsychCaseUploadProps) {
 
         {step === 'input' && (
           <div className="space-y-3">
+            <PsychFileDropzone
+              onTextExtracted={(text, fileName) => {
+                setSourceText(text);
+                toast.success(`Loaded ${fileName} into the form`);
+              }}
+            />
+
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">or paste text</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
             <div className="flex justify-between items-center">
               <p className="text-xs text-muted-foreground">Paste a session note, superbill, or claim summary</p>
               <Button
