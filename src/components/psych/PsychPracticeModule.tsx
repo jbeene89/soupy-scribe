@@ -20,6 +20,8 @@ import type { PsychCaseVersion } from './PsychVersionSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import type { ParsedClaim } from '@/lib/parsedClaimTypes';
 import type { LensResult, PerspectiveSynthesis } from '../claim-parser/PerspectivesPanel';
+import type { ParsedNote, CrosswalkVerdict } from '@/lib/crosswalkTypes';
+import { DECISION_META } from '@/lib/crosswalkTypes';
 import { fetchParsedClaims, deleteParsedClaim } from '@/lib/parsedClaimService';
 import { toast } from 'sonner';
 
@@ -36,6 +38,10 @@ export type ReviewedCase = {
   sourceFileName?: string;
   /** audit_cases.id when persisted. */
   persistedCaseId?: string;
+  /** Crosswalk audit results (when run). */
+  clinicalNote?: ParsedNote | null;
+  clinicalNoteFileName?: string | null;
+  crosswalkVerdict?: CrosswalkVerdict | null;
 };
 
 function classColor(c: string) {
