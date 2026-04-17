@@ -113,6 +113,9 @@ export function PsychPracticeModule() {
                 synthesis: p.synthesis,
                 sourceFileName: p.sourceFileName,
                 persistedCaseId: p.caseId,
+                clinicalNote: p.clinicalNote ?? null,
+                clinicalNoteFileName: p.clinicalNoteFileName ?? null,
+                crosswalkVerdict: p.crosswalkVerdict ?? null,
               };
             });
           return [...hydrated, ...prev];
