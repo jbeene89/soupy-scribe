@@ -294,32 +294,6 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
     }
   };
 
-  // Save the active claim into the psych dashboard
-  const handleSaveActive = () => {
-    if (!activeFile?.claim) return;
-    const input = mapToPsychInput(activeFile.claim);
-    input.id = `claim-${Date.now()}-${activeFile.ingested.id}`;
-    onCaseCreated(input, activeFile.claim);
-    setFiles(prev => prev.map(f => f.ingested.id === activeFile.ingested.id ? { ...f, saved: true } : f));
-    toast.success("Claim saved to dashboard");
-  };
-
-  // Save all ready (and not-yet-saved) claims at once
-  const handleSaveAll = () => {
-    let saved = 0;
-    files.forEach(f => {
-      if (f.status === "ready" && f.claim && !f.saved) {
-        const input = mapToPsychInput(f.claim);
-        input.id = `claim-${Date.now()}-${f.ingested.id}`;
-        onCaseCreated(input, f.claim);
-        saved++;
-      }
-    });
-    if (saved > 0) {
-      setFiles(prev => prev.map(f => f.status === "ready" ? { ...f, saved: true } : f));
-      toast.success(`Saved ${saved} claim${saved !== 1 ? "s" : ""} to dashboard`);
-    }
-  };
 
   const claim: ParsedClaim = activeFile?.claim || EMPTY_CLAIM;
   const reviewFlagCount = claim.review_flags.length;
