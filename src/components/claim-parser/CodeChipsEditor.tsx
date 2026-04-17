@@ -9,6 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ParsedFieldArray } from "@/lib/parsedClaimTypes";
 
+export interface CodeSuggestion {
+  /** The code value to insert (e.g. "99214"). */
+  code: string;
+  /** Short human label shown next to the code (e.g. "Office visit, established, level 4"). */
+  label?: string;
+}
+
 interface Props {
   label: string;
   /** Short hint shown next to the label, e.g. "Procedures billed". */
@@ -23,6 +30,8 @@ interface Props {
   placeholder?: string;
   /** Force-uppercase entered codes (CPT/ICD style). */
   uppercase?: boolean;
+  /** Optional list of valid codes to suggest as the user types. */
+  suggestions?: CodeSuggestion[];
 }
 
 const TONE_STYLES: Record<string, string> = {
@@ -43,9 +52,29 @@ function formatSourceLocation(raw?: string | null): string | null {
   return s.length > 48 ? s.slice(0, 45) + "…" : s;
 }
 
+/** Filter suggestions for a typed query: prefix-first, then substring; cap at 6. */
+function filterSuggestions(query: string, all: CodeSuggestion[] | undefined): CodeSuggestion[] {
+  if (!all || all.length === 0) return [];
+  const q = query.trim().toUpperCase();
+  if (q.length < 1) return [];
+  const taken = new Set<string>();
+  const prefix: CodeSuggestion[] = [];
+  const contains: CodeSuggestion[] = [];
+  for (const s of all) {
+    const code = s.code.toUpperCase();
+    if (taken.has(code)) continue;
+    if (code === q) continue; // already exact
+    if (code.startsWith(q)) { prefix.push(s); taken.add(code); }
+    else if (code.includes(q) || (s.label ?? "").toUpperCase().includes(q)) { contains.push(s); taken.add(code); }
+    if (prefix.length >= 6) break;
+  }
+  return [...prefix, ...contains].slice(0, 6);
+}
+
 export function CodeChipsEditor({
   label, hint, field, onChange, onShowEvidence,
   tone = "primary", placeholder = "Add code…", uppercase = true,
+  suggestions,
 }: Props) {
   const codes = field?.value ?? [];
   const lowConf = (field?.confidence ?? 1) < 0.8;
@@ -61,6 +90,10 @@ export function CodeChipsEditor({
   useEffect(() => {
     if (adding) addInputRef.current?.focus();
   }, [adding]);
+
+  // Suggestions for the currently active input (edit OR add). Hide ones already in the list.
+  const activeQuery = editingIdx !== null ? draft : adding ? addDraft : "";
+  const matches = filterSuggestions(activeQuery, suggestions).filter((s) => !codes.includes(s.code));
 
   const normalize = (s: string) => (uppercase ? s.toUpperCase() : s).trim();
 
@@ -106,6 +139,41 @@ export function CodeChipsEditor({
     setAddDraft("");
     setAdding(false);
   };
+
+  /** Insert a suggestion into whichever input is currently active. */
+  const pickSuggestion = (sCode: string) => {
+    const cleaned = normalize(sCode);
+    if (editingIdx !== null) {
+      const next = [...codes];
+      next[editingIdx] = cleaned;
+      onChange(next);
+      setEditingIdx(null);
+      setDraft("");
+    } else if (adding) {
+      if (!codes.includes(cleaned)) onChange([...codes, cleaned]);
+      setAddDraft("");
+      setAdding(false);
+    }
+  };
+
+  const SuggestionList = () =>
+    matches.length === 0 ? null : (
+      <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-md border bg-popover shadow-md py-1 text-xs">
+        <p className="px-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">Suggestions</p>
+        {matches.map((s) => (
+          <button
+            key={s.code}
+            type="button"
+            // onMouseDown fires before input's onBlur — prevents the blur from committing the partial code first.
+            onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s.code); }}
+            className="flex w-full items-start gap-2 px-2 py-1 text-left hover:bg-muted/60"
+          >
+            <span className="font-mono font-medium text-foreground shrink-0">{s.code}</span>
+            {s.label && <span className="text-muted-foreground truncate">{s.label}</span>}
+          </button>
+        ))}
+      </div>
+    );
 
   const toneClass = TONE_STYLES[tone];
   const empty = codes.length === 0;
@@ -159,7 +227,7 @@ export function CodeChipsEditor({
           const isEditing = editingIdx === idx;
           if (isEditing) {
             return (
-              <div key={idx} className="inline-flex items-center gap-0.5 rounded-md border border-primary bg-background px-1 py-0.5">
+              <div key={idx} className="relative inline-flex items-center gap-0.5 rounded-md border border-primary bg-background px-1 py-0.5">
                 <Input
                   autoFocus
                   value={draft}
@@ -178,6 +246,7 @@ export function CodeChipsEditor({
                 <Button type="button" variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground" onMouseDown={(e) => e.preventDefault()} onClick={cancelEdit}>
                   <X className="h-3 w-3" />
                 </Button>
+                <SuggestionList />
               </div>
             );
           }
@@ -212,7 +281,7 @@ export function CodeChipsEditor({
         })}
 
         {adding ? (
-          <div className="inline-flex items-center gap-0.5 rounded-md border border-primary bg-background px-1 py-0.5">
+          <div className="relative inline-flex items-center gap-0.5 rounded-md border border-primary bg-background px-1 py-0.5">
             <Input
               ref={addInputRef}
               value={addDraft}
@@ -231,6 +300,7 @@ export function CodeChipsEditor({
             <Button type="button" variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground" onMouseDown={(e) => e.preventDefault()} onClick={cancelAdd}>
               <X className="h-3 w-3" />
             </Button>
+            <SuggestionList />
           </div>
         ) : (
           <button
