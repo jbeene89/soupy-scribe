@@ -10,11 +10,46 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ──────────── Deterministic note-code sweep ────────────
+const NOTE_CPT_RE = /\b([0-9]{5}|[A-Z][0-9]{4})\b/g;
+const NOTE_MOD_AFTER_CPT_RE = /\b(?:[0-9]{5}|[A-Z][0-9]{4})\s*[-–,\s]\s*([0-9A-Z]{2})\b/g;
+const NOTE_MOD_LABEL_RE = /\bmod(?:ifier)?[:\s-]*([0-9A-Z]{2})\b/gi;
+const KNOWN_NOTE_MODS = new Set<string>([
+  "22","24","25","26","27","32","33","51","52","53","57","58","59","62","76","77","78","79",
+  "90","91","92","93","95","99","GT","GQ","KX","XS","XU","XE","XP","TC",
+]);
+const KNOWN_NOTE_CPT_PREFIX = /^(9[09][0-9]{3}|G[0-9]{4}|H[0-9]{4})$/i;
+
+function sweepNoteCodes(note: any, raw: string): void {
+  if (!note || typeof note !== "object") return;
+  const cpts = Array.from(new Set(
+    Array.from(raw.matchAll(NOTE_CPT_RE), (m) => m[1])
+      .filter((c) => KNOWN_NOTE_CPT_PREFIX.test(c))
+  ));
+  const mods = Array.from(new Set([
+    ...Array.from(raw.matchAll(NOTE_MOD_AFTER_CPT_RE), (m) => m[1].toUpperCase()),
+    ...Array.from(raw.matchAll(NOTE_MOD_LABEL_RE), (m) => m[1].toUpperCase()),
+  ])).filter((m) => KNOWN_NOTE_MODS.has(m));
+
+  const existingCpts: string[] = Array.isArray(note.cpt_codes_in_note) ? note.cpt_codes_in_note : [];
+  const existingMods: string[] = Array.isArray(note.modifiers_in_note) ? note.modifiers_in_note : [];
+
+  note.cpt_codes_in_note = Array.from(new Set([...existingCpts, ...cpts]));
+  note.modifiers_in_note = Array.from(new Set([...existingMods, ...mods]));
+}
+
 const SYSTEM_PROMPT = `You are a strict behavioral-health documentation parser.
 You extract ONLY what is explicitly documented in the clinical note.
 You NEVER infer, summarize loosely, or fabricate clinical content.
 If a section is not present, return it as null/empty — do not guess.
-Every extracted item must have an evidence_quote (verbatim from the note, ≤25 words).`;
+Every extracted item must have an evidence_quote (verbatim from the note, ≤25 words).
+
+CODE CAPTURE (CRITICAL — do not skip):
+- A CPT code is 5 characters: 5 digits (e.g. 99214, 90834, 90837) OR 1 letter + 4 digits (e.g. G0438).
+- A modifier is 2 characters following a CPT, often after a hyphen, dash, comma, space, or in a separate field (e.g. "99214-95", "99214 95", "Modifier: 95"). Capture ALL of them in modifiers_in_note.
+- Telehealth modifier 95 is REQUIRED when the note documents a telehealth visit. Always look for it in the note header, billing section, signature block, or anywhere else.
+- If you see ANY 5-character CPT-shaped token in the note (header, footer, billing line, addendum), include it in cpt_codes_in_note.
+- Do not omit codes just because they appear outside the clinical narrative — billing strips and footers count.`;
 
 const wrappedText = {
   type: "object",
@@ -315,6 +350,16 @@ serve(async (req) => {
     }
 
     const note = JSON.parse(toolCall.function.arguments);
+
+    // Deterministic safety net: sweep raw text for CPTs/modifiers the model may have missed.
+    if (hasText && sourceText) {
+      try {
+        sweepNoteCodes(note, sourceText);
+      } catch (e) {
+        console.error("Note code sweep failed (non-fatal):", e);
+      }
+    }
+
     return new Response(JSON.stringify({ note }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

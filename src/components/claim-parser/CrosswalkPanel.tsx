@@ -34,7 +34,7 @@ export function CrosswalkPanel({
   const showAppealButton = verdict?.appeal_readiness.applicable && verdict.appeal_readiness.strength !== "not_applicable";
 
   return (
-    <Card className="border-primary/20">
+    <Card className={cn("border-primary/20", !note && !verdict && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background")}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -65,15 +65,27 @@ export function CrosswalkPanel({
       </CardHeader>
 
       <CardContent className="space-y-3">
+        {/* Big "do this next" banner when no note attached yet */}
+        {!note && !verdict && (
+          <div className="rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 px-4 py-3">
+            <div className="flex items-start gap-3">
+              <Badge variant="outline" className="bg-primary text-primary-foreground border-primary text-[10px] font-bold shrink-0 mt-0.5">
+                STEP 2 of 2
+              </Badge>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">Drop the clinical note for this visit below</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  The auditor needs the actual session/intake/progress note to compare against the claim. Without it, no verdict can be rendered.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* STEP 0 — Note attachment */}
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Clinical note for this claim</p>
           <NoteDropzone note={note} onSet={onSetNote} onClear={onClearNote} busy={loading} />
-          {!note && (
-            <p className="text-[11px] text-muted-foreground italic">
-              The crosswalk needs the actual clinical note to compare against. Drop the session note, intake, or progress note here.
-            </p>
-          )}
         </div>
 
         {error && (
