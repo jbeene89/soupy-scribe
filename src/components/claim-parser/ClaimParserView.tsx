@@ -647,6 +647,20 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
                     hasRun={!!f.perspectives && f.perspectives.length > 0}
                   />
                 )}
+
+                {f.status === "ready" && f.claim && (
+                  <CrosswalkPanel
+                    note={f.note ?? null}
+                    parsedNote={f.parsedNote ?? null}
+                    verdict={f.crosswalkVerdict ?? null}
+                    loading={!!f.crosswalkLoading}
+                    error={f.crosswalkError}
+                    onSetNote={(n) => setActiveNote(n)}
+                    onClearNote={() => setActiveNote(null)}
+                    onRun={runCrosswalkAudit}
+                    onExportAppealPacket={exportAppealPacket}
+                  />
+                )}
               </TabsContent>
             ))}
           </Tabs>
