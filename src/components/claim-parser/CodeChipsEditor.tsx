@@ -140,6 +140,41 @@ export function CodeChipsEditor({
     setAdding(false);
   };
 
+  /** Insert a suggestion into whichever input is currently active. */
+  const pickSuggestion = (sCode: string) => {
+    const cleaned = normalize(sCode);
+    if (editingIdx !== null) {
+      const next = [...codes];
+      next[editingIdx] = cleaned;
+      onChange(next);
+      setEditingIdx(null);
+      setDraft("");
+    } else if (adding) {
+      if (!codes.includes(cleaned)) onChange([...codes, cleaned]);
+      setAddDraft("");
+      setAdding(false);
+    }
+  };
+
+  const SuggestionList = () =>
+    matches.length === 0 ? null : (
+      <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-md border bg-popover shadow-md py-1 text-xs">
+        <p className="px-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">Suggestions</p>
+        {matches.map((s) => (
+          <button
+            key={s.code}
+            type="button"
+            // onMouseDown fires before input's onBlur — prevents the blur from committing the partial code first.
+            onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s.code); }}
+            className="flex w-full items-start gap-2 px-2 py-1 text-left hover:bg-muted/60"
+          >
+            <span className="font-mono font-medium text-foreground shrink-0">{s.code}</span>
+            {s.label && <span className="text-muted-foreground truncate">{s.label}</span>}
+          </button>
+        ))}
+      </div>
+    );
+
   const toneClass = TONE_STYLES[tone];
   const empty = codes.length === 0;
 
