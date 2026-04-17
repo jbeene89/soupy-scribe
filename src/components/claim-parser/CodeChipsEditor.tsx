@@ -227,7 +227,7 @@ export function CodeChipsEditor({
           const isEditing = editingIdx === idx;
           if (isEditing) {
             return (
-              <div key={idx} className="inline-flex items-center gap-0.5 rounded-md border border-primary bg-background px-1 py-0.5">
+              <div key={idx} className="relative inline-flex items-center gap-0.5 rounded-md border border-primary bg-background px-1 py-0.5">
                 <Input
                   autoFocus
                   value={draft}
@@ -246,6 +246,7 @@ export function CodeChipsEditor({
                 <Button type="button" variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground" onMouseDown={(e) => e.preventDefault()} onClick={cancelEdit}>
                   <X className="h-3 w-3" />
                 </Button>
+                <SuggestionList />
               </div>
             );
           }
