@@ -20,7 +20,8 @@ import { deleteCase, deriveLivePatterns, type LivePhysicianPattern } from '@/lib
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
 import type { AppMode } from '@/lib/providerTypes';
-import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope, FileDown, Ghost, ShieldAlert, Target, Bed } from 'lucide-react';
+import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope, FileDown, Ghost, ShieldAlert, Target, Bed, HeartPulse, Shield } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { exportPlatformSummaryPDF } from '@/lib/exportPlatformSummary';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -217,35 +218,62 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur-md shadow-sm">
+      {/* Mode-aware accent strip — visual cue for which lane the user is in */}
+      <div
+        className={cn(
+          'h-1 w-full transition-colors',
+          appMode === 'psych' && 'bg-violet-500',
+          appMode === 'provider' && 'bg-info-blue',
+          appMode === 'payer' && 'bg-primary'
+        )}
+      />
+      <header
+        className={cn(
+          'sticky top-0 z-50 border-b backdrop-blur-md shadow-sm transition-colors',
+          appMode === 'psych' && 'bg-violet-500/5 border-violet-500/30',
+          appMode === 'provider' && 'bg-info-blue/5 border-info-blue/20',
+          appMode === 'payer' && 'bg-card/95'
+        )}
+      >
         {/* Top bar — brand + auth */}
         <div className="container mx-auto px-8">
           <div className="flex items-center justify-between h-14">
             {/* Brand */}
             <div className="flex items-center gap-3">
-              <div className="p-1.5 rounded-md bg-primary/90">
+              <div className={cn(
+                'p-1.5 rounded-md transition-colors',
+                appMode === 'psych' && 'bg-violet-500',
+                appMode === 'provider' && 'bg-info-blue',
+                appMode === 'payer' && 'bg-primary/90'
+              )}>
                 <Scale className="h-5 w-5 text-primary-foreground" />
               </div>
               <div className="flex items-baseline gap-2">
                 <h1 className="text-base font-semibold tracking-tight text-foreground">SOUPY</h1>
                 <span className="hidden sm:inline text-[11px] text-muted-foreground font-medium tracking-wide uppercase">
-                  {appMode === 'provider' ? 'Provider Readiness' : 'Payment Integrity'}
+                  {appMode === 'provider' ? 'Provider Readiness' : appMode === 'psych' ? 'Behavioral Health' : 'Payment Integrity'}
                 </span>
               </div>
             </div>
 
             {/* Right — status pills + auth */}
             <div className="flex items-center gap-2">
-              <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded border bg-accent/5 text-accent">
-                <Brain className="h-3 w-3" />
-                <span className="text-[10px] font-semibold tracking-wide uppercase">SOUPY</span>
+              {/* Active mode badge — always visible, color-coded so Jackie always knows the lane */}
+              <div
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-semibold tracking-wide uppercase text-[10px]',
+                  appMode === 'psych' && 'border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-300',
+                  appMode === 'provider' && 'border-info-blue/30 bg-info-blue/10 text-info-blue',
+                  appMode === 'payer' && 'border-primary/30 bg-primary/10 text-primary'
+                )}
+              >
+                {appMode === 'psych' && <HeartPulse className="h-3 w-3" />}
+                {appMode === 'provider' && <Stethoscope className="h-3 w-3" />}
+                {appMode === 'payer' && <Shield className="h-3 w-3" />}
+                <span>
+                  {appMode === 'psych' ? 'Behavioral Health' : appMode === 'provider' ? 'Provider' : 'Payer'}
+                </span>
               </div>
-              {appMode === 'provider' && (
-                <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded border border-info-blue/20 bg-info-blue/5 text-info-blue">
-                  <Stethoscope className="h-3 w-3" />
-                  <span className="text-[10px] font-semibold tracking-wide uppercase">Provider</span>
-                </div>
-              )}
               {liveCases.length > 0 && (
                 <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded border border-consensus/20 bg-consensus/5 text-consensus">
                   <Database className="h-3 w-3" />
