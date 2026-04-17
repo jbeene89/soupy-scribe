@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Brain, Loader2, AlertTriangle, CheckCircle2, FileSearch, ArrowLeft, Save, FileText, Image as ImageIcon, XCircle,
+  Brain, Loader2, AlertTriangle, CheckCircle2, FileSearch, ArrowLeft, Save, FileText, Image as ImageIcon, XCircle, Cloud, CloudOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
