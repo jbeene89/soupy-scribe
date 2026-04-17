@@ -2,7 +2,7 @@
 // Each code is its own chip with: click-to-edit, delete, and "+ Add code".
 // Built to let users fix a single parser mis-pull in 2 seconds without re-uploading.
 import { useState, useRef, useEffect } from "react";
-import { Check, X, Plus, Pencil, Eye, AlertTriangle } from "lucide-react";
+import { Check, X, Plus, Pencil, Eye, AlertTriangle, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
