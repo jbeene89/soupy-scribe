@@ -249,7 +249,9 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
       const sec: any = { ...(f.claim as any)[section] };
       const existing = sec[key] || {};
       sec[key] = { ...existing, value: newValue };
-      return { ...f, claim: { ...f.claim, [section]: sec } as ParsedClaim };
+      // If the user edited a code AND we already have a verdict, mark it stale.
+      const codesDirty = section === "codes" && f.crosswalkVerdict ? true : f.codesDirty;
+      return { ...f, claim: { ...f.claim, [section]: sec } as ParsedClaim, codesDirty };
     }));
   };
 
@@ -376,7 +378,7 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
       const verdict = await runCrosswalk(claim, parsedNote);
 
       setFiles(prev => prev.map(f => f.ingested.id === id ? {
-        ...f, crosswalkLoading: false, crosswalkError: null, parsedNote, crosswalkVerdict: verdict,
+        ...f, crosswalkLoading: false, crosswalkError: null, parsedNote, crosswalkVerdict: verdict, codesDirty: false,
       } : f));
 
       // Step 3: persist if claim is already saved
