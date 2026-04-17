@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.claim-parser]
 verify_jwt = false
+
+[functions.claim-perspectives]
+verify_jwt = false
