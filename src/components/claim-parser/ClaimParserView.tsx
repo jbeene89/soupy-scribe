@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { ClaimMultiFileDropzone, type IngestedFile } from "./ClaimMultiFileDropzone";
 import { ClaimField } from "./ClaimField";
 import { CodeChipsEditor, type CodeSuggestion } from "./CodeChipsEditor";
