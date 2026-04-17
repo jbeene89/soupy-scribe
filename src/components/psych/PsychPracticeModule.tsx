@@ -358,6 +358,7 @@ export function PsychPracticeModule() {
                   onSelect={() => setSelectedCaseId(c.input.id!)}
                   onDelete={() => handleDeleteCase(c.input.id!)}
                   onPacket={() => setShowPacket(c.input.id!)}
+                  onViewParsed={c.parsedClaim ? () => setReviewingParsedId(c.input.id!) : undefined}
                 />
               ))}
           </TabsContent>
@@ -383,8 +384,9 @@ function SummaryCard({ icon: Icon, label, value, color, bg }: { icon: any; label
   );
 }
 
-function CaseRow({ caseData, onSelect, onDelete, onPacket }: {
+function CaseRow({ caseData, onSelect, onDelete, onPacket, onViewParsed }: {
   caseData: ReviewedCase; onSelect: () => void; onDelete: () => void; onPacket: () => void;
+  onViewParsed?: () => void;
 }) {
   const { input, result } = caseData;
   const fails = result.checklist.filter(c => c.status === 'fail').length;
@@ -404,6 +406,11 @@ function CaseRow({ caseData, onSelect, onDelete, onPacket }: {
                 <Badge className={cn('text-[9px] border-0', classColor(result.classification))}>
                   {classLabel(result.classification)}
                 </Badge>
+                {onViewParsed && (
+                  <Badge variant="outline" className="text-[9px] gap-1 border-primary/40 text-primary">
+                    <FileSearch className="h-2.5 w-2.5" /> Parsed claim
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
                 <span>{input.sessionDurationMinutes} min</span>
@@ -415,6 +422,17 @@ function CaseRow({ caseData, onSelect, onDelete, onPacket }: {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {onViewParsed && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-primary"
+                title="Re-open parsed claim & perspectives"
+                onClick={(e) => { e.stopPropagation(); onViewParsed(); }}
+              >
+                <FileSearch className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); onPacket(); }}>
               <Printer className="h-3.5 w-3.5" />
             </Button>
