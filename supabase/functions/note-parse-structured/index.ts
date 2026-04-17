@@ -322,6 +322,16 @@ serve(async (req) => {
     }
 
     const note = JSON.parse(toolCall.function.arguments);
+
+    // Deterministic safety net: sweep raw text for CPTs/modifiers the model may have missed.
+    if (hasText && sourceText) {
+      try {
+        sweepNoteCodes(note, sourceText);
+      } catch (e) {
+        console.error("Note code sweep failed (non-fatal):", e);
+      }
+    }
+
     return new Response(JSON.stringify({ note }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
