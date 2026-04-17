@@ -73,7 +73,7 @@ export function EvidenceDrawer({
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        await pdfPage.render({ canvasContext: ctx, viewport: scaled, canvas }).promise;
+        await pdfPage.render({ canvasContext: ctx, viewport: scaled } as any).promise;
         if (cancelled) return;
 
         // Highlight overlay using text content positions

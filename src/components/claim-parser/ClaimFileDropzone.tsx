@@ -60,7 +60,7 @@ async function pdfFirstPageToImage(file: File, maxWidth = 1400): Promise<string>
   canvas.height = Math.ceil(scaled.height);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas not available");
-  await page.render({ canvasContext: ctx, viewport: scaled, canvas }).promise;
+  await page.render({ canvasContext: ctx, viewport: scaled } as any).promise;
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
