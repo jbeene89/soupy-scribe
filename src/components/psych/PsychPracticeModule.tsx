@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
   Brain, ShieldCheck, AlertTriangle, XCircle, CheckCircle2, DollarSign, FileText, ListChecks,
-  TrendingUp, Clock, ArrowRight, ChevronDown, ChevronUp, Zap, Eye, BadgeAlert, Printer, Sparkles, Info
+  TrendingUp, Clock, ArrowRight, ChevronDown, ChevronUp, Zap, Eye, BadgeAlert, Printer, Sparkles, Info, FileSearch
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult, PsychBatchSummary, RevenueLaneSummary } from '@/lib/psychTypes';
 import { runPsychAudit, computeBatchSummary, CPT_REFERENCE_RATES } from '@/lib/psychAuditEngine';
@@ -18,6 +18,10 @@ import { PsychReadinessPacket } from './PsychReadinessPacket';
 import { ClaimParserView } from '../claim-parser/ClaimParserView';
 import type { PsychCaseVersion } from './PsychVersionSwitcher';
 import { useAuth } from '@/hooks/useAuth';
+import type { ParsedClaim } from '@/lib/parsedClaimTypes';
+import type { LensResult, PerspectiveSynthesis } from '../claim-parser/PerspectivesPanel';
+import { fetchParsedClaims, deleteParsedClaim } from '@/lib/parsedClaimService';
+import { toast } from 'sonner';
 
 export type ReviewedCase = {
   input: PsychCaseInput;
@@ -25,6 +29,13 @@ export type ReviewedCase = {
   versions: PsychCaseVersion[];
   activeVersion: number;
   addedDocuments: { label: string; text: string; addedAt: string }[];
+  /** Present when this case originated from the Claim Upload Parser. */
+  parsedClaim?: ParsedClaim;
+  perspectives?: LensResult[];
+  synthesis?: PerspectiveSynthesis | null;
+  sourceFileName?: string;
+  /** audit_cases.id when persisted. */
+  persistedCaseId?: string;
 };
 
 function classColor(c: string) {
