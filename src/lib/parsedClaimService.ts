@@ -1,0 +1,142 @@
+// Persistence layer for the Claim Upload Parser.
+// Each saved parsed claim becomes a row in `audit_cases`, with the full structured
+// claim + 5-perspective analysis stored under `metadata`. Marker `kind` lets us
+// re-load only Claim-Upload-Parser cases on dashboard mount.
+import { supabase } from "@/integrations/supabase/client";
+import type { ParsedClaim } from "./parsedClaimTypes";
+import type { LensResult, PerspectiveSynthesis } from "@/components/claim-parser/PerspectivesPanel";
+import type { PsychCaseInput } from "./psychTypes";
+
+export const PARSED_CLAIM_KIND = "psych_parsed_claim";
+
+export interface PersistedParsedClaim {
+  caseId: string;
+  parsedClaim: ParsedClaim;
+  perspectives?: LensResult[];
+  synthesis?: PerspectiveSynthesis | null;
+  sourceFileName?: string;
+  psychInput: PsychCaseInput;
+  createdAt: string;
+}
+
+interface SaveArgs {
+  parsedClaim: ParsedClaim;
+  psychInput: PsychCaseInput;
+  sourceFileName: string;
+  perspectives?: LensResult[];
+  synthesis?: PerspectiveSynthesis | null;
+}
+
+/** Insert a new parsed-claim row in audit_cases. Returns the new case id. */
+export async function persistParsedClaim(args: SaveArgs): Promise<string> {
+  const { data: userRes } = await supabase.auth.getUser();
+  const userId = userRes.user?.id;
+  if (!userId) throw new Error("Sign in required to save parsed claims");
+
+  const claim = args.parsedClaim;
+  const cpt = claim.codes.cpt_codes?.value || [];
+  const icd = claim.codes.icd10_codes?.value || [];
+  const billed = claim.financials.total_billed_amount?.value;
+  const dosFrom = claim.service.date_of_service_from?.value;
+
+  const insertRow = {
+    owner_id: userId,
+    patient_id: claim.patient.patient_id?.value || claim.patient.patient_name?.value || "Parsed claim",
+    physician_id: "parsed-claim",
+    physician_name: claim.provider.rendering_provider?.value || claim.provider.billing_provider?.value || "Unknown provider",
+    date_of_service: typeof dosFrom === "string" && dosFrom ? dosFrom : new Date().toISOString().slice(0, 10),
+    cpt_codes: cpt,
+    icd_codes: icd,
+    claim_amount: typeof billed === "number" ? billed : 0,
+    status: "pending",
+    metadata: {
+      kind: PARSED_CLAIM_KIND,
+      sourceFileName: args.sourceFileName,
+      parsedClaim: args.parsedClaim,
+      psychInput: args.psychInput,
+      perspectives: args.perspectives ?? null,
+      synthesis: args.synthesis ?? null,
+    } as any,
+  };
+
+  const { data, error } = await supabase
+    .from("audit_cases")
+    .insert(insertRow)
+    .select("id")
+    .single();
+
+  if (error) throw new Error(`Failed to save parsed claim: ${error.message}`);
+  return data.id;
+}
+
+/** Patch perspectives/synthesis onto an already-persisted parsed claim. */
+export async function updateParsedClaimPerspectives(
+  caseId: string,
+  perspectives: LensResult[],
+  synthesis: PerspectiveSynthesis | null
+): Promise<void> {
+  // Fetch existing metadata, merge, write back (jsonb merge isn't atomic via JS sdk).
+  const { data: row, error: fetchErr } = await supabase
+    .from("audit_cases")
+    .select("metadata")
+    .eq("id", caseId)
+    .single();
+  if (fetchErr) throw fetchErr;
+
+  const nextMeta = { ...(row?.metadata as any || {}), perspectives, synthesis };
+  const { error } = await supabase
+    .from("audit_cases")
+    .update({ metadata: nextMeta })
+    .eq("id", caseId);
+  if (error) throw error;
+}
+
+/** Patch the parsed claim itself (after manual field edits). */
+export async function updateParsedClaimFields(caseId: string, parsedClaim: ParsedClaim): Promise<void> {
+  const { data: row, error: fetchErr } = await supabase
+    .from("audit_cases")
+    .select("metadata")
+    .eq("id", caseId)
+    .single();
+  if (fetchErr) throw fetchErr;
+  const nextMeta = { ...(row?.metadata as any || {}), parsedClaim };
+  const { error } = await supabase
+    .from("audit_cases")
+    .update({ metadata: nextMeta })
+    .eq("id", caseId);
+  if (error) throw error;
+}
+
+/** Load all parsed-claim cases for the current user. */
+export async function fetchParsedClaims(): Promise<PersistedParsedClaim[]> {
+  const { data, error } = await supabase
+    .from("audit_cases")
+    .select("id, created_at, metadata")
+    .eq("metadata->>kind", PARSED_CLAIM_KIND)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  if (!data) return [];
+
+  return data
+    .map((row) => {
+      const meta = (row.metadata as any) || {};
+      if (!meta.parsedClaim || !meta.psychInput) return null;
+      return {
+        caseId: row.id,
+        parsedClaim: meta.parsedClaim as ParsedClaim,
+        psychInput: meta.psychInput as PsychCaseInput,
+        perspectives: meta.perspectives || undefined,
+        synthesis: meta.synthesis || null,
+        sourceFileName: meta.sourceFileName,
+        createdAt: row.created_at,
+      } as PersistedParsedClaim;
+    })
+    .filter((x): x is PersistedParsedClaim => !!x);
+}
+
+/** Hard-delete a saved parsed claim. */
+export async function deleteParsedClaim(caseId: string): Promise<void> {
+  const { error } = await supabase.from("audit_cases").delete().eq("id", caseId);
+  if (error) throw error;
+}
