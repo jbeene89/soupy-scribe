@@ -232,6 +232,9 @@ export function PsychPracticeModule() {
           sourceFileName: reviewingCase.sourceFileName || 'Saved claim',
           perspectives: reviewingCase.perspectives,
           synthesis: reviewingCase.synthesis ?? null,
+          clinicalNote: reviewingCase.clinicalNote ?? null,
+          clinicalNoteFileName: reviewingCase.clinicalNoteFileName ?? null,
+          crosswalkVerdict: reviewingCase.crosswalkVerdict ?? null,
         }}
       />
     );
