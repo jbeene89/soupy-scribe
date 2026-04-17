@@ -32,6 +32,17 @@ const TONE_STYLES: Record<string, string> = {
   warning: "border-amber-500/40 bg-amber-500/10 text-amber-700 hover:border-amber-500",
 };
 
+/** Compress noisy source_location strings into a short, human chip. */
+function formatSourceLocation(raw?: string | null): string | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (!s) return null;
+  // Hide our deterministic-sweep marker — it's not a real region.
+  if (/code sweep/i.test(s)) return null;
+  // Keep it short — chips shouldn't wrap.
+  return s.length > 48 ? s.slice(0, 45) + "…" : s;
+}
+
 export function CodeChipsEditor({
   label, hint, field, onChange, onShowEvidence,
   tone = "primary", placeholder = "Add code…", uppercase = true,
