@@ -38,18 +38,28 @@ function sweepNoteCodes(note: any, raw: string): void {
   note.modifiers_in_note = Array.from(new Set([...existingMods, ...mods]));
 }
 
-const SYSTEM_PROMPT = `You are a strict behavioral-health documentation parser.
+function buildSystemPrompt(): string {
+  const today = new Date();
+  const isoDate = today.toISOString().slice(0, 10);
+  const humanDate = today.toUTCString().slice(0, 16);
+  return `You are a strict behavioral-health documentation parser.
 You extract ONLY what is explicitly documented in the clinical note.
 You NEVER infer, summarize loosely, or fabricate clinical content.
 If a section is not present, return it as null/empty — do not guess.
 Every extracted item must have an evidence_quote (verbatim from the note, ≤25 words).
+
+CONTEXT: Today's date is ${humanDate} (${isoDate}). Treat any date on or before today as a normal past/present session date — do NOT flag current-year dates as "in the future" unless they are strictly AFTER ${isoDate}.
 
 CODE CAPTURE (CRITICAL — do not skip):
 - A CPT code is 5 characters: 5 digits (e.g. 99214, 90834, 90837) OR 1 letter + 4 digits (e.g. G0438).
 - A modifier is 2 characters following a CPT, often after a hyphen, dash, comma, space, or in a separate field (e.g. "99214-95", "99214 95", "Modifier: 95"). Capture ALL of them in modifiers_in_note.
 - Telehealth modifier 95 is REQUIRED when the note documents a telehealth visit. Always look for it in the note header, billing section, signature block, or anywhere else.
 - If you see ANY 5-character CPT-shaped token in the note (header, footer, billing line, addendum), include it in cpt_codes_in_note.
-- Do not omit codes just because they appear outside the clinical narrative — billing strips and footers count.`;
+- Do not omit codes just because they appear outside the clinical narrative — billing strips and footers count.
+
+MULTI-PAGE NOTES:
+- If multiple page images are provided, they are pages of the SAME note in order. Read every page before declaring a section absent — assessment, plan, signature, and addenda often live on later pages.`;
+}
 
 const wrappedText = {
   type: "object",
@@ -281,13 +291,21 @@ serve(async (req) => {
     const body = await req.json();
     const sourceText: string | undefined = body.sourceText;
     const imageDataUrl: string | undefined = body.imageDataUrl;
+    const imageDataUrlsRaw: unknown = body.imageDataUrls;
     const fileName: string | undefined = body.fileName;
 
+    const imageList: string[] = Array.isArray(imageDataUrlsRaw)
+      ? imageDataUrlsRaw.filter((s): s is string => typeof s === "string" && s.startsWith("data:"))
+      : [];
+    if (imageList.length === 0 && typeof imageDataUrl === "string" && imageDataUrl.startsWith("data:")) {
+      imageList.push(imageDataUrl);
+    }
+
     const hasText = typeof sourceText === "string" && sourceText.trim().length >= 20;
-    const hasImage = typeof imageDataUrl === "string" && imageDataUrl.startsWith("data:");
+    const hasImage = imageList.length > 0;
 
     if (!hasText && !hasImage) {
-      return new Response(JSON.stringify({ error: "Provide sourceText (min 20 chars) or imageDataUrl" }), {
+      return new Response(JSON.stringify({ error: "Provide sourceText (min 20 chars) or imageDataUrl(s)" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -301,9 +319,11 @@ serve(async (req) => {
             type: "text",
             text: `Parse this behavioral health clinical note into the strict structure. ${
               fileName ? `Filename: ${fileName}.` : ""
-            } ${hasText ? `Additional extracted text:\n\n${sourceText}` : ""}`,
+            } ${imageList.length > 1 ? `${imageList.length} page images attached — read EVERY page before deciding a section is absent.` : ""} ${
+              hasText ? `Additional extracted text:\n\n${sourceText}` : ""
+            }`,
           },
-          { type: "image_url", image_url: { url: imageDataUrl } },
+          ...imageList.map((url) => ({ type: "image_url", image_url: { url } })),
         ]
       : `Parse this behavioral health clinical note into the strict structure.${
           fileName ? ` Filename: ${fileName}.` : ""
@@ -315,7 +335,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: hasImage ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: buildSystemPrompt() },
           { role: "user", content: userContent },
         ],
         tools: [EXTRACT_TOOL],

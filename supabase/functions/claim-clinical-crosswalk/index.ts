@@ -17,7 +17,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are a STRICT behavioral health claim auditor. You compare a billed claim against the clinician's documented note and produce a defensibility verdict.
+function buildSystemPrompt(): string {
+  const today = new Date();
+  const isoDate = today.toISOString().slice(0, 10);
+  const humanDate = today.toUTCString().slice(0, 16);
+  return `You are a STRICT behavioral health claim auditor. You compare a billed claim against the clinician's documented note and produce a defensibility verdict.
+
+CONTEXT: Today's date is ${humanDate} (${isoDate}). Treat any service date or signature date on or before today as a normal past/present date. Only dates strictly AFTER ${isoDate} should be flagged as future-dated. Do NOT raise denial risk for current-year dates that are simply in the present.
 
 ABSOLUTE RULES:
 1. Trust ONLY documented evidence from the parsed note.
@@ -32,6 +38,7 @@ ABSOLUTE RULES:
 10. Output enterprise tone, no advocacy, no melodrama. Neutral auditor voice.
 
 You will return your verdict via the crosswalk_verdict tool.`;
+}
 
 const VERDICT_TOOL = {
   type: "function",
@@ -238,7 +245,7 @@ Produce the full crosswalk verdict via the crosswalk_verdict tool. Be strict. Ci
         // High-stakes audit call: use Pro for reasoning depth.
         model: "google/gemini-2.5-pro",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: buildSystemPrompt() },
           { role: "user", content: userMsg },
         ],
         tools: [VERDICT_TOOL],
