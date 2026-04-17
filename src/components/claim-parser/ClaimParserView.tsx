@@ -51,6 +51,8 @@ interface ParsedFileState {
   perspectivesLoading?: boolean;
   perspectivesError?: string | null;
   saved?: boolean;
+  /** id of audit_cases row once persisted */
+  persistedCaseId?: string;
 }
 
 interface EvidenceState {
