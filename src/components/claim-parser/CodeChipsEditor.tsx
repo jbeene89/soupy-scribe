@@ -2,7 +2,7 @@
 // Each code is its own chip with: click-to-edit, delete, and "+ Add code".
 // Built to let users fix a single parser mis-pull in 2 seconds without re-uploading.
 import { useState, useRef, useEffect } from "react";
-import { Check, X, Plus, Pencil, Eye, AlertTriangle } from "lucide-react";
+import { Check, X, Plus, Pencil, Eye, AlertTriangle, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,17 @@ const TONE_STYLES: Record<string, string> = {
   warning: "border-amber-500/40 bg-amber-500/10 text-amber-700 hover:border-amber-500",
 };
 
+/** Compress noisy source_location strings into a short, human chip. */
+function formatSourceLocation(raw?: string | null): string | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (!s) return null;
+  // Hide our deterministic-sweep marker — it's not a real region.
+  if (/code sweep/i.test(s)) return null;
+  // Keep it short — chips shouldn't wrap.
+  return s.length > 48 ? s.slice(0, 45) + "…" : s;
+}
+
 export function CodeChipsEditor({
   label, hint, field, onChange, onShowEvidence,
   tone = "primary", placeholder = "Add code…", uppercase = true,
@@ -39,6 +50,7 @@ export function CodeChipsEditor({
   const codes = field?.value ?? [];
   const lowConf = (field?.confidence ?? 1) < 0.8;
   const hasEvidence = !!field?.evidence_snippet || !!field?.source_location;
+  const sourceLabel = formatSourceLocation(field?.source_location);
 
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
@@ -112,6 +124,16 @@ export function CodeChipsEditor({
           {hint && <span className="text-[10px] text-muted-foreground/70 italic truncate">· {hint}</span>}
         </div>
         <div className="flex items-center gap-1">
+          {sourceLabel && !empty && (
+            <Badge
+              variant="outline"
+              className="text-[9px] h-4 px-1.5 gap-0.5 font-normal text-muted-foreground border-border/60 max-w-[180px]"
+              title={`Parser found these in: ${field?.source_location}`}
+            >
+              <MapPin className="h-2.5 w-2.5 shrink-0" />
+              <span className="truncate">{sourceLabel}</span>
+            </Badge>
+          )}
           {lowConf && (
             <Badge variant="outline" className="text-[9px] h-4 px-1 border-amber-500/40 text-amber-600">
               <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
