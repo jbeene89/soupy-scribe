@@ -113,7 +113,14 @@ function sweepCodesIntoClaim(claim: any, raw: string): void {
   }
 }
 
-const SYSTEM_PROMPT = `You are a medical claim parsing engine.
+function buildSystemPrompt(): string {
+  // Inject today's date so the model doesn't false-flag current dates as "in the future".
+  const today = new Date();
+  const isoDate = today.toISOString().slice(0, 10); // YYYY-MM-DD
+  const humanDate = today.toUTCString().slice(0, 16); // e.g. "Thu, 17 Apr 2026"
+  return `You are a medical claim parsing engine.
+
+CONTEXT: Today's date is ${humanDate} (${isoDate}). Treat any service date or signature date on or before today as a normal past/present date — do NOT flag current-year dates as "in the future" unless they are strictly AFTER today's date. Only dates strictly after ${isoDate} should be flagged as future-dated.
 
 Your job is to extract ALL relevant claim data from the provided document with HIGH accuracy.
 
@@ -135,6 +142,9 @@ CODE EXTRACTION (CRITICAL — most common failure mode):
 - An ICD-10 code is 1 letter + 2 digits + optional ".xx" suffix (e.g. F33.1, F41.1, M54.5, Z79.899).
 - Every CPT code you find MUST also produce a claim_line_items entry. Never report CPTs in codes.cpt_codes without a matching line item.
 
+MULTI-PAGE DOCUMENTS:
+- If multiple page images are provided, they are pages of the SAME document in order. Read every page before deciding a field is missing — values often live on page 2 or later (e.g. attached EOBs, remit advice, signature pages).
+
 For every extracted field that has a value, also return:
 - evidence_snippet: the EXACT verbatim quote from the source document where the value appears (3-15 words is ideal)
 - source_location: a human-readable hint of where it came from (e.g. "Page 1", "Page 2 — Service Lines table", "Header section")
@@ -151,6 +161,7 @@ VALIDATION: Before finishing, re-scan the document and confirm:
 - Denial reason codes AND denial reason text both captured if present
 
 Return your output via the extract_claim tool.`;
+}
 
 // Wrapped value type used everywhere (value + traceability)
 const wrapped = (valueType: string | string[]) => ({
@@ -320,14 +331,23 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const sourceText: string | undefined = body.sourceText;
-    const imageDataUrl: string | undefined = body.imageDataUrl; // data:image/...;base64,...
+    const imageDataUrl: string | undefined = body.imageDataUrl; // legacy single-image
+    const imageDataUrlsRaw: unknown = body.imageDataUrls;       // new multi-page array
     const fileName: string | undefined = body.fileName;
 
+    // Normalize images into a single array (multi-page wins; falls back to legacy single image)
+    const imageList: string[] = Array.isArray(imageDataUrlsRaw)
+      ? imageDataUrlsRaw.filter((s): s is string => typeof s === "string" && s.startsWith("data:"))
+      : [];
+    if (imageList.length === 0 && typeof imageDataUrl === "string" && imageDataUrl.startsWith("data:")) {
+      imageList.push(imageDataUrl);
+    }
+
     const hasText = typeof sourceText === "string" && sourceText.trim().length >= 20;
-    const hasImage = typeof imageDataUrl === "string" && imageDataUrl.startsWith("data:");
+    const hasImage = imageList.length > 0;
 
     if (!hasText && !hasImage) {
-      return new Response(JSON.stringify({ error: "Provide sourceText (min 20 chars) or imageDataUrl" }), {
+      return new Response(JSON.stringify({ error: "Provide sourceText (min 20 chars) or imageDataUrl(s)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -343,9 +363,11 @@ serve(async (req) => {
             type: "text",
             text: `Parse this claim document into structured claim data with evidence snippets. ${
               fileName ? `Filename: ${fileName}.` : ""
-            } ${hasText ? `Additional extracted text:\n\n${sourceText}` : ""}`,
+            } ${imageList.length > 1 ? `${imageList.length} page images attached — read EVERY page before deciding any field is missing.` : ""} ${
+              hasText ? `Additional extracted text:\n\n${sourceText}` : ""
+            }`,
           },
-          { type: "image_url", image_url: { url: imageDataUrl } },
+          ...imageList.map((url) => ({ type: "image_url", image_url: { url } })),
         ]
       : `Parse this claim document into structured claim data with evidence snippets. ${
           fileName ? `Filename: ${fileName}.\n\n` : ""
@@ -360,7 +382,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: hasImage ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: buildSystemPrompt() },
           { role: "user", content: userContent },
         ],
         tools: [EXTRACT_TOOL],
