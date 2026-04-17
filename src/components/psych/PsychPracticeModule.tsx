@@ -74,22 +74,71 @@ export function PsychPracticeModule() {
   const [showForm, setShowForm] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showPacket, setShowPacket] = useState<string | null>(null);
+  // When set, opens the parser pre-loaded with this saved claim (re-view mode).
+  const [reviewingParsedId, setReviewingParsedId] = useState<string | null>(null);
 
   const batch = useMemo(() => computeBatchSummary(cases), [cases]);
   const selectedCase = cases.find(c => c.input.id === selectedCaseId);
+  const reviewingCase = cases.find(c => c.input.id === reviewingParsedId);
 
-  const handleAddCase = (input: PsychCaseInput) => {
+  // Hydrate previously-saved parsed claims from the database for signed-in users.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const persisted = await fetchParsedClaims();
+        if (cancelled || persisted.length === 0) return;
+        setCases(prev => {
+          const existingIds = new Set(prev.map(c => c.input.id));
+          const hydrated: ReviewedCase[] = persisted
+            .filter(p => !existingIds.has(p.caseId))
+            .map(p => {
+              const input = { ...p.psychInput, id: p.caseId };
+              const result = runPsychAudit(input);
+              return {
+                input,
+                result,
+                versions: [{ version: 1, createdAt: p.createdAt, result }],
+                activeVersion: 1,
+                addedDocuments: [],
+                parsedClaim: p.parsedClaim,
+                perspectives: p.perspectives,
+                synthesis: p.synthesis,
+                sourceFileName: p.sourceFileName,
+                persistedCaseId: p.caseId,
+              };
+            });
+          return [...hydrated, ...prev];
+        });
+      } catch (e: any) {
+        console.error("Failed to load saved parsed claims:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthenticated]);
+
+  const handleAddCase = (input: PsychCaseInput, extras?: Partial<ReviewedCase>) => {
     const id = input.id || `case-${Date.now()}`;
     const newInput = { ...input, id };
-    setCases(prev => [...prev, buildInitialCase(newInput)]);
+    const base = buildInitialCase(newInput);
+    setCases(prev => [...prev, { ...base, ...extras }]);
     setShowForm(false);
     // Auto-open the new case so the user immediately sees the audit report.
     setSelectedCaseId(id);
   };
 
   const handleDeleteCase = (id: string) => {
+    const target = cases.find(c => c.input.id === id);
     setCases(prev => prev.filter(c => c.input.id !== id));
     if (selectedCaseId === id) setSelectedCaseId(null);
+    // Best-effort: also delete the persisted row in the background.
+    if (target?.persistedCaseId) {
+      deleteParsedClaim(target.persistedCaseId).catch(e => {
+        console.error("Failed to delete persisted claim:", e);
+        toast.error("Removed locally but failed to delete saved copy");
+      });
+    }
   };
 
   /**
