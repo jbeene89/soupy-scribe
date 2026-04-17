@@ -91,6 +91,10 @@ export function CodeChipsEditor({
     if (adding) addInputRef.current?.focus();
   }, [adding]);
 
+  // Suggestions for the currently active input (edit OR add). Hide ones already in the list.
+  const activeQuery = editingIdx !== null ? draft : adding ? addDraft : "";
+  const matches = filterSuggestions(activeQuery, suggestions).filter((s) => !codes.includes(s.code));
+
   const normalize = (s: string) => (uppercase ? s.toUpperCase() : s).trim();
 
   const startEdit = (idx: number) => {
