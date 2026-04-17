@@ -69,6 +69,8 @@ interface ParsedFileState {
   crosswalkVerdict?: CrosswalkVerdict | null;
   crosswalkLoading?: boolean;
   crosswalkError?: string | null;
+  /** True when the user has edited codes after the last crosswalk run — verdict is stale. */
+  codesDirty?: boolean;
 }
 
 interface EvidenceState {
