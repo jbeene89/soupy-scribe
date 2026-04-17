@@ -450,7 +450,12 @@ serve(async (req) => {
     // ──────────── Deterministic safety net ────────────
     // The model occasionally misses CPTs/modifiers/ICDs that are clearly in the text.
     // Sweep the raw source text for known patterns and merge anything missing.
-    if (hasText && sourceText) {
+    //
+    // SAFETY: only run the sweep if the LLM already identified at least one billed line item.
+    // If the LLM returned zero line items, the document is likely a fee schedule / reference sheet
+    // and we must NOT manufacture billed codes from raw regex hits against price-list text.
+    const llmLineItemCount = Array.isArray(claim?.claim_line_items) ? claim.claim_line_items.length : 0;
+    if (hasText && sourceText && llmLineItemCount > 0) {
       try {
         sweepCodesIntoClaim(claim, sourceText);
       } catch (e) {
