@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Upload, Brain, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import type { PsychCaseInput, SessionType } from '@/lib/psychTypes';
 import { PsychFileDropzone } from './PsychFileDropzone';
 
