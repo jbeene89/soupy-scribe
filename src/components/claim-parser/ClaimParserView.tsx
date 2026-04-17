@@ -832,6 +832,7 @@ function ClaimReview({
               field={claim.codes.cpt_codes}
               onChange={(v) => onUpdateField("codes", "cpt_codes", v)}
               onShowEvidence={() => onShowFieldEvidence("CPT codes", claim.codes.cpt_codes)}
+              suggestions={CPT_SUGGESTIONS}
             />
             <CodeChipsEditor
               label="HCPCS codes" hint="Supplies / services" tone="muted" placeholder="e.g. J3490"
