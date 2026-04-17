@@ -104,9 +104,26 @@ export function CrosswalkPanel({
           </div>
         )}
 
+        {/* Stale verdict banner — codes were edited after the audit ran */}
+        {verdict && codesDirty && !loading && (
+          <div className="rounded-md border-2 border-amber-500/50 bg-amber-500/10 px-3 py-2.5 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-amber-700">Codes changed — verdict below is stale.</p>
+              <p className="text-[11px] text-amber-700/90 mt-0.5">
+                You edited a CPT, modifier, or ICD chip. Re-run the crosswalk to get an updated audit against your corrected codes.
+              </p>
+            </div>
+            <Button size="sm" onClick={onRun} disabled={!canRun} className="gap-1.5 shrink-0">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Re-run crosswalk
+            </Button>
+          </div>
+        )}
+
         {/* STEP 7 — Decision banner */}
         {verdict && decisionMeta && (
-          <div className={cn("rounded-md border px-3 py-3 space-y-1.5", decisionMeta.tone)}>
+          <div className={cn("rounded-md border px-3 py-3 space-y-1.5", decisionMeta.tone, codesDirty && "opacity-60")}>
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <Badge variant="outline" className={cn("text-[10px] font-semibold", decisionMeta.badge)}>
                 {decisionMeta.label}
