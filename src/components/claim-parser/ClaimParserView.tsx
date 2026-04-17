@@ -19,11 +19,24 @@ import { EvidenceDrawer } from "./EvidenceDrawer";
 import { PerspectivesPanel, type LensResult, type PerspectiveSynthesis } from "./PerspectivesPanel";
 import type { ParsedClaim, ParsedLineItem, ParsedSourceDocument } from "@/lib/parsedClaimTypes";
 import type { PsychCaseInput, SessionType } from "@/lib/psychTypes";
+import {
+  persistParsedClaim,
+  updateParsedClaimPerspectives,
+  updateParsedClaimFields,
+} from "@/lib/parsedClaimService";
 
 interface Props {
   /** Called once per parsed file the user accepts into their dashboard. */
-  onCaseCreated: (input: PsychCaseInput, parsedClaim: ParsedClaim) => void;
+  onCaseCreated: (input: PsychCaseInput, parsedClaim: ParsedClaim, caseId: string) => void;
   onBack?: () => void;
+  /** Optional: open the parser pre-populated with an existing saved claim (re-view mode). */
+  initialClaim?: {
+    caseId: string;
+    parsedClaim: ParsedClaim;
+    sourceFileName: string;
+    perspectives?: LensResult[];
+    synthesis?: PerspectiveSynthesis | null;
+  };
 }
 
 type ParseStatus = "queued" | "parsing" | "ready" | "error";
