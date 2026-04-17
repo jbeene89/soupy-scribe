@@ -52,9 +52,29 @@ function formatSourceLocation(raw?: string | null): string | null {
   return s.length > 48 ? s.slice(0, 45) + "…" : s;
 }
 
+/** Filter suggestions for a typed query: prefix-first, then substring; cap at 6. */
+function filterSuggestions(query: string, all: CodeSuggestion[] | undefined): CodeSuggestion[] {
+  if (!all || all.length === 0) return [];
+  const q = query.trim().toUpperCase();
+  if (q.length < 1) return [];
+  const taken = new Set<string>();
+  const prefix: CodeSuggestion[] = [];
+  const contains: CodeSuggestion[] = [];
+  for (const s of all) {
+    const code = s.code.toUpperCase();
+    if (taken.has(code)) continue;
+    if (code === q) continue; // already exact
+    if (code.startsWith(q)) { prefix.push(s); taken.add(code); }
+    else if (code.includes(q) || (s.label ?? "").toUpperCase().includes(q)) { contains.push(s); taken.add(code); }
+    if (prefix.length >= 6) break;
+  }
+  return [...prefix, ...contains].slice(0, 6);
+}
+
 export function CodeChipsEditor({
   label, hint, field, onChange, onShowEvidence,
   tone = "primary", placeholder = "Add code…", uppercase = true,
+  suggestions,
 }: Props) {
   const codes = field?.value ?? [];
   const lowConf = (field?.confidence ?? 1) < 0.8;
