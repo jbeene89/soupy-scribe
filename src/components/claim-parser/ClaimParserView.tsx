@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ClaimMultiFileDropzone, type IngestedFile } from "./ClaimMultiFileDropzone";
 import { ClaimField } from "./ClaimField";
+import { CodeChipsEditor } from "./CodeChipsEditor";
 import { LineItemsTable } from "./LineItemsTable";
 import { EvidenceDrawer } from "./EvidenceDrawer";
 import { PerspectivesPanel, type LensResult, type PerspectiveSynthesis } from "./PerspectivesPanel";
