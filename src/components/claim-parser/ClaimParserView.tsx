@@ -17,8 +17,13 @@ import { ClaimField } from "./ClaimField";
 import { LineItemsTable } from "./LineItemsTable";
 import { EvidenceDrawer } from "./EvidenceDrawer";
 import { PerspectivesPanel, type LensResult, type PerspectiveSynthesis } from "./PerspectivesPanel";
+import { CrosswalkPanel } from "./CrosswalkPanel";
+import type { IngestedNote } from "./NoteDropzone";
 import type { ParsedClaim, ParsedLineItem, ParsedSourceDocument } from "@/lib/parsedClaimTypes";
 import type { PsychCaseInput, SessionType } from "@/lib/psychTypes";
+import type { CrosswalkVerdict, ParsedNote } from "@/lib/crosswalkTypes";
+import { parseClinicalNote, runCrosswalk, persistCrosswalk } from "@/lib/crosswalkService";
+import { exportAppealPacketPDF } from "@/lib/exportAppealPacketPDF";
 import {
   persistParsedClaim,
   updateParsedClaimPerspectives,
