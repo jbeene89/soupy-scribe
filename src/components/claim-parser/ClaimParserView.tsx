@@ -78,6 +78,8 @@ interface ParsedFileState {
   crosswalkError?: string | null;
   /** True when the user has edited codes after the last crosswalk run — verdict is stale. */
   codesDirty?: boolean;
+  /** Auto-save status for inline edits to a persisted claim. */
+  autoSaveStatus?: "idle" | "saving" | "saved" | "error";
 }
 
 interface EvidenceState {
