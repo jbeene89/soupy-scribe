@@ -292,6 +292,18 @@ serve(async (req) => {
     }
 
     const claim = JSON.parse(toolCall.function.arguments);
+
+    // ──────────── Deterministic safety net ────────────
+    // The model occasionally misses CPTs/modifiers/ICDs that are clearly in the text.
+    // Sweep the raw source text for known patterns and merge anything missing.
+    if (hasText && sourceText) {
+      try {
+        sweepCodesIntoClaim(claim, sourceText);
+      } catch (e) {
+        console.error("Code sweep failed (non-fatal):", e);
+      }
+    }
+
     return new Response(JSON.stringify({ claim }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
