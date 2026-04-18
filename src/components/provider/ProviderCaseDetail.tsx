@@ -35,6 +35,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PreAppealResolutionTab } from '@/components/pre-appeal/PreAppealResolutionTab';
 import { supabase } from '@/integrations/supabase/client';
+import { StandardizedScalesPanel } from '@/components/psych/StandardizedScalesPanel';
+import type { ParsedNote } from '@/lib/crosswalkTypes';
 
 interface ProviderCaseDetailProps {
   auditCase: AuditCase;
