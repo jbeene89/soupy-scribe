@@ -46,7 +46,7 @@ export function PsychCaseDetail({ caseData, onBack, onViewPacket, onAddDocument,
   onAddDocument?: (label: string, text: string) => void;
   onSelectVersion?: (version: number) => void;
 }) {
-  const { input, result, versions = [], activeVersion = 1, addedDocuments = [] } = caseData;
+  const { input, result, versions = [], activeVersion = 1, addedDocuments = [], clinicalNote = null } = caseData;
   const ri = readinessInfo(result);
   const fails = result.checklist.filter(c => c.status === 'fail');
   const warnings = result.checklist.filter(c => c.status === 'warning');
