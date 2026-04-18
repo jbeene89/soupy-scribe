@@ -132,26 +132,35 @@ const SYNTH_TOOL = {
   type: "function" as const,
   function: {
     name: "synthesize",
-    description: "Combine the five lens outputs into a unified, neutral audit posture.",
+    description: "Combine the lens outputs into a unified, neutral audit posture that validates clean claims and surfaces revenue opportunities.",
     parameters: {
       type: "object",
       properties: {
         overall_posture: {
           type: "string",
           enum: ["clean", "defensible", "needs_documentation", "high_denial_risk", "human_review_required"],
-          description: "Use 'clean' when no material issues were identified across the lenses.",
+          description: "Use 'clean' when no material issues were identified across the lenses. A clean claim with revenue opportunities is still 'clean'.",
         },
         confidence: { type: "number", description: "0.0–1.0" },
-        headline: { type: "string", description: "One-sentence summary (≤ 22 words)." },
+        headline: { type: "string", description: "One-sentence summary (≤ 22 words). For clean claims, validate them positively (e.g. 'Claim appears correctly built and defensible.')." },
+        validation_summary: {
+          type: "string",
+          description: "1–2 sentences explicitly validating what is correct/defensible about the claim. Always include this for clean claims so the provider sees the positive confirmation, not just a list of optional improvements.",
+        },
+        revenue_opportunities: {
+          type: "array",
+          description: "Up to 5 plain-English revenue opportunities surfaced by the Revenue lens. Each item describes WHAT to look for in the documentation — never invents code numbers. Empty array if none.",
+          items: { type: "string" },
+        },
         agreement_points: { type: "array", items: { type: "string" } },
         tension_points: {
           type: "array",
-          description: "Where lenses disagree or pull in different directions.",
+          description: "Where lenses disagree or pull in different directions. Often empty for clean claims.",
           items: { type: "string" },
         },
-        top_actions: { type: "array", description: "Up to 5 prioritized actions.", items: { type: "string" } },
+        top_actions: { type: "array", description: "Up to 5 prioritized actions. For clean claims, this should be empty or contain only revenue-opportunity follow-ups.", items: { type: "string" } },
       },
-      required: ["overall_posture", "confidence", "headline", "agreement_points", "tension_points", "top_actions"],
+      required: ["overall_posture", "confidence", "headline", "validation_summary", "revenue_opportunities", "agreement_points", "tension_points", "top_actions"],
       additionalProperties: false,
     },
   },
@@ -201,7 +210,7 @@ serve(async (req) => {
       fileName ? ` Source filename: ${fileName}.` : ""
     }\n\nPARSED_CLAIM:\n${claimJson}`;
 
-    const lenses: Lens[] = ["builder", "red_team", "systems", "frame_breaker", "empath"];
+    const lenses: Lens[] = ["builder", "red_team", "systems", "frame_breaker", "empath", "revenue"];
     const dateNote = dateContext();
 
     // Run all 5 lenses in parallel
