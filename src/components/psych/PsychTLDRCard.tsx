@@ -70,6 +70,9 @@ export function PsychTLDRCard({ result, clinicalNote }: { result: PsychAuditResu
           </div>
         )}
 
+        {/* Standardized scale evidence — PHQ-9, GAD-7, Y-BOCS, PCL-5, CAPS-5, MDQ, ASRS */}
+        <StandardizedScalesPanel scales={scales} compact />
+
         {/* Missed revenue + biggest risk (side by side on wider screens) */}
         {(topRevenue || topRisk) && (
           <div className="grid sm:grid-cols-2 gap-2">
