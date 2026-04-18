@@ -85,7 +85,7 @@ export function PerspectivesPanel({
           </Button>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Builder · Red Team · Systems · Frame Breaker · Empath — each lens reviews this claim independently, then a synthesis combines them.
+          Builder · Red Team · Systems · Frame Breaker · Empath · Revenue — each lens reviews this claim independently. The synthesis validates clean claims and surfaces revenue opportunities.
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
