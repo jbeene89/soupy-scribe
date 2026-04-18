@@ -12,6 +12,32 @@ const corsHeaders = {
 // ──────────── Deterministic code sweep (safety net for the LLM) ────────────
 // CPT/HCPCS = 5 chars: 5 digits OR 1 letter + 4 digits (e.g. 99214, J3490, G0438).
 const CPT_RE = /\b([0-9]{5}|[A-Z][0-9]{4})\b/g;
+
+// US ZIP code = 5 digits in known assignable ranges (00501–99950).
+// CPT codes live in 00100–99607 (numeric range), but the *assigned* CPT space
+// excludes the bulk of 5-digit numbers that look like ZIPs. We treat any
+// 5-digit number that (a) is a plausible US ZIP AND (b) is NOT in our
+// KNOWN_CPT allowlist AND (c) appears near address/location context as a ZIP
+// and refuse to classify it as a CPT/HCPCS/ICD code.
+const ZIP_RE = /\b[0-9]{5}\b/;
+function looksLikeZip(token: string): boolean {
+  if (!/^[0-9]{5}$/.test(token)) return false;
+  const n = parseInt(token, 10);
+  // US ZIPs span roughly 00501 (Holtsville, NY) to 99950 (Ketchikan, AK)
+  return n >= 501 && n <= 99950;
+}
+function isZipInContext(token: string, raw: string): boolean {
+  if (!looksLikeZip(token)) return false;
+  // Find every occurrence of the token and check ~40 chars of surrounding context.
+  const ctxRe = new RegExp(`.{0,40}\\b${token}\\b.{0,40}`, "gi");
+  const matches = raw.match(ctxRe) || [];
+  if (matches.length === 0) return false;
+  // Address/location signals that mean this is a ZIP, not a procedure code.
+  const ZIP_CTX = /\b(zip|postal|address|addr|street|st\.?|ave|avenue|blvd|road|rd\.?|suite|ste\.?|city|state|[A-Z]{2}\s+[0-9]{5})\b/i;
+  // US state abbreviation immediately before the number: "NY 10001", "CA 90210"
+  const STATE_BEFORE = new RegExp(`\\b(A[KLRZ]|C[AOT]|D[CE]|FL|GA|HI|I[ADLN]|K[SY]|LA|M[ADEINOST]|N[CDEHJMVY]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[AT]|W[AIVY])\\s+${token}\\b`);
+  return matches.some((m) => ZIP_CTX.test(m)) || STATE_BEFORE.test(raw);
+}
 // Modifier = 2 chars after a CPT, separated by hyphen/space/dash/comma. Captures common modifiers.
 // Also matches a column-style "Mod: 95" or "Modifier 95".
 const MOD_AFTER_CPT_RE = /\b(?:[0-9]{5}|[A-Z][0-9]{4})\s*[-–,\s]\s*([0-9A-Z]{2})\b/g;
@@ -48,9 +74,41 @@ function sweepCodesIntoClaim(claim: any, raw: string): void {
 
   const text = raw;
 
-  // CPTs
+  // ── ZIP scrub: strip any LLM-returned 5-digit ZIP-shaped numbers from
+  //     CPT / HCPCS / ICD fields and from line items. Address numerics must
+  //     never appear as procedure or diagnosis codes.
+  const scrubZipFromArrayField = (field: any): any => {
+    if (!field || !Array.isArray(field.value)) return field;
+    const cleaned = field.value.filter((c: string) => {
+      const s = String(c || "").trim();
+      if (!s) return false;
+      if (KNOWN_CPT.has(s)) return true;
+      if (/^[0-9]{5}$/.test(s) && isZipInContext(s, text)) return false;
+      return true;
+    });
+    return { ...field, value: cleaned };
+  };
+  if (claim.codes?.cpt_codes)   claim.codes.cpt_codes   = scrubZipFromArrayField(claim.codes.cpt_codes);
+  if (claim.codes?.hcpcs_codes) claim.codes.hcpcs_codes = scrubZipFromArrayField(claim.codes.hcpcs_codes);
+  if (claim.codes?.icd10_codes) claim.codes.icd10_codes = scrubZipFromArrayField(claim.codes.icd10_codes);
+  if (Array.isArray(claim.claim_line_items)) {
+    claim.claim_line_items = claim.claim_line_items.filter((li: any) => {
+      const code = String(li?.procedure_code || "").trim();
+      if (!code) return true; // keep blanks; sweep may fill them
+      if (KNOWN_CPT.has(code)) return true;
+      if (/^[0-9]{5}$/.test(code) && isZipInContext(code, text)) return false;
+      return true;
+    });
+  }
+
+  // CPTs — exclude 5-digit numbers that look like US ZIP codes in address context.
   const cptHits = dedupe(Array.from(text.matchAll(CPT_RE), (m) => m[1]))
-    .filter((c) => /^[0-9]{5}$/.test(c) ? KNOWN_CPT.has(c) || /^9[09][0-9]{3}$/.test(c) || /^G[0-9]{4}$/i.test(c) || true : true);
+    .filter((c) => {
+      if (!/^[0-9]{5}$/.test(c)) return true; // letter-prefixed HCPCS (J/G/etc.) cannot be a ZIP
+      if (KNOWN_CPT.has(c)) return true;       // explicit allowlist always wins
+      if (isZipInContext(c, text)) return false; // ZIP in address context → drop
+      return true;
+    });
 
   // Modifiers (two passes: after-cpt and labelled)
   const modHits = dedupe([
@@ -140,6 +198,7 @@ CODE EXTRACTION (CRITICAL — most common failure mode):
 - Telehealth modifier 95 is REQUIRED when place of service is 02 or 10. Always look for it.
 - Modifiers can appear inline (e.g. "99214-95", "99214 95", "99214, mod 95") or in a separate "Mod" column on a CMS-1500 / superbill. Capture them in BOTH codes.modifier_codes AND on the matching claim_line_items[].modifier.
 - An ICD-10 code is 1 letter + 2 digits + optional ".xx" suffix (e.g. F33.1, F41.1, M54.5, Z79.899).
+- ZIP CODE GUARD: A 5-digit number that appears next to address words ("Address", "Street", "Suite", "City", a 2-letter US state like "NY 10001" or "CA 90210", or "ZIP/Postal") is a ZIP code, NOT a CPT/HCPCS/ICD code. Classify it as address/location only. NEVER place ZIP-shaped numerics into codes.cpt_codes, codes.hcpcs_codes, codes.icd10_codes, or claim_line_items[].procedure_code.
 - Every CPT code you find MUST also produce a claim_line_items entry. Never report CPTs in codes.cpt_codes without a matching line item.
 
 ⚠️ BILLED CODES vs REFERENCE CODES — DO NOT CONFUSE THEM:
