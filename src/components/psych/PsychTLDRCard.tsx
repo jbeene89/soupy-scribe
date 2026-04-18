@@ -5,17 +5,20 @@ import {
   CheckCircle2, Wrench, BadgeAlert, Zap, AlertTriangle, DollarSign, ListChecks,
 } from 'lucide-react';
 import type { PsychAuditResult } from '@/lib/psychTypes';
+import type { ParsedNote } from '@/lib/crosswalkTypes';
+import { StandardizedScalesPanel } from './StandardizedScalesPanel';
 
 /**
  * TL;DR card — sits at the very top of the Behavioral Health case detail.
  * Designed for non-coders: one-line verdict, then bullet points of what to fix,
  * any missed-revenue opportunity, and the single biggest risk factor.
  */
-export function PsychTLDRCard({ result }: { result: PsychAuditResult }) {
+export function PsychTLDRCard({ result, clinicalNote }: { result: PsychAuditResult; clinicalNote?: ParsedNote | null }) {
   const verdict = getVerdict(result);
   const topFixes = result.smallestFixes.slice(0, 5);
   const topRevenue = result.missedRevenue[0];
   const topRisk = result.denialRiskFactors[0];
+  const scales = clinicalNote?.standardized_scales;
 
   return (
     <Card className={cn('border-l-4', verdict.borderClass)}>
