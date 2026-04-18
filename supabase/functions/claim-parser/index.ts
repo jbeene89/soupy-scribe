@@ -335,7 +335,7 @@ const EXTRACT_TOOL = {
         },
         review_flags: {
           type: "array",
-          description: "Specific issues the human should review (low-confidence fields, missing critical data, code mismatches).",
+          description: "Specific issues the human should review (low-confidence fields, missing critical data, code mismatches). DO NOT manufacture flags. If the parsed claim looks complete and internally consistent, return an empty array. A clean claim is a valid outcome — do not pad this list with stylistic or theoretical concerns.",
           items: {
             type: "object",
             properties: {

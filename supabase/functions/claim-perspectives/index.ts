@@ -19,40 +19,52 @@ function dateContext(): string {
   return `CONTEXT: Today's date is ${humanDate} (${isoDate}). Do NOT flag current-year dates as "future-dated" unless they are strictly after ${isoDate}.`;
 }
 
+// Shared rule for every lens. The goal is improvement, not nitpicking.
+const NO_NITPICK_RULE = `
+IMPORTANT — DO NOT MANUFACTURE PROBLEMS:
+- Your job is to improve on what's there, not to nitpick a clean claim to death.
+- If the claim looks correctly built and well-documented for its category, SAY SO. Return a short headline like "No material issues detected" and an empty or near-empty findings array.
+- Only flag a finding if it would plausibly affect payment, compliance, or patient care. Skip stylistic preferences, formatting quibbles, and theoretical edge cases that don't apply to this claim.
+- Severity must reflect actual risk: use "low" sparingly, "medium" only when there is a real exposure, "high" only when denial/clawback is likely. If you cannot justify medium or high, do not include the finding.
+- It is fully acceptable — and often correct — to return zero findings. A clean claim is a valid outcome.`;
+
 const LENS_PROMPTS: Record<Lens, { label: string; system: string }> = {
   builder: {
     label: "Builder — what's defensible",
     system: `You are the BUILDER lens for a behavioral-health claim audit.
 Job: identify what is documented well, what supports payment, what makes this claim defensible.
 Stay strictly grounded in the parsed claim JSON. Do NOT invent facts.
-Be concise, neutral, enterprise tone. No sales language.`,
+Be concise, neutral, enterprise tone. No sales language.${NO_NITPICK_RULE}`,
   },
   red_team: {
     label: "Red Team — denial vulnerabilities",
     system: `You are the RED TEAM lens for a behavioral-health claim audit.
-Job: identify exactly how a payer (UHC/Optum/BCBS/Medicaid) could deny or downcode this claim.
+Job: identify REAL denial vulnerabilities a payer (UHC/Optum/BCBS/Medicaid) would actually act on.
 Cite the specific field path and what is missing or risky. Stay grounded in the JSON only.
-Concise, neutral, enterprise tone.`,
+Concise, neutral, enterprise tone.${NO_NITPICK_RULE}
+Extra rule for Red Team: do not invent denial scenarios that aren't supported by the parsed data. If the claim is clean, say "No material denial vectors identified" and return zero findings.`,
   },
   systems: {
     label: "Systems — process & workflow gaps",
     system: `You are the SYSTEMS lens for a behavioral-health claim audit.
 Job: identify upstream process gaps (intake, auth, scheduling, EHR template, supervision, credentialing)
-that this claim's data points to. Stay grounded in the parsed claim. Concise, enterprise tone.`,
+that this claim's data actually points to. Stay grounded in the parsed claim. Concise, enterprise tone.${NO_NITPICK_RULE}`,
   },
   frame_breaker: {
     label: "Frame Breaker — what we may be missing",
     system: `You are the FRAME BREAKER lens for a behavioral-health claim audit.
-Job: surface assumptions the parsing pipeline or reviewer may have made,
-non-obvious interpretations of the data, and questions a reviewer should ask before accepting the audit.
-Stay grounded. Concise, enterprise tone.`,
+Job: surface assumptions the parsing pipeline or reviewer may have made that materially affect the audit,
+or non-obvious interpretations the reviewer should consider before accepting the result.
+Stay grounded. Concise, enterprise tone.${NO_NITPICK_RULE}
+Extra rule for Frame Breaker: skip philosophical or low-impact "what ifs". Only surface assumptions that, if wrong, would change the audit conclusion.`,
   },
   empath: {
     label: "Empath — patient & clinician impact",
     system: `You are the EMPATH lens for a behavioral-health claim audit.
 Job: name the patient-experience and clinician-burden implications of this claim's denial risk
-(e.g. delayed access, abandonment risk, clinician documentation burden).
-Stay grounded in the JSON. Concise, neutral, no melodrama.`,
+(e.g. delayed access, abandonment risk, clinician documentation burden) — only when those risks are real.
+Stay grounded in the JSON. Concise, neutral, no melodrama.${NO_NITPICK_RULE}
+Extra rule for Empath: if the claim shows no meaningful denial risk, the patient/clinician impact is "none material" — say so and stop.`,
   },
 };
 
@@ -101,7 +113,8 @@ const SYNTH_TOOL = {
       properties: {
         overall_posture: {
           type: "string",
-          enum: ["defensible", "needs_documentation", "high_denial_risk", "human_review_required"],
+          enum: ["clean", "defensible", "needs_documentation", "high_denial_risk", "human_review_required"],
+          description: "Use 'clean' when no material issues were identified across the lenses.",
         },
         confidence: { type: "number", description: "0.0–1.0" },
         headline: { type: "string", description: "One-sentence summary (≤ 22 words)." },
@@ -210,9 +223,16 @@ serve(async (req) => {
           {
             role: "system",
             content:
-              `You combine 5 perspective outputs into a single neutral audit posture. Stay grounded. Enterprise tone. No advocacy language.\n\n${dateNote}`,
+              `You combine 5 perspective outputs into a single neutral audit posture. Stay grounded. Enterprise tone. No advocacy language.
+
+IMPORTANT — DO NOT MANUFACTURE PROBLEMS:
+- The goal is to improve on what's there, not to invent issues. If the lenses report no material findings, set overall_posture = "clean", give a short positive headline (e.g. "Claim appears correctly built — no material issues identified"), and return empty arrays for tension_points and top_actions (or only include genuinely useful next steps).
+- Do not aggregate every minor lens observation into the action list. Only surface actions that meaningfully change payment, compliance, or care outcomes.
+- A clean claim is a valid, expected outcome. Say so plainly when it applies.
+
+${dateNote}`,
           },
-          { role: "user", content: `Combine these lenses into a unified posture:\n\n${synthInput}` },
+          { role: "user", content: `Combine these lenses into a unified posture. Remember: if the claim is clean, say it's clean. Do not pad the output.\n\n${synthInput}` },
         ],
         SYNTH_TOOL,
         LOVABLE_API_KEY,
