@@ -12,6 +12,32 @@ const corsHeaders = {
 // ──────────── Deterministic code sweep (safety net for the LLM) ────────────
 // CPT/HCPCS = 5 chars: 5 digits OR 1 letter + 4 digits (e.g. 99214, J3490, G0438).
 const CPT_RE = /\b([0-9]{5}|[A-Z][0-9]{4})\b/g;
+
+// US ZIP code = 5 digits in known assignable ranges (00501–99950).
+// CPT codes live in 00100–99607 (numeric range), but the *assigned* CPT space
+// excludes the bulk of 5-digit numbers that look like ZIPs. We treat any
+// 5-digit number that (a) is a plausible US ZIP AND (b) is NOT in our
+// KNOWN_CPT allowlist AND (c) appears near address/location context as a ZIP
+// and refuse to classify it as a CPT/HCPCS/ICD code.
+const ZIP_RE = /\b[0-9]{5}\b/;
+function looksLikeZip(token: string): boolean {
+  if (!/^[0-9]{5}$/.test(token)) return false;
+  const n = parseInt(token, 10);
+  // US ZIPs span roughly 00501 (Holtsville, NY) to 99950 (Ketchikan, AK)
+  return n >= 501 && n <= 99950;
+}
+function isZipInContext(token: string, raw: string): boolean {
+  if (!looksLikeZip(token)) return false;
+  // Find every occurrence of the token and check ~40 chars of surrounding context.
+  const ctxRe = new RegExp(`.{0,40}\\b${token}\\b.{0,40}`, "gi");
+  const matches = raw.match(ctxRe) || [];
+  if (matches.length === 0) return false;
+  // Address/location signals that mean this is a ZIP, not a procedure code.
+  const ZIP_CTX = /\b(zip|postal|address|addr|street|st\.?|ave|avenue|blvd|road|rd\.?|suite|ste\.?|city|state|[A-Z]{2}\s+[0-9]{5})\b/i;
+  // US state abbreviation immediately before the number: "NY 10001", "CA 90210"
+  const STATE_BEFORE = new RegExp(`\\b(A[KLRZ]|C[AOT]|D[CE]|FL|GA|HI|I[ADLN]|K[SY]|LA|M[ADEINOST]|N[CDEHJMVY]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[AT]|W[AIVY])\\s+${token}\\b`);
+  return matches.some((m) => ZIP_CTX.test(m)) || STATE_BEFORE.test(raw);
+}
 // Modifier = 2 chars after a CPT, separated by hyphen/space/dash/comma. Captures common modifiers.
 // Also matches a column-style "Mod: 95" or "Modifier 95".
 const MOD_AFTER_CPT_RE = /\b(?:[0-9]{5}|[A-Z][0-9]{4})\s*[-–,\s]\s*([0-9A-Z]{2})\b/g;
