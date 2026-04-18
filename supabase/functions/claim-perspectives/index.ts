@@ -10,7 +10,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-type Lens = "builder" | "red_team" | "systems" | "frame_breaker" | "empath";
+type Lens = "builder" | "red_team" | "systems" | "frame_breaker" | "empath" | "revenue";
 
 function dateContext(): string {
   const today = new Date();
@@ -72,6 +72,24 @@ Job: name the patient-experience and clinician-burden implications of this claim
 (e.g. delayed access, abandonment risk, clinician documentation burden) — only when those risks are real.
 Stay grounded in the JSON. Concise, neutral, no melodrama.${NO_NITPICK_RULE}
 Extra rule for Empath: if the claim shows no meaningful denial risk, the patient/clinician impact is "none material" — say so and stop.`,
+  },
+  revenue: {
+    label: "Revenue — missed or under-billed opportunities",
+    system: `You are the REVENUE OPPORTUNITY lens for a behavioral-health claim audit.
+Your ONLY job is to help the provider find legitimate revenue they may have missed on THIS claim. You are NOT looking for problems — you are looking for value.
+
+Look for things like:
+- Add-on services that commonly accompany the billed CPT(s) but are not present on this claim (describe the CATEGORY in plain English — e.g. "interactive complexity add-on for sessions involving caregivers" — do NOT invent a code number).
+- Modifiers that, if applicable to the documented service, could justify higher reimbursement (describe in plain English — do NOT cite a modifier code that isn't already on the claim).
+- Time-based code tier mismatches (e.g. a session that may qualify for a longer-duration code if documentation supports it).
+- Documentation elements that, if present in the underlying note, would unlock additional billable services.
+- Whether the diagnosis pointers fully justify every billed service (or if a stronger Dx is documented elsewhere).
+
+Hard rules:
+- Do NOT invent specific CPT/HCPCS/modifier code numbers. Speak in service categories, not code numbers.
+- If the claim looks fully optimized for what was documented, SAY SO. Headline: "No clear revenue opportunities identified — claim appears appropriately billed."
+- Every opportunity must include WHAT to look for in the underlying documentation to confirm it's billable.
+- Tone: opportunity-focused, not corrective. This is "here's revenue you may be leaving on the table" — not "here's what you did wrong."${NO_NITPICK_RULE}`,
   },
 };
 
