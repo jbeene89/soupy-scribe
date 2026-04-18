@@ -88,6 +88,19 @@ export interface NoteContradiction {
   why_it_contradicts: string;
 }
 
+export interface NoteStandardizedScale {
+  /** Scale name, e.g. "PHQ-9", "GAD-7", "Y-BOCS", "PCL-5", "CAPS-5", "MDQ", "ASRS". */
+  scale: string;
+  /** "self-report" or "clinician-administered". Clinician-administered outweighs self-report. */
+  type?: "self-report" | "clinician-administered" | string | null;
+  score?: number | null;
+  /** Severity band derived from the score, e.g. "moderately severe". */
+  severity?: string | null;
+  /** Diagnostic threshold note, e.g. "≥33 suggests probable PTSD". */
+  threshold_flag?: string | null;
+  evidence_quote: string;
+}
+
 export interface ParsedNote {
   visit_type?: string | null;
   visit_type_evidence?: string | null;
@@ -106,6 +119,8 @@ export interface ParsedNote {
   medication_management: NoteMedManagement;
   cpt_codes_in_note?: string[];
   modifiers_in_note?: string[];
+  /** PHQ-9, GAD-7, Y-BOCS, PCL-5, CAPS-5, MDQ, ASRS, etc. with score + derived severity. */
+  standardized_scales?: NoteStandardizedScale[];
   copy_forward_indicators: string[];
   internal_contradictions: NoteContradiction[];
   document_summary: string;
