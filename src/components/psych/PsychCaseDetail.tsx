@@ -11,7 +11,9 @@ import {
   ChevronDown, ChevronUp, Clock, ListChecks
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult, MissedRevenueItem } from '@/lib/psychTypes';
+import type { ParsedNote } from '@/lib/crosswalkTypes';
 import { PsychTLDRCard } from './PsychTLDRCard';
+import { StandardizedScalesPanel } from './StandardizedScalesPanel';
 import { PsychAddDocumentDialog } from './PsychAddDocumentDialog';
 import { PsychVersionSwitcher, type PsychCaseVersion } from './PsychVersionSwitcher';
 import { Paperclip } from 'lucide-react';
@@ -22,6 +24,7 @@ type CaseData = {
   versions?: PsychCaseVersion[];
   activeVersion?: number;
   addedDocuments?: { label: string; text: string; addedAt: string }[];
+  clinicalNote?: ParsedNote | null;
 };
 
 function StatusIcon({ status }: { status: 'pass' | 'fail' | 'warning' }) {
