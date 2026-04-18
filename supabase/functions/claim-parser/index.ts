@@ -198,6 +198,7 @@ CODE EXTRACTION (CRITICAL — most common failure mode):
 - Telehealth modifier 95 is REQUIRED when place of service is 02 or 10. Always look for it.
 - Modifiers can appear inline (e.g. "99214-95", "99214 95", "99214, mod 95") or in a separate "Mod" column on a CMS-1500 / superbill. Capture them in BOTH codes.modifier_codes AND on the matching claim_line_items[].modifier.
 - An ICD-10 code is 1 letter + 2 digits + optional ".xx" suffix (e.g. F33.1, F41.1, M54.5, Z79.899).
+- ZIP CODE GUARD: A 5-digit number that appears next to address words ("Address", "Street", "Suite", "City", a 2-letter US state like "NY 10001" or "CA 90210", or "ZIP/Postal") is a ZIP code, NOT a CPT/HCPCS/ICD code. Classify it as address/location only. NEVER place ZIP-shaped numerics into codes.cpt_codes, codes.hcpcs_codes, codes.icd10_codes, or claim_line_items[].procedure_code.
 - Every CPT code you find MUST also produce a claim_line_items entry. Never report CPTs in codes.cpt_codes without a matching line item.
 
 ⚠️ BILLED CODES vs REFERENCE CODES — DO NOT CONFUSE THEM:
