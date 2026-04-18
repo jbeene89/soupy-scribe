@@ -360,16 +360,18 @@ const EXTRACT_TOOL = {
         cpt_codes_in_note: { type: "array", items: { type: "string" } },
         modifiers_in_note: { type: "array", items: { type: "string" } },
 
-        // Standardized rating scales (PHQ-9, GAD-7, MDQ, ASRS, PCL-5, etc.)
+        // Standardized rating scales (PHQ-9, GAD-7, Y-BOCS, PCL-5, CAPS-5, MDQ, ASRS, etc.)
         standardized_scales: {
           type: "array",
-          description: "Each standardized scale documented in the note with score and derived severity.",
+          description: "Each standardized scale documented in the note with score, type (self-report vs clinician-administered), and derived severity.",
           items: {
             type: "object",
             properties: {
-              scale: { type: "string", description: "Scale name, e.g. PHQ-9, GAD-7, MDQ, ASRS, PCL-5." },
+              scale: { type: "string", description: "Scale name, e.g. PHQ-9, GAD-7, Y-BOCS, PCL-5, CAPS-5, MDQ, ASRS." },
+              type: { type: ["string", "null"], description: "'self-report' or 'clinician-administered'. Clinician-administered outweighs self-report." },
               score: { type: ["integer", "null"] },
               severity: { type: ["string", "null"], description: "Severity band derived from the score using accepted clinical ranges." },
+              threshold_flag: { type: ["string", "null"], description: "Diagnostic threshold note, e.g. PCL-5 ≥33 suggests probable PTSD." },
               evidence_quote: { type: "string", description: "Verbatim score line from the note." },
             },
             required: ["scale", "evidence_quote"],
