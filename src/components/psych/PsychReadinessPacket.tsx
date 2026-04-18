@@ -60,7 +60,10 @@ export function PsychReadinessPacket({ caseData, onBack, onAddDocument }: {
       </div>
 
       {/* TL;DR — first thing the reader sees in the printed packet */}
-      <PsychTLDRCard result={result} />
+      <PsychTLDRCard result={result} clinicalNote={clinicalNote} />
+
+      {/* Standardized rating-scale evidence */}
+      <StandardizedScalesPanel scales={clinicalNote?.standardized_scales} />
 
       {/* Score & Recommendation */}
 
