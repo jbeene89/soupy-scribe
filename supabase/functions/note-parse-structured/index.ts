@@ -60,53 +60,79 @@ CODE CAPTURE (CRITICAL — do not skip):
 MULTI-PAGE NOTES:
 - If multiple page images are provided, they are pages of the SAME note in order. Read every page before declaring a section absent — assessment, plan, signature, and addenda often live on later pages.
 
-STANDARDIZED SCALE INTERPRETATION (CRITICAL):
-If standardized psychiatric rating scales appear ANYWHERE in the note (narrative, header, flowsheet, attached form, score line), you MUST extract them and use them as documented severity evidence.
+STANDARDIZED SCALE INTERPRETATION (CRITICAL — primary evidence):
+Standardized psychiatric rating scales are PRIMARY evidence of severity. If a valid scale score appears anywhere in the note (narrative, header, flowsheet, attached form, score line, addendum), you MUST extract it and use it to determine severity.
 
 Recognized scales and severity bands:
-- GAD-7 (anxiety): 0–4 minimal, 5–9 mild, 10–14 moderate, 15–21 severe
-- PHQ-9 (depression): 0–4 minimal, 5–9 mild, 10–14 moderate, 15–19 moderately severe, 20–27 severe
-- MDQ (bipolar screen): ≥7 positive screen with functional impairment item endorsed
-- Adult ADHD Rating Scale / ASRS: report score and any documented severity band
-- Also capture: PCL-5 (PTSD), Y-BOCS (OCD), MoCA, MMSE, AUDIT, DAST if present
+- PHQ-9 (depression, self-report): 0–4 minimal, 5–9 mild, 10–14 moderate, 15–19 moderately severe, 20–27 severe
+- GAD-7 (anxiety, self-report): 0–4 minimal, 5–9 mild, 10–14 moderate, 15–21 severe
+- Y-BOCS (OCD, clinician-administered): 0–7 subclinical, 8–15 mild, 16–23 moderate, 24–31 severe, 32–40 extreme
+- PCL-5 (PTSD, self-report, 0–80): 0–30 minimal, 31–33 mild/threshold, 34–49 moderate, 50+ severe. Score ≥33 suggests probable PTSD.
+- CAPS-5 (PTSD, clinician-administered): GOLD STANDARD — treat as high-confidence evidence for diagnosis, severity, and medical necessity. If both CAPS-5 and PCL-5 are present, prioritize CAPS-5.
+- MDQ (bipolar screen, self-report): ≥7 with functional impairment item endorsed = positive screen
+- Adult ADHD Rating Scale / ASRS (self-report): use documented thresholds if stated; otherwise treat elevated scores as "clinically significant ADHD symptoms present"
+- Also capture if present: MoCA, MMSE, AUDIT, DAST, HAM-D, HAM-A, MADRS, EPDS, CSSRS
 
-Rules:
+Hard rules:
 1. Extract the raw score for each scale found.
 2. Map the score to severity using the bands above.
 3. Treat the derived severity as documented evidence — populate symptoms_documented severity AND functional_impairment when the scale supports it.
 4. NEVER say "severity not documented" if a valid scale score is present. Reference the scale explicitly (e.g., "PHQ-9 = 18, moderately severe").
-5. The evidence_quote for a scale finding must be the verbatim score line from the note (e.g., "PHQ-9: 18").`;
+5. Clinician-administered scales (CAPS-5, Y-BOCS, HAM-D, HAM-A, MADRS) outweigh self-report scales (PHQ-9, GAD-7, PCL-5, MDQ, ASRS) when both address the same domain.
+6. If the scale-derived severity contradicts the narrative severity (e.g., "mild anxiety" but GAD-7 = 17), record the contradiction in internal_contradictions.
+7. The evidence_quote for a scale finding must be the verbatim score line from the note (e.g., "PHQ-9: 18").
+8. NEVER fabricate a score or band that is not present in the note.`;
 }
 
 // ──────────── Standardized scale severity bands ────────────
-type ScaleBand = { name: string; bands: Array<{ min: number; max: number; severity: string }> };
+type ScaleBand = {
+  name: string;
+  type: "self-report" | "clinician-administered";
+  bands: Array<{ min: number; max: number; severity: string }>;
+  threshold_note?: string;
+};
 
 const SCALE_BANDS: Record<string, ScaleBand> = {
-  "GAD-7": { name: "GAD-7", bands: [
-    { min: 0, max: 4, severity: "minimal" },
-    { min: 5, max: 9, severity: "mild" },
-    { min: 10, max: 14, severity: "moderate" },
-    { min: 15, max: 21, severity: "severe" },
-  ]},
-  "PHQ-9": { name: "PHQ-9", bands: [
+  "PHQ-9": { name: "PHQ-9", type: "self-report", bands: [
     { min: 0, max: 4, severity: "minimal" },
     { min: 5, max: 9, severity: "mild" },
     { min: 10, max: 14, severity: "moderate" },
     { min: 15, max: 19, severity: "moderately severe" },
     { min: 20, max: 27, severity: "severe" },
   ]},
-  "MDQ": { name: "MDQ", bands: [
+  "GAD-7": { name: "GAD-7", type: "self-report", bands: [
+    { min: 0, max: 4, severity: "minimal" },
+    { min: 5, max: 9, severity: "mild" },
+    { min: 10, max: 14, severity: "moderate" },
+    { min: 15, max: 21, severity: "severe" },
+  ]},
+  "Y-BOCS": { name: "Y-BOCS", type: "clinician-administered", bands: [
+    { min: 0, max: 7, severity: "subclinical" },
+    { min: 8, max: 15, severity: "mild" },
+    { min: 16, max: 23, severity: "moderate" },
+    { min: 24, max: 31, severity: "severe" },
+    { min: 32, max: 40, severity: "extreme" },
+  ]},
+  "PCL-5": { name: "PCL-5", type: "self-report", bands: [
+    { min: 0, max: 30, severity: "minimal" },
+    { min: 31, max: 33, severity: "mild / threshold" },
+    { min: 34, max: 49, severity: "moderate" },
+    { min: 50, max: 80, severity: "severe" },
+  ], threshold_note: "Score ≥33 suggests probable PTSD." },
+  "MDQ": { name: "MDQ", type: "self-report", bands: [
     { min: 0, max: 6, severity: "negative screen" },
     { min: 7, max: 13, severity: "positive screen" },
   ]},
 };
 
-const SCALE_REGEXES: Array<{ key: keyof typeof SCALE_BANDS | "ASRS" | "PCL-5"; re: RegExp }> = [
+const SCALE_REGEXES: Array<{ key: string; re: RegExp }> = [
   { key: "PHQ-9", re: /\bPHQ[-\s]?9\b[^0-9]{0,15}(\d{1,2})\b/i },
   { key: "GAD-7", re: /\bGAD[-\s]?7\b[^0-9]{0,15}(\d{1,2})\b/i },
+  { key: "Y-BOCS", re: /\bY[-\s]?BOCS\b[^0-9]{0,15}(\d{1,2})\b/i },
+  { key: "PCL-5", re: /\bPCL[-\s]?5\b[^0-9]{0,15}(\d{1,3})\b/i },
+  { key: "CAPS-5", re: /\bCAPS[-\s]?5\b[^0-9]{0,15}(\d{1,3})?/i },
   { key: "MDQ", re: /\bMDQ\b[^0-9]{0,15}(\d{1,2})\b/i },
   { key: "ASRS", re: /\b(?:ASRS|Adult ADHD(?:\s+Rating\s+Scale)?)\b[^0-9]{0,20}(\d{1,3})\b/i },
-  { key: "PCL-5", re: /\bPCL[-\s]?5\b[^0-9]{0,15}(\d{1,2})\b/i },
 ];
 
 function deriveSeverity(scaleKey: string, score: number): string | null {
@@ -118,26 +144,39 @@ function deriveSeverity(scaleKey: string, score: number): string | null {
   return null;
 }
 
+function getScaleType(scaleKey: string): "self-report" | "clinician-administered" {
+  if (SCALE_BANDS[scaleKey]) return SCALE_BANDS[scaleKey].type;
+  // Clinician-administered scales without numeric bands in our table
+  if (/^(CAPS-5|HAM-D|HAM-A|MADRS|MMSE|MoCA)$/i.test(scaleKey)) return "clinician-administered";
+  return "self-report";
+}
+
 function sweepStandardizedScales(note: any, raw: string): void {
   if (!note || typeof note !== "object" || !raw) return;
   const found: any[] = Array.isArray(note.standardized_scales) ? [...note.standardized_scales] : [];
-  const seen = new Set(found.map((s: any) => `${s.scale}:${s.score}`));
+  const seen = new Set(found.map((s: any) => `${s.scale}:${s.score ?? "noscore"}`));
 
   for (const { key, re } of SCALE_REGEXES) {
     const m = raw.match(re);
     if (!m) continue;
-    const score = parseInt(m[1], 10);
-    if (Number.isNaN(score)) continue;
-    const severity = deriveSeverity(String(key), score);
-    const id = `${key}:${score}`;
+    const scoreRaw = m[1];
+    const score = scoreRaw ? parseInt(scoreRaw, 10) : NaN;
+    const hasScore = !Number.isNaN(score);
+    const severity = hasScore ? deriveSeverity(key, score) : null;
+    const id = `${key}:${hasScore ? score : "noscore"}`;
     if (seen.has(id)) continue;
     seen.add(id);
-    found.push({
-      scale: String(key),
-      score,
+    const entry: any = {
+      scale: key,
+      type: getScaleType(key),
+      score: hasScore ? score : null,
       severity: severity ?? null,
       evidence_quote: m[0].slice(0, 80),
-    });
+    };
+    if (key === "PCL-5" && hasScore && score >= 33) {
+      entry.threshold_flag = "≥33 suggests probable PTSD";
+    }
+    found.push(entry);
   }
   if (found.length > 0) note.standardized_scales = found;
 }
