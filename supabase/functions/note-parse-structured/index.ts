@@ -58,7 +58,88 @@ CODE CAPTURE (CRITICAL — do not skip):
 - Do not omit codes just because they appear outside the clinical narrative — billing strips and footers count.
 
 MULTI-PAGE NOTES:
-- If multiple page images are provided, they are pages of the SAME note in order. Read every page before declaring a section absent — assessment, plan, signature, and addenda often live on later pages.`;
+- If multiple page images are provided, they are pages of the SAME note in order. Read every page before declaring a section absent — assessment, plan, signature, and addenda often live on later pages.
+
+STANDARDIZED SCALE INTERPRETATION (CRITICAL):
+If standardized psychiatric rating scales appear ANYWHERE in the note (narrative, header, flowsheet, attached form, score line), you MUST extract them and use them as documented severity evidence.
+
+Recognized scales and severity bands:
+- GAD-7 (anxiety): 0–4 minimal, 5–9 mild, 10–14 moderate, 15–21 severe
+- PHQ-9 (depression): 0–4 minimal, 5–9 mild, 10–14 moderate, 15–19 moderately severe, 20–27 severe
+- MDQ (bipolar screen): ≥7 positive screen with functional impairment item endorsed
+- Adult ADHD Rating Scale / ASRS: report score and any documented severity band
+- Also capture: PCL-5 (PTSD), Y-BOCS (OCD), MoCA, MMSE, AUDIT, DAST if present
+
+Rules:
+1. Extract the raw score for each scale found.
+2. Map the score to severity using the bands above.
+3. Treat the derived severity as documented evidence — populate symptoms_documented severity AND functional_impairment when the scale supports it.
+4. NEVER say "severity not documented" if a valid scale score is present. Reference the scale explicitly (e.g., "PHQ-9 = 18, moderately severe").
+5. The evidence_quote for a scale finding must be the verbatim score line from the note (e.g., "PHQ-9: 18").`;
+}
+
+// ──────────── Standardized scale severity bands ────────────
+type ScaleBand = { name: string; bands: Array<{ min: number; max: number; severity: string }> };
+
+const SCALE_BANDS: Record<string, ScaleBand> = {
+  "GAD-7": { name: "GAD-7", bands: [
+    { min: 0, max: 4, severity: "minimal" },
+    { min: 5, max: 9, severity: "mild" },
+    { min: 10, max: 14, severity: "moderate" },
+    { min: 15, max: 21, severity: "severe" },
+  ]},
+  "PHQ-9": { name: "PHQ-9", bands: [
+    { min: 0, max: 4, severity: "minimal" },
+    { min: 5, max: 9, severity: "mild" },
+    { min: 10, max: 14, severity: "moderate" },
+    { min: 15, max: 19, severity: "moderately severe" },
+    { min: 20, max: 27, severity: "severe" },
+  ]},
+  "MDQ": { name: "MDQ", bands: [
+    { min: 0, max: 6, severity: "negative screen" },
+    { min: 7, max: 13, severity: "positive screen" },
+  ]},
+};
+
+const SCALE_REGEXES: Array<{ key: keyof typeof SCALE_BANDS | "ASRS" | "PCL-5"; re: RegExp }> = [
+  { key: "PHQ-9", re: /\bPHQ[-\s]?9\b[^0-9]{0,15}(\d{1,2})\b/i },
+  { key: "GAD-7", re: /\bGAD[-\s]?7\b[^0-9]{0,15}(\d{1,2})\b/i },
+  { key: "MDQ", re: /\bMDQ\b[^0-9]{0,15}(\d{1,2})\b/i },
+  { key: "ASRS", re: /\b(?:ASRS|Adult ADHD(?:\s+Rating\s+Scale)?)\b[^0-9]{0,20}(\d{1,3})\b/i },
+  { key: "PCL-5", re: /\bPCL[-\s]?5\b[^0-9]{0,15}(\d{1,2})\b/i },
+];
+
+function deriveSeverity(scaleKey: string, score: number): string | null {
+  const def = SCALE_BANDS[scaleKey];
+  if (!def) return null;
+  for (const b of def.bands) {
+    if (score >= b.min && score <= b.max) return b.severity;
+  }
+  return null;
+}
+
+function sweepStandardizedScales(note: any, raw: string): void {
+  if (!note || typeof note !== "object" || !raw) return;
+  const found: any[] = Array.isArray(note.standardized_scales) ? [...note.standardized_scales] : [];
+  const seen = new Set(found.map((s: any) => `${s.scale}:${s.score}`));
+
+  for (const { key, re } of SCALE_REGEXES) {
+    const m = raw.match(re);
+    if (!m) continue;
+    const score = parseInt(m[1], 10);
+    if (Number.isNaN(score)) continue;
+    const severity = deriveSeverity(String(key), score);
+    const id = `${key}:${score}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    found.push({
+      scale: String(key),
+      score,
+      severity: severity ?? null,
+      evidence_quote: m[0].slice(0, 80),
+    });
+  }
+  if (found.length > 0) note.standardized_scales = found;
 }
 
 const wrappedText = {
@@ -240,6 +321,23 @@ const EXTRACT_TOOL = {
         cpt_codes_in_note: { type: "array", items: { type: "string" } },
         modifiers_in_note: { type: "array", items: { type: "string" } },
 
+        // Standardized rating scales (PHQ-9, GAD-7, MDQ, ASRS, PCL-5, etc.)
+        standardized_scales: {
+          type: "array",
+          description: "Each standardized scale documented in the note with score and derived severity.",
+          items: {
+            type: "object",
+            properties: {
+              scale: { type: "string", description: "Scale name, e.g. PHQ-9, GAD-7, MDQ, ASRS, PCL-5." },
+              score: { type: ["integer", "null"] },
+              severity: { type: ["string", "null"], description: "Severity band derived from the score using accepted clinical ranges." },
+              evidence_quote: { type: "string", description: "Verbatim score line from the note." },
+            },
+            required: ["scale", "evidence_quote"],
+            additionalProperties: false,
+          },
+        },
+
         // Quality / integrity signals
         copy_forward_indicators: {
           type: "array",
@@ -371,12 +469,24 @@ serve(async (req) => {
 
     const note = JSON.parse(toolCall.function.arguments);
 
-    // Deterministic safety net: sweep raw text for CPTs/modifiers the model may have missed.
+    // Deterministic safety net: sweep raw text for CPTs/modifiers and standardized scales
+    // the model may have missed, and re-derive severity bands from raw scores.
     if (hasText && sourceText) {
       try {
         sweepNoteCodes(note, sourceText);
+        sweepStandardizedScales(note, sourceText);
       } catch (e) {
-        console.error("Note code sweep failed (non-fatal):", e);
+        console.error("Note deterministic sweep failed (non-fatal):", e);
+      }
+    }
+
+    // Re-derive severity for any scale entries the model returned without a band.
+    if (Array.isArray(note?.standardized_scales)) {
+      for (const s of note.standardized_scales) {
+        if (s && typeof s.score === "number" && (!s.severity || s.severity === "")) {
+          const derived = deriveSeverity(s.scale, s.score);
+          if (derived) s.severity = derived;
+        }
       }
     }
 
