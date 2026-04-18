@@ -1,15 +1,16 @@
-// Five-perspective panel for a single parsed claim.
-// Renders Builder / Red Team / Systems / Frame Breaker / Empath
+// Six-perspective panel for a single parsed claim.
+// Renders Builder / Red Team / Systems / Frame Breaker / Empath / Revenue
 // plus a synthesis card. Lives next to the extracted-fields review.
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Hammer, Swords, Network, Eye, HeartHandshake, Sparkles, Loader2, AlertCircle, RefreshCw,
+  CheckCircle2, TrendingUp, DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type LensKey = "builder" | "red_team" | "systems" | "frame_breaker" | "empath";
+export type LensKey = "builder" | "red_team" | "systems" | "frame_breaker" | "empath" | "revenue";
 
 export interface LensFinding {
   point: string;
@@ -31,9 +32,11 @@ export interface LensResult {
 }
 
 export interface PerspectiveSynthesis {
-  overall_posture: "defensible" | "needs_documentation" | "high_denial_risk" | "human_review_required";
+  overall_posture: "clean" | "defensible" | "needs_documentation" | "high_denial_risk" | "human_review_required";
   confidence: number;
   headline: string;
+  validation_summary?: string;
+  revenue_opportunities?: string[];
   agreement_points: string[];
   tension_points: string[];
   top_actions: string[];
@@ -54,9 +57,11 @@ const LENS_META: Record<LensKey, { label: string; icon: any; color: string }> = 
   systems:       { label: "Systems",       icon: Network,        color: "text-blue-600 bg-blue-500/10" },
   frame_breaker: { label: "Frame Breaker", icon: Eye,            color: "text-violet-600 bg-violet-500/10" },
   empath:        { label: "Empath",        icon: HeartHandshake, color: "text-amber-600 bg-amber-500/10" },
+  revenue:       { label: "Revenue",       icon: DollarSign,     color: "text-green-600 bg-green-500/10" },
 };
 
 const POSTURE_META: Record<PerspectiveSynthesis["overall_posture"], { label: string; tone: string }> = {
+  clean:                   { label: "Validated — Clean Claim",  tone: "text-emerald-700 border-emerald-500/50 bg-emerald-500/10" },
   defensible:              { label: "Defensible",              tone: "text-emerald-600 border-emerald-500/40 bg-emerald-500/5" },
   needs_documentation:     { label: "Needs Documentation",     tone: "text-amber-600 border-amber-500/40 bg-amber-500/5" },
   high_denial_risk:        { label: "High Denial Risk",        tone: "text-destructive border-destructive/40 bg-destructive/5" },
