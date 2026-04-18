@@ -74,9 +74,14 @@ function sweepCodesIntoClaim(claim: any, raw: string): void {
 
   const text = raw;
 
-  // CPTs
+  // CPTs — exclude 5-digit numbers that look like US ZIP codes in address context.
   const cptHits = dedupe(Array.from(text.matchAll(CPT_RE), (m) => m[1]))
-    .filter((c) => /^[0-9]{5}$/.test(c) ? KNOWN_CPT.has(c) || /^9[09][0-9]{3}$/.test(c) || /^G[0-9]{4}$/i.test(c) || true : true);
+    .filter((c) => {
+      if (!/^[0-9]{5}$/.test(c)) return true; // letter-prefixed HCPCS (J/G/etc.) cannot be a ZIP
+      if (KNOWN_CPT.has(c)) return true;       // explicit allowlist always wins
+      if (isZipInContext(c, text)) return false; // ZIP in address context → drop
+      return true;
+    });
 
   // Modifiers (two passes: after-cpt and labelled)
   const modHits = dedupe([
