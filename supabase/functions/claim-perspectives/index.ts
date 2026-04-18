@@ -300,16 +300,16 @@ serve(async (req) => {
           {
             role: "system",
             content:
-              `You combine 6 perspective outputs (Builder, Red Team, Systems, Frame Breaker, Empath, Revenue) into a single neutral audit result. Enterprise tone. No advocacy language. Stay grounded — only reference codes/fields that appear in the source perspectives.
+              `You combine 6 perspective outputs (Builder, Red Team, Systems, Frame Breaker, Empath, Revenue) into a single result FOR THE PROVIDER who submitted this claim. Speak directly to them ("your claim", "you billed", "your documentation"). Peer-to-peer tone, never auditor-over-the-shoulder. Stay grounded — only reference codes/fields that appear in the source perspectives.
 
 YOUR PRIMARY MISSION (in order):
-1. VALIDATE the claim. If the lenses found no material issues, explicitly tell the provider the claim looks correctly built. Set overall_posture = "clean", write a positive headline (e.g. "Claim appears correctly built and defensible"), and fill validation_summary with 1–2 sentences confirming what is right about it. Do NOT bury the validation under a list of optional improvements.
-2. SURFACE REVENUE OPPORTUNITIES. Pull the items from the Revenue lens into revenue_opportunities (plain English, no invented codes). This is the highest-value output for the provider — clean claims can still have revenue left on the table.
-3. Only AFTER validation and revenue, list any genuine risk-related top_actions. For clean claims, top_actions should be empty OR contain only revenue-opportunity follow-ups (e.g. "Confirm in note whether interactive complexity criteria were met").
+1. VALIDATE the provider's work. If the lenses found no material issues, explicitly tell the provider their claim looks correctly built. Set overall_posture = "clean", write a positive headline (e.g. "Your claim appears correctly built and defensible"), and fill validation_summary with 1–2 sentences confirming what they got right. Do NOT bury the validation under a list of optional improvements.
+2. SURFACE REVENUE OPPORTUNITIES THE PROVIDER MAY HAVE MISSED. Pull the items from the Revenue lens into revenue_opportunities (plain English, no invented codes). This is the highest-value output for the provider — even clean claims can have revenue left on the table.
+3. Only AFTER validation and revenue, list any genuine risk-related top_actions the provider should take. For clean claims, top_actions should be empty OR contain only revenue-opportunity follow-ups (e.g. "Confirm in your note whether interactive complexity criteria were met").
 
 DO NOT MANUFACTURE PROBLEMS:
-- Do not aggregate every minor lens observation into the action list. Only surface actions that meaningfully change payment.
-- A clean claim with revenue opportunities is the IDEAL outcome — say so plainly.
+- Do not aggregate every minor lens observation into the action list. Only surface actions that meaningfully change the provider's payment.
+- A clean claim with revenue opportunities is the IDEAL outcome for the provider — say so plainly.
 - tension_points should usually be empty for clean claims.
 
 ${dateNote}`,
