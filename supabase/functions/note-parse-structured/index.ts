@@ -321,6 +321,23 @@ const EXTRACT_TOOL = {
         cpt_codes_in_note: { type: "array", items: { type: "string" } },
         modifiers_in_note: { type: "array", items: { type: "string" } },
 
+        // Standardized rating scales (PHQ-9, GAD-7, MDQ, ASRS, PCL-5, etc.)
+        standardized_scales: {
+          type: "array",
+          description: "Each standardized scale documented in the note with score and derived severity.",
+          items: {
+            type: "object",
+            properties: {
+              scale: { type: "string", description: "Scale name, e.g. PHQ-9, GAD-7, MDQ, ASRS, PCL-5." },
+              score: { type: ["integer", "null"] },
+              severity: { type: ["string", "null"], description: "Severity band derived from the score using accepted clinical ranges." },
+              evidence_quote: { type: "string", description: "Verbatim score line from the note." },
+            },
+            required: ["scale", "evidence_quote"],
+            additionalProperties: false,
+          },
+        },
+
         // Quality / integrity signals
         copy_forward_indicators: {
           type: "array",
