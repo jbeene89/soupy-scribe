@@ -521,12 +521,19 @@ serve(async (req) => {
       }
     }
 
-    // Re-derive severity for any scale entries the model returned without a band.
+    // Backfill severity, type, and threshold flag for any scale entries the model returned.
     if (Array.isArray(note?.standardized_scales)) {
       for (const s of note.standardized_scales) {
-        if (s && typeof s.score === "number" && (!s.severity || s.severity === "")) {
+        if (!s || typeof s !== "object") continue;
+        if (typeof s.score === "number" && (!s.severity || s.severity === "")) {
           const derived = deriveSeverity(s.scale, s.score);
           if (derived) s.severity = derived;
+        }
+        if (!s.type && typeof s.scale === "string") {
+          s.type = getScaleType(s.scale);
+        }
+        if (s.scale === "PCL-5" && typeof s.score === "number" && s.score >= 33 && !s.threshold_flag) {
+          s.threshold_flag = "≥33 suggests probable PTSD";
         }
       }
     }
