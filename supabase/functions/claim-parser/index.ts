@@ -170,6 +170,16 @@ ADD-ON CODE SANITY: Codes like 90785 (interactive complexity), 90833/90836/90838
 
 If the document is ENTIRELY a fee schedule, dashboard, or reference sheet with no actual billed claim, return claim_line_items: [] and codes.cpt_codes.value: [], and add a high-severity review_flag explaining "No billed claim detected — document appears to be a reference/fee schedule."
 
+PATIENT DEMOGRAPHICS — DATE OF BIRTH (common failure mode):
+- DOB is almost always present on a billed claim. Look HARD before returning null.
+- On CMS-1500: DOB is in BOX 3 ("PATIENT'S BIRTH DATE / SEX"), printed as MM | DD | YYYY in three small boxes near the top-left, just under the patient name (Box 2). The three segments are visually separated by vertical lines — read them as a single date, not three separate numbers.
+- On UB-04: DOB is in form locator 10 ("BIRTHDATE"), formatted MMDDYYYY (8 digits, no separators).
+- On EOBs / remits / superbills: look for labels "DOB", "D.O.B.", "Birth Date", "Date of Birth", "Born", or "Patient DOB" — value usually follows on the same line or the line below.
+- Accept ANY of these formats and normalize to MM/DD/YYYY in the value: "01/15/1985", "1-15-1985", "01151985", "Jan 15, 1985", "January 15 1985", "1985-01-15", "15/01/1985" (only when context clearly indicates non-US format).
+- Do NOT confuse DOB with: date of service (Box 24A / FL 45), date of injury (Box 14), signature date (Box 31), claim filing date, or "date received" stamps.
+- If the form has a DOB field/box but it is blank, return null with a review_flag — do not guess.
+- Sanity check: a valid DOB should produce a patient age between 0 and 120 years relative to the service date. If the parsed DOB falls outside this range, you likely misread it — re-examine.
+
 MULTI-PAGE DOCUMENTS:
 - If multiple page images are provided, they are pages of the SAME document in order. Read every page before deciding a field is missing — values often live on page 2 or later (e.g. attached EOBs, remit advice, signature pages).
 
