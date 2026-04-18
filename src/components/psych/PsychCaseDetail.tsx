@@ -95,8 +95,10 @@ export function PsychCaseDetail({ caseData, onBack, onViewPacket, onAddDocument,
       )}
 
       {/* TL;DR — top-of-page bullet summary for non-coders */}
-      <PsychTLDRCard result={result} />
+      <PsychTLDRCard result={result} clinicalNote={clinicalNote} />
 
+      {/* Standardized rating-scale evidence (full panel — only when scales are present) */}
+      <StandardizedScalesPanel scales={clinicalNote?.standardized_scales} />
 
 
       {/* Score */}
