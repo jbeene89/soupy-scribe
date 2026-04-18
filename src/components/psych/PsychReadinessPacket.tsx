@@ -9,7 +9,9 @@ import {
   DollarSign, TrendingUp, Zap, Brain, BadgeAlert, Lightbulb, Wrench, Printer, FileText
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult } from '@/lib/psychTypes';
+import type { ParsedNote } from '@/lib/crosswalkTypes';
 import { PsychTLDRCard } from './PsychTLDRCard';
+import { StandardizedScalesPanel } from './StandardizedScalesPanel';
 import { PsychAddDocumentDialog } from './PsychAddDocumentDialog';
 
 type CaseData = {
@@ -17,6 +19,7 @@ type CaseData = {
   result: PsychAuditResult;
   versions?: { version: number }[];
   addedDocuments?: { label: string; text: string; addedAt: string }[];
+  clinicalNote?: ParsedNote | null;
 };
 
 export function PsychReadinessPacket({ caseData, onBack, onAddDocument }: {
