@@ -74,6 +74,33 @@ function sweepCodesIntoClaim(claim: any, raw: string): void {
 
   const text = raw;
 
+  // ── ZIP scrub: strip any LLM-returned 5-digit ZIP-shaped numbers from
+  //     CPT / HCPCS / ICD fields and from line items. Address numerics must
+  //     never appear as procedure or diagnosis codes.
+  const scrubZipFromArrayField = (field: any): any => {
+    if (!field || !Array.isArray(field.value)) return field;
+    const cleaned = field.value.filter((c: string) => {
+      const s = String(c || "").trim();
+      if (!s) return false;
+      if (KNOWN_CPT.has(s)) return true;
+      if (/^[0-9]{5}$/.test(s) && isZipInContext(s, text)) return false;
+      return true;
+    });
+    return { ...field, value: cleaned };
+  };
+  if (claim.codes?.cpt_codes)   claim.codes.cpt_codes   = scrubZipFromArrayField(claim.codes.cpt_codes);
+  if (claim.codes?.hcpcs_codes) claim.codes.hcpcs_codes = scrubZipFromArrayField(claim.codes.hcpcs_codes);
+  if (claim.codes?.icd10_codes) claim.codes.icd10_codes = scrubZipFromArrayField(claim.codes.icd10_codes);
+  if (Array.isArray(claim.claim_line_items)) {
+    claim.claim_line_items = claim.claim_line_items.filter((li: any) => {
+      const code = String(li?.procedure_code || "").trim();
+      if (!code) return true; // keep blanks; sweep may fill them
+      if (KNOWN_CPT.has(code)) return true;
+      if (/^[0-9]{5}$/.test(code) && isZipInContext(code, text)) return false;
+      return true;
+    });
+  }
+
   // CPTs — exclude 5-digit numbers that look like US ZIP codes in address context.
   const cptHits = dedupe(Array.from(text.matchAll(CPT_RE), (m) => m[1]))
     .filter((c) => {
