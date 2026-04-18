@@ -209,6 +209,12 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
         </Card>
       )}
 
+      {/* Standardized rating-scale evidence (PHQ-9, GAD-7, Y-BOCS, PCL-5, CAPS-5, MDQ, ASRS) */}
+      {(() => {
+        const note = (auditCase.metadata as unknown as { clinicalNote?: ParsedNote })?.clinicalNote;
+        return <StandardizedScalesPanel scales={note?.standardized_scales} />;
+      })()}
+
       {/* Disposition Banner — synced with payer mode via caseIntelligence */}
       {hasAnalyses && (
         <Card className={cn('border-l-4', signals.disposition.borderClass, signals.disposition.bgClass)}>
