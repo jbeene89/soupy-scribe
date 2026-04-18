@@ -120,6 +120,31 @@ export function PerspectivesPanel({
               </Badge>
             </div>
             <p className="text-sm font-medium text-foreground">{synthesis.headline}</p>
+            {synthesis.validation_summary && (
+              <div className="rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-2 flex gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-foreground leading-relaxed">{synthesis.validation_summary}</p>
+              </div>
+            )}
+            {synthesis.revenue_opportunities && synthesis.revenue_opportunities.length > 0 && (
+              <div className="rounded-md bg-green-500/10 border border-green-500/30 px-2.5 py-2 space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <TrendingUp className="h-3.5 w-3.5 text-green-700" />
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-green-700">Revenue opportunities to review</p>
+                </div>
+                <ul className="space-y-1">
+                  {synthesis.revenue_opportunities.map((r, i) => (
+                    <li key={i} className="text-xs text-foreground flex gap-2">
+                      <span className="text-green-700 shrink-0">$</span>
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-muted-foreground italic pt-0.5">
+                  These are categories to verify in the underlying documentation — confirm before billing.
+                </p>
+              </div>
+            )}
             {synthesis.top_actions?.length > 0 && (
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Top actions</p>
