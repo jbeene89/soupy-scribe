@@ -469,12 +469,24 @@ serve(async (req) => {
 
     const note = JSON.parse(toolCall.function.arguments);
 
-    // Deterministic safety net: sweep raw text for CPTs/modifiers the model may have missed.
+    // Deterministic safety net: sweep raw text for CPTs/modifiers and standardized scales
+    // the model may have missed, and re-derive severity bands from raw scores.
     if (hasText && sourceText) {
       try {
         sweepNoteCodes(note, sourceText);
+        sweepStandardizedScales(note, sourceText);
       } catch (e) {
-        console.error("Note code sweep failed (non-fatal):", e);
+        console.error("Note deterministic sweep failed (non-fatal):", e);
+      }
+    }
+
+    // Re-derive severity for any scale entries the model returned without a band.
+    if (Array.isArray(note?.standardized_scales)) {
+      for (const s of note.standardized_scales) {
+        if (s && typeof s.score === "number" && (!s.severity || s.severity === "")) {
+          const derived = deriveSeverity(s.scale, s.score);
+          if (derived) s.severity = derived;
+        }
       }
     }
 
