@@ -22,11 +22,18 @@ function dateContext(): string {
 // Shared rule for every lens. The goal is improvement, not nitpicking.
 const NO_NITPICK_RULE = `
 IMPORTANT — DO NOT MANUFACTURE PROBLEMS:
-- Your job is to improve on what's there, not to nitpick a clean claim to death.
+- Your job is to help the provider find revenue they're missing or protect revenue at risk — NOT to nitpick a clean claim to death.
 - If the claim looks correctly built and well-documented for its category, SAY SO. Return a short headline like "No material issues detected" and an empty or near-empty findings array.
 - Only flag a finding if it would plausibly affect payment, compliance, or patient care. Skip stylistic preferences, formatting quibbles, and theoretical edge cases that don't apply to this claim.
 - Severity must reflect actual risk: use "low" sparingly, "medium" only when there is a real exposure, "high" only when denial/clawback is likely. If you cannot justify medium or high, do not include the finding.
-- It is fully acceptable — and often correct — to return zero findings. A clean claim is a valid outcome.`;
+- It is fully acceptable — and often correct — to return zero findings. A clean claim is a valid outcome.
+
+CRITICAL — NO HALLUCINATED CODES OR FIELDS:
+- You may ONLY reference CPT, HCPCS, ICD-10, modifier, POS, or any other code/identifier that LITERALLY APPEARS in the parsed claim JSON (codes.cpt_codes, codes.hcpcs_codes, codes.icd10_codes, codes.modifier_codes, claim_line_items[].procedure_code, claim_line_items[].modifier, etc.).
+- Do NOT invent codes the provider "could have used", "should have billed", or "might be missing" by writing a specific code number that is not in the JSON. If you want to suggest a category of service that wasn't billed, describe it in plain English (e.g. "consider whether an add-on service was performed") — never fabricate a code number.
+- Do NOT reference patient names, dates, dollar amounts, payer names, or NPIs that are not present in the parsed claim. If a field is null or missing in the JSON, treat it as missing — do not guess.
+- Every code or field you cite in a finding MUST be traceable to the JSON. If you cannot point to where it appears, do not cite it.
+- Violating this rule produces false audit findings and destroys provider trust. Grounding is more important than thoroughness.`;
 
 const LENS_PROMPTS: Record<Lens, { label: string; system: string }> = {
   builder: {
@@ -194,7 +201,43 @@ serve(async (req) => {
       ),
     );
 
-    const perspectives = results.map((r) => r.status === "fulfilled" ? r.value : { lens: "unknown", error: "lens failed" });
+    const perspectives: any[] = results.map((r) => r.status === "fulfilled" ? r.value : { lens: "unknown", error: "lens failed" });
+
+    // Deterministic anti-hallucination filter:
+    // Strip any finding that cites a CPT/HCPCS/ICD-10/modifier code that does not literally appear in the parsed claim.
+    const allowedCodes = new Set<string>();
+    const collect = (arr: any) => Array.isArray(arr) && arr.forEach((c: any) => c && allowedCodes.add(String(c).toUpperCase().trim()));
+    collect(claim?.codes?.cpt_codes?.value);
+    collect(claim?.codes?.hcpcs_codes?.value);
+    collect(claim?.codes?.icd10_codes?.value);
+    collect(claim?.codes?.modifier_codes?.value);
+    if (Array.isArray(claim?.claim_line_items)) {
+      for (const li of claim.claim_line_items) {
+        if (li?.procedure_code) allowedCodes.add(String(li.procedure_code).toUpperCase().trim());
+        if (li?.modifier) allowedCodes.add(String(li.modifier).toUpperCase().trim());
+      }
+    }
+    // Match CPT (5 digits), HCPCS (letter+4 digits), ICD-10 (letter+2 digits with optional decimal)
+    const codePattern = /\b([A-Z]\d{2}(?:\.\d{1,4})?|[A-Z]\d{4}|\d{5})\b/g;
+    let strippedCount = 0;
+    for (const p of perspectives) {
+      if (!p?.output?.findings || !Array.isArray(p.output.findings)) continue;
+      p.output.findings = p.output.findings.filter((f: any) => {
+        const text = `${f?.point ?? ""} ${f?.field_path ?? ""}`.toUpperCase();
+        const cited = text.match(codePattern) ?? [];
+        for (const c of cited) {
+          if (!allowedCodes.has(c)) {
+            console.warn(`[claim-perspectives] Stripped hallucinated code "${c}" from ${p.lens} finding: ${f?.point}`);
+            strippedCount++;
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+    if (strippedCount > 0) {
+      console.log(`[claim-perspectives] Removed ${strippedCount} findings citing codes not present in parsed claim.`);
+    }
 
     // Surface gateway-level errors first
     const rateLimited = results.find((r) => r.status === "rejected" && (r.reason as any)?.status === 429);
