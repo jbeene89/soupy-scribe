@@ -101,7 +101,8 @@ const SYNTH_TOOL = {
       properties: {
         overall_posture: {
           type: "string",
-          enum: ["defensible", "needs_documentation", "high_denial_risk", "human_review_required"],
+          enum: ["clean", "defensible", "needs_documentation", "high_denial_risk", "human_review_required"],
+          description: "Use 'clean' when no material issues were identified across the lenses.",
         },
         confidence: { type: "number", description: "0.0–1.0" },
         headline: { type: "string", description: "One-sentence summary (≤ 22 words)." },
@@ -210,9 +211,16 @@ serve(async (req) => {
           {
             role: "system",
             content:
-              `You combine 5 perspective outputs into a single neutral audit posture. Stay grounded. Enterprise tone. No advocacy language.\n\n${dateNote}`,
+              `You combine 5 perspective outputs into a single neutral audit posture. Stay grounded. Enterprise tone. No advocacy language.
+
+IMPORTANT — DO NOT MANUFACTURE PROBLEMS:
+- The goal is to improve on what's there, not to invent issues. If the lenses report no material findings, set overall_posture = "clean", give a short positive headline (e.g. "Claim appears correctly built — no material issues identified"), and return empty arrays for tension_points and top_actions (or only include genuinely useful next steps).
+- Do not aggregate every minor lens observation into the action list. Only surface actions that meaningfully change payment, compliance, or care outcomes.
+- A clean claim is a valid, expected outcome. Say so plainly when it applies.
+
+${dateNote}`,
           },
-          { role: "user", content: `Combine these lenses into a unified posture:\n\n${synthInput}` },
+          { role: "user", content: `Combine these lenses into a unified posture. Remember: if the claim is clean, say it's clean. Do not pad the output.\n\n${synthInput}` },
         ],
         SYNTH_TOOL,
         LOVABLE_API_KEY,
