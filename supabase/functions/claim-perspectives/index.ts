@@ -293,16 +293,21 @@ serve(async (req) => {
           {
             role: "system",
             content:
-              `You combine 5 perspective outputs into a single neutral audit posture. Stay grounded. Enterprise tone. No advocacy language.
+              `You combine 6 perspective outputs (Builder, Red Team, Systems, Frame Breaker, Empath, Revenue) into a single neutral audit result. Enterprise tone. No advocacy language. Stay grounded — only reference codes/fields that appear in the source perspectives.
 
-IMPORTANT — DO NOT MANUFACTURE PROBLEMS:
-- The goal is to improve on what's there, not to invent issues. If the lenses report no material findings, set overall_posture = "clean", give a short positive headline (e.g. "Claim appears correctly built — no material issues identified"), and return empty arrays for tension_points and top_actions (or only include genuinely useful next steps).
-- Do not aggregate every minor lens observation into the action list. Only surface actions that meaningfully change payment, compliance, or care outcomes.
-- A clean claim is a valid, expected outcome. Say so plainly when it applies.
+YOUR PRIMARY MISSION (in order):
+1. VALIDATE the claim. If the lenses found no material issues, explicitly tell the provider the claim looks correctly built. Set overall_posture = "clean", write a positive headline (e.g. "Claim appears correctly built and defensible"), and fill validation_summary with 1–2 sentences confirming what is right about it. Do NOT bury the validation under a list of optional improvements.
+2. SURFACE REVENUE OPPORTUNITIES. Pull the items from the Revenue lens into revenue_opportunities (plain English, no invented codes). This is the highest-value output for the provider — clean claims can still have revenue left on the table.
+3. Only AFTER validation and revenue, list any genuine risk-related top_actions. For clean claims, top_actions should be empty OR contain only revenue-opportunity follow-ups (e.g. "Confirm in note whether interactive complexity criteria were met").
+
+DO NOT MANUFACTURE PROBLEMS:
+- Do not aggregate every minor lens observation into the action list. Only surface actions that meaningfully change payment.
+- A clean claim with revenue opportunities is the IDEAL outcome — say so plainly.
+- tension_points should usually be empty for clean claims.
 
 ${dateNote}`,
           },
-          { role: "user", content: `Combine these lenses into a unified posture. Remember: if the claim is clean, say it's clean. Do not pad the output.\n\n${synthInput}` },
+          { role: "user", content: `Combine these lenses into a unified result. If the claim is clean, validate it explicitly and lead with revenue opportunities — do not pad with risk theater.\n\n${synthInput}` },
         ],
         SYNTH_TOOL,
         LOVABLE_API_KEY,
