@@ -27,7 +27,7 @@ export function PsychReadinessPacket({ caseData, onBack, onAddDocument }: {
   onBack: () => void;
   onAddDocument?: (label: string, text: string) => void;
 }) {
-  const { input, result, versions = [], addedDocuments = [] } = caseData;
+  const { input, result, versions = [], addedDocuments = [], clinicalNote = null } = caseData;
   const fails = result.checklist.filter(c => c.status === 'fail');
   const warnings = result.checklist.filter(c => c.status === 'warning');
 
