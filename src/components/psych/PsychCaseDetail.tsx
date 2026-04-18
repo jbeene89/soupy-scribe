@@ -11,7 +11,9 @@ import {
   ChevronDown, ChevronUp, Clock, ListChecks
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult, MissedRevenueItem } from '@/lib/psychTypes';
+import type { ParsedNote } from '@/lib/crosswalkTypes';
 import { PsychTLDRCard } from './PsychTLDRCard';
+import { StandardizedScalesPanel } from './StandardizedScalesPanel';
 import { PsychAddDocumentDialog } from './PsychAddDocumentDialog';
 import { PsychVersionSwitcher, type PsychCaseVersion } from './PsychVersionSwitcher';
 import { Paperclip } from 'lucide-react';
@@ -22,6 +24,7 @@ type CaseData = {
   versions?: PsychCaseVersion[];
   activeVersion?: number;
   addedDocuments?: { label: string; text: string; addedAt: string }[];
+  clinicalNote?: ParsedNote | null;
 };
 
 function StatusIcon({ status }: { status: 'pass' | 'fail' | 'warning' }) {
@@ -43,7 +46,7 @@ export function PsychCaseDetail({ caseData, onBack, onViewPacket, onAddDocument,
   onAddDocument?: (label: string, text: string) => void;
   onSelectVersion?: (version: number) => void;
 }) {
-  const { input, result, versions = [], activeVersion = 1, addedDocuments = [] } = caseData;
+  const { input, result, versions = [], activeVersion = 1, addedDocuments = [], clinicalNote = null } = caseData;
   const ri = readinessInfo(result);
   const fails = result.checklist.filter(c => c.status === 'fail');
   const warnings = result.checklist.filter(c => c.status === 'warning');
@@ -92,8 +95,10 @@ export function PsychCaseDetail({ caseData, onBack, onViewPacket, onAddDocument,
       )}
 
       {/* TL;DR — top-of-page bullet summary for non-coders */}
-      <PsychTLDRCard result={result} />
+      <PsychTLDRCard result={result} clinicalNote={clinicalNote} />
 
+      {/* Standardized rating-scale evidence (full panel — only when scales are present) */}
+      <StandardizedScalesPanel scales={clinicalNote?.standardized_scales} />
 
 
       {/* Score */}

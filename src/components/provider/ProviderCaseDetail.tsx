@@ -35,6 +35,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PreAppealResolutionTab } from '@/components/pre-appeal/PreAppealResolutionTab';
 import { supabase } from '@/integrations/supabase/client';
+import { StandardizedScalesPanel } from '@/components/psych/StandardizedScalesPanel';
+import type { ParsedNote } from '@/lib/crosswalkTypes';
 
 interface ProviderCaseDetailProps {
   auditCase: AuditCase;
@@ -206,6 +208,12 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
           </CardContent>
         </Card>
       )}
+
+      {/* Standardized rating-scale evidence (PHQ-9, GAD-7, Y-BOCS, PCL-5, CAPS-5, MDQ, ASRS) */}
+      {(() => {
+        const note = (auditCase.metadata as unknown as { clinicalNote?: ParsedNote })?.clinicalNote;
+        return <StandardizedScalesPanel scales={note?.standardized_scales} />;
+      })()}
 
       {/* Disposition Banner — synced with payer mode via caseIntelligence */}
       {hasAnalyses && (

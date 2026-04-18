@@ -9,7 +9,9 @@ import {
   DollarSign, TrendingUp, Zap, Brain, BadgeAlert, Lightbulb, Wrench, Printer, FileText
 } from 'lucide-react';
 import type { PsychCaseInput, PsychAuditResult } from '@/lib/psychTypes';
+import type { ParsedNote } from '@/lib/crosswalkTypes';
 import { PsychTLDRCard } from './PsychTLDRCard';
+import { StandardizedScalesPanel } from './StandardizedScalesPanel';
 import { PsychAddDocumentDialog } from './PsychAddDocumentDialog';
 
 type CaseData = {
@@ -17,6 +19,7 @@ type CaseData = {
   result: PsychAuditResult;
   versions?: { version: number }[];
   addedDocuments?: { label: string; text: string; addedAt: string }[];
+  clinicalNote?: ParsedNote | null;
 };
 
 export function PsychReadinessPacket({ caseData, onBack, onAddDocument }: {
@@ -24,7 +27,7 @@ export function PsychReadinessPacket({ caseData, onBack, onAddDocument }: {
   onBack: () => void;
   onAddDocument?: (label: string, text: string) => void;
 }) {
-  const { input, result, versions = [], addedDocuments = [] } = caseData;
+  const { input, result, versions = [], addedDocuments = [], clinicalNote = null } = caseData;
   const fails = result.checklist.filter(c => c.status === 'fail');
   const warnings = result.checklist.filter(c => c.status === 'warning');
 
@@ -57,7 +60,10 @@ export function PsychReadinessPacket({ caseData, onBack, onAddDocument }: {
       </div>
 
       {/* TL;DR — first thing the reader sees in the printed packet */}
-      <PsychTLDRCard result={result} />
+      <PsychTLDRCard result={result} clinicalNote={clinicalNote} />
+
+      {/* Standardized rating-scale evidence */}
+      <StandardizedScalesPanel scales={clinicalNote?.standardized_scales} />
 
       {/* Score & Recommendation */}
 
