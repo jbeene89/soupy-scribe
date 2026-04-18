@@ -201,7 +201,43 @@ serve(async (req) => {
       ),
     );
 
-    const perspectives = results.map((r) => r.status === "fulfilled" ? r.value : { lens: "unknown", error: "lens failed" });
+    const perspectives: any[] = results.map((r) => r.status === "fulfilled" ? r.value : { lens: "unknown", error: "lens failed" });
+
+    // Deterministic anti-hallucination filter:
+    // Strip any finding that cites a CPT/HCPCS/ICD-10/modifier code that does not literally appear in the parsed claim.
+    const allowedCodes = new Set<string>();
+    const collect = (arr: any) => Array.isArray(arr) && arr.forEach((c: any) => c && allowedCodes.add(String(c).toUpperCase().trim()));
+    collect(claim?.codes?.cpt_codes?.value);
+    collect(claim?.codes?.hcpcs_codes?.value);
+    collect(claim?.codes?.icd10_codes?.value);
+    collect(claim?.codes?.modifier_codes?.value);
+    if (Array.isArray(claim?.claim_line_items)) {
+      for (const li of claim.claim_line_items) {
+        if (li?.procedure_code) allowedCodes.add(String(li.procedure_code).toUpperCase().trim());
+        if (li?.modifier) allowedCodes.add(String(li.modifier).toUpperCase().trim());
+      }
+    }
+    // Match CPT (5 digits), HCPCS (letter+4 digits), ICD-10 (letter+2 digits with optional decimal)
+    const codePattern = /\b([A-Z]\d{2}(?:\.\d{1,4})?|[A-Z]\d{4}|\d{5})\b/g;
+    let strippedCount = 0;
+    for (const p of perspectives) {
+      if (!p?.output?.findings || !Array.isArray(p.output.findings)) continue;
+      p.output.findings = p.output.findings.filter((f: any) => {
+        const text = `${f?.point ?? ""} ${f?.field_path ?? ""}`.toUpperCase();
+        const cited = text.match(codePattern) ?? [];
+        for (const c of cited) {
+          if (!allowedCodes.has(c)) {
+            console.warn(`[claim-perspectives] Stripped hallucinated code "${c}" from ${p.lens} finding: ${f?.point}`);
+            strippedCount++;
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+    if (strippedCount > 0) {
+      console.log(`[claim-perspectives] Removed ${strippedCount} findings citing codes not present in parsed claim.`);
+    }
 
     // Surface gateway-level errors first
     const rateLimited = results.find((r) => r.status === "rejected" && (r.reason as any)?.status === 429);
