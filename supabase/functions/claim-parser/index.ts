@@ -2,12 +2,37 @@
 // Accepts plain text OR image data (base64 data URL) and returns a strict claim shape.
 // Behavioral-health-friendly but generic across payer claims/EOBs/remits/denial letters.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// Reject any caller that is not a signed-in user. Without this the function
+// is publicly callable and anyone on the internet can burn AI credits.
+async function requireAuth(req: Request): Promise<Response | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } },
+  );
+  const token = authHeader.replace("Bearer ", "");
+  const { data, error } = await supabase.auth.getClaims(token);
+  if (error || !data?.claims?.sub) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  return null;
+}
 
 // ──────────── Deterministic code sweep (safety net for the LLM) ────────────
 // CPT/HCPCS = 5 chars: 5 digits OR 1 letter + 4 digits (e.g. 99214, J3490, G0438).
@@ -424,6 +449,10 @@ const EXTRACT_TOOL = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const unauth = await requireAuth(req);
+  if (unauth) return unauth;
+
 
   try {
     const body = await req.json();
