@@ -12,11 +12,33 @@ const corsHeaders = {
 // payer profiles, engine health, appeal outcomes, regulatory flags
 // ═══════════════════════════════════════════════════════════════
 
-async function authenticateRequest(req: Request, supabaseUrl: string, supabaseAnonKey: string): Promise<{ userId: string | null } | Response> {
+// Actions that require admin (soupy-admin org membership). Everything else still requires
+// authentication — there is no longer an unauthenticated code path.
+const ADMIN_ONLY_ACTIONS = new Set<string>([
+  "engine-health",
+  "create-ghost-case",
+  "list-ghost-cases",
+  "list-gold-set-cases",
+  "list-payer-profiles",
+  "list-regulatory-flags",
+  "inject-ghost",
+  "validate-ghost",
+  "replay-gold-set",
+  "physician-profile",
+]);
+
+async function authenticateRequest(
+  req: Request,
+  supabaseUrl: string,
+  supabaseAnonKey: string,
+  supabaseServiceKey: string,
+  action: string,
+): Promise<{ userId: string } | Response> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
-    // Allow unauthenticated access for admin/health endpoints — authorization handled per-action
-    return { userId: null };
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
   const token = authHeader.replace("Bearer ", "");
   const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
@@ -24,10 +46,24 @@ async function authenticateRequest(req: Request, supabaseUrl: string, supabaseAn
   });
   const { data, error } = await supabaseAuth.auth.getClaims(token);
   if (error || !data?.claims?.sub) {
-    // Token present but invalid — still allow through for service-level actions
-    return { userId: null };
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
-  return { userId: data.claims.sub as string };
+  const userId = data.claims.sub as string;
+
+  // Admin gating for privileged actions.
+  if (ADMIN_ONLY_ACTIONS.has(action)) {
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: isAdmin } = await adminClient.rpc("is_soupy_admin", { _user_id: userId });
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: "Forbidden — admin only" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
+  return { userId };
 }
 
 serve(async (req) => {
