@@ -74,12 +74,14 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const authResult = await authenticateRequest(req, supabaseUrl, supabaseAnonKey);
-    const userId = (authResult as { userId: string | null }).userId;
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const body = await req.json();
     const { action } = body;
+
+    // Authenticate every request. Privileged actions additionally require admin.
+    const authResult = await authenticateRequest(req, supabaseUrl, supabaseAnonKey, supabaseServiceKey, action);
+    if (authResult instanceof Response) return authResult;
+    const userId = authResult.userId;
 
     // ═══════════════════════════════════════════════════
     // ACTION: inject-ghost — Run a ghost case through the engine
