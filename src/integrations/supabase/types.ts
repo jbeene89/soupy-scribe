@@ -1691,6 +1691,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_organization: {
+        Args: { _name: string; _slug?: string }
+        Returns: string
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

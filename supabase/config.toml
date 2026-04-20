@@ -25,6 +25,12 @@ verify_jwt = true
 [functions.claim-perspectives]
 verify_jwt = true
 
+[functions.claim-clinical-crosswalk]
+verify_jwt = true
+
+[functions.note-parse-structured]
+verify_jwt = true
+
 # soupy-engine handles a mix of authed and admin/health actions.
 # Auth is enforced per-action inside the function itself.
 [functions.soupy-engine]
