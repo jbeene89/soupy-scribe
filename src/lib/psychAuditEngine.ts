@@ -347,6 +347,156 @@ function computeSmallestFixes(checklist: (PsychChecklistItem & { status: string 
     }));
 }
 
+// ── Dual-risk computation: SAFETY lens vs BILLING lens ──
+// Suicide risk = ideation/plan/intent. Medical necessity = symptoms/scales/impairment.
+// These NEVER influence each other — that's the rookie AI mistake we explicitly guard against.
+function computeSuicideRisk(input: PsychCaseInput): SuicideRiskAssessment {
+  // Explicit clinician statement wins.
+  if (input.statedSuicideRiskLevel) {
+    return {
+      level: input.statedSuicideRiskLevel,
+      ideation: !!input.suicideIdeation,
+      plan: !!input.suicidePlan,
+      intent: !!input.suicideIntent,
+      protectiveFactors: input.protectiveFactors || [],
+      safetyPlanDocumented: !!input.hasCrisisSafetyPlan,
+    };
+  }
+  // Otherwise derive from the three pillars.
+  let level: SuicideRiskLevel = 'low';
+  if (input.suicideIntent) level = 'high';
+  else if (input.suicidePlan) level = 'high';
+  else if (input.suicideIdeation) level = 'moderate';
+
+  const inferred = !input.suicideIdeation && !input.suicidePlan && !input.suicideIntent
+    && input.statedSuicideRiskLevel == null;
+
+  return {
+    level,
+    ideation: !!input.suicideIdeation,
+    plan: !!input.suicidePlan,
+    intent: !!input.suicideIntent,
+    protectiveFactors: input.protectiveFactors || [],
+    safetyPlanDocumented: !!input.hasCrisisSafetyPlan,
+    inferred,
+  };
+}
+
+/** PHQ-9 severity bands. 0-4 minimal, 5-9 mild, 10-14 moderate, 15-19 mod-severe, 20-27 severe. */
+function phq9Band(score: number): MedicalNecessityLevel | null {
+  if (score <= 4) return null; // minimal — does not by itself support necessity
+  if (score <= 9) return 'mild';
+  if (score <= 14) return 'moderate';
+  return 'severe';
+}
+/** GAD-7 severity bands. 0-4 min, 5-9 mild, 10-14 mod, 15-21 severe. */
+function gad7Band(score: number): MedicalNecessityLevel | null {
+  if (score <= 4) return null;
+  if (score <= 9) return 'mild';
+  if (score <= 14) return 'moderate';
+  return 'severe';
+}
+
+function computeMedicalNecessity(input: PsychCaseInput): MedicalNecessityAssessment {
+  const scaleEvidence: { scale: string; score?: number | null; severity?: string | null }[] = [];
+  let scaleDriven: MedicalNecessityLevel | null = null;
+
+  for (const s of input.parsedScales || []) {
+    scaleEvidence.push({ scale: s.scale, score: s.score, severity: s.severity });
+    if (s.score == null) continue;
+    const name = s.scale.toUpperCase();
+    let band: MedicalNecessityLevel | null = null;
+    if (name.includes('PHQ-9') || name.includes('PHQ9')) band = phq9Band(s.score);
+    else if (name.includes('GAD-7') || name.includes('GAD7')) band = gad7Band(s.score);
+    if (band && (!scaleDriven || rank(band) > rank(scaleDriven))) scaleDriven = band;
+  }
+
+  // Build the level: take the MAX of (scale-driven, symptom severity, functional impairment).
+  const candidates: MedicalNecessityLevel[] = [];
+  if (scaleDriven) candidates.push(scaleDriven);
+  if (input.symptomSeverity) candidates.push(input.symptomSeverity);
+  if (input.functionalImpairmentLevel === 'marked') candidates.push('severe');
+  else if (input.functionalImpairmentLevel === 'moderate') candidates.push('moderate');
+  else if (input.functionalImpairmentLevel === 'mild') candidates.push('mild');
+
+  const level: MedicalNecessityLevel = candidates.length > 0
+    ? candidates.reduce((a, b) => (rank(a) >= rank(b) ? a : b))
+    : 'mild';
+
+  // Build human-readable rationale.
+  const parts: string[] = [];
+  if (scaleDriven) {
+    const drivers = (input.parsedScales || [])
+      .filter(s => s.score != null)
+      .map(s => `${s.scale}=${s.score}${s.severity ? ` (${s.severity})` : ''}`);
+    if (drivers.length) parts.push(drivers.join(', '));
+  }
+  if (input.symptomSeverity) parts.push(`symptom severity: ${input.symptomSeverity}`);
+  if (input.functionalImpairmentLevel && input.functionalImpairmentLevel !== 'none') {
+    parts.push(`${input.functionalImpairmentLevel} functional impairment`);
+  }
+  const rationale = parts.length
+    ? `Necessity ${level} based on ${parts.join('; ')}.`
+    : `No severity scales or impairment detail documented; defaulting to mild necessity.`;
+
+  return {
+    level,
+    symptomSeverity: input.symptomSeverity,
+    functionalImpairment: input.functionalImpairmentLevel,
+    scaleEvidence,
+    rationale,
+    inferred: candidates.length === 0,
+  };
+}
+
+function rank(l: MedicalNecessityLevel): number {
+  return l === 'severe' ? 3 : l === 'moderate' ? 2 : 1;
+}
+
+function computeDualRisk(input: PsychCaseInput): DualRiskNarrative {
+  const suicide = computeSuicideRisk(input);
+  const necessity = computeMedicalNecessity(input);
+
+  // Build the combined narrative — explicitly separates the two lenses.
+  const safetyClause = suicide.inferred
+    ? `Suicide risk: low (no ideation, plan, or intent documented in the note — verify clinically)`
+    : `Suicide risk: ${suicide.level}` +
+      (suicide.level === 'low' && !suicide.ideation && !suicide.plan && !suicide.intent
+        ? ' (no ideation, plan, or intent documented)'
+        : suicide.level === 'high'
+          ? ` (${[suicide.intent && 'intent', suicide.plan && 'plan', suicide.ideation && 'ideation'].filter(Boolean).join(' + ')} documented)`
+          : '');
+
+  const necessityClause = necessity.inferred
+    ? `medical necessity could not be derived from the note (no severity scales or impairment level documented)`
+    : `medical necessity supports ${necessity.level} level` +
+      (necessity.scaleEvidence.length
+        ? ` — ${necessity.scaleEvidence.filter(s => s.score != null).map(s => `${s.scale}=${s.score}`).join(', ')}`
+        : '');
+
+  const connector = (suicide.level === 'low' && (necessity.level === 'moderate' || necessity.level === 'severe'))
+    ? ', however'
+    : (suicide.level === 'high' && necessity.level === 'mild')
+      ? ', however'
+      : ', and';
+
+  const combinedNarrative = `${safetyClause}${connector} ${necessityClause}.`;
+
+  // Cross-contamination guardrail: flag if the two lenses look improperly coupled.
+  // We don't currently let one influence the other in code, so this is a sanity check
+  // for downstream logic that might mistakenly use them together.
+  let crossContaminationFlag = false;
+  let crossContaminationReason: string | undefined;
+  if (suicide.level === 'low' && necessity.level === 'mild' && (input.parsedScales || []).some(s =>
+    (s.scale.toUpperCase().includes('PHQ') && (s.score ?? 0) >= 15)
+    || (s.scale.toUpperCase().includes('GAD') && (s.score ?? 0) >= 15))) {
+    crossContaminationFlag = true;
+    crossContaminationReason = 'Severity scale indicates moderate-to-severe symptoms but necessity was computed as mild — review symptom/impairment inputs.';
+  }
+
+  return { suicide, necessity, combinedNarrative, crossContaminationFlag, crossContaminationReason };
+}
+
 // ── Note quality checks ──
 function checkNoteQuality(input: PsychCaseInput): string[] {
   const issues: string[] = [];
