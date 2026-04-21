@@ -725,6 +725,7 @@ export function runPsychAudit(input: PsychCaseInput): PsychAuditResult {
   const smallestFixes = computeSmallestFixes(evaluated);
   const payerWarnings = generatePayerWarnings(input);
   const noteQualityIssues = checkNoteQuality(input);
+  const dualRisk = computeDualRisk(input);
 
   const submitRecommendation: PsychAuditResult['submitRecommendation'] =
     classification === 'ready' ? 'submit-now' :
@@ -735,6 +736,7 @@ export function runPsychAudit(input: PsychCaseInput): PsychAuditResult {
     overallReadiness, classification, score, checklist: evaluated,
     denialRiskFactors, recommendations, mdmReview, missedRevenue,
     smallestFixes, payerWarnings, noteQualityIssues, submitRecommendation,
+    dualRisk,
   };
 }
 
