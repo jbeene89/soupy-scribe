@@ -105,6 +105,42 @@ const EXTRACT_TOOL = {
         interventions_documented: { type: "array", items: { type: "string" }, description: "e.g. CBT, behavioral activation" },
         risk_assessment_present: { type: ["boolean", "null"], description: "SI/HI assessment documented" },
 
+        // ── Suicide/SAFETY lens (kept distinct from medical necessity) ──
+        suicide_ideation: { type: ["boolean", "null"], description: "Patient reports thoughts of suicide" },
+        suicide_plan: { type: ["boolean", "null"], description: "Patient has a documented plan/method" },
+        suicide_intent: { type: ["boolean", "null"], description: "Patient expresses intent to act on suicidal thoughts" },
+        stated_suicide_risk_level: {
+          type: ["string", "null"],
+          enum: ["low", "moderate", "high", null],
+          description: "Clinician's explicit risk-stratification language if present (low/moderate/high)",
+        },
+        protective_factors: { type: "array", items: { type: "string" }, description: "Protective factors documented (e.g. 'family support', 'no access to means', 'future-oriented')" },
+
+        // ── Medical necessity / BILLING lens (independent from suicide risk) ──
+        symptom_severity: {
+          type: ["string", "null"],
+          enum: ["mild", "moderate", "severe", null],
+          description: "Overall symptom severity as documented (NOT the same as suicide risk)",
+        },
+        functional_impairment_level: {
+          type: ["string", "null"],
+          enum: ["none", "mild", "moderate", "marked", null],
+          description: "Degree of functional impairment in occupational/social/self-care domains",
+        },
+        standardized_scale_scores: {
+          type: "array",
+          description: "Validated rating-scale scores extracted verbatim — PHQ-9, GAD-7, PCL-5, Y-BOCS, MDQ, ASRS, etc.",
+          items: {
+            type: "object",
+            properties: {
+              scale: { type: "string" },
+              score: { type: ["number", "null"] },
+              severity: { type: ["string", "null"] },
+            },
+            required: ["scale"],
+          },
+        },
+
         // Financials
         claim_amount: { type: ["number", "null"] },
 

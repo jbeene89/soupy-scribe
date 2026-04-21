@@ -16,6 +16,7 @@ import { PsychTLDRCard } from './PsychTLDRCard';
 import { StandardizedScalesPanel } from './StandardizedScalesPanel';
 import { PsychAddDocumentDialog } from './PsychAddDocumentDialog';
 import { PsychVersionSwitcher, type PsychCaseVersion } from './PsychVersionSwitcher';
+import { DualRiskCard } from './DualRiskCard';
 import { Paperclip } from 'lucide-react';
 
 type CaseData = {
@@ -96,6 +97,9 @@ export function PsychCaseDetail({ caseData, onBack, onViewPacket, onAddDocument,
 
       {/* TL;DR — top-of-page bullet summary for non-coders */}
       <PsychTLDRCard result={result} clinicalNote={clinicalNote} />
+
+      {/* Dual-risk lens — separates suicide/safety from medical-necessity/billing */}
+      {result.dualRisk && <DualRiskCard dual={result.dualRisk} />}
 
       {/* Standardized rating-scale evidence (full panel — only when scales are present) */}
       <StandardizedScalesPanel scales={clinicalNote?.standardized_scales} />
