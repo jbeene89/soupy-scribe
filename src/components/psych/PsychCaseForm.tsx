@@ -214,7 +214,7 @@ function EMSection({ input, update }: { input: PsychCaseInput; update: (p: Parti
         <Field label="Problems Addressed">
           <Input type="number" min={1} max={10} value={em.problemsAddressed} onChange={e => updateEM({ problemsAddressed: parseInt(e.target.value) || 1 })} />
         </Field>
-        <Field label="Risk Level">
+        <Field label="MDM Risk Table Level">
           <Select value={em.riskLevel} onValueChange={v => updateEM({ riskLevel: v as any })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>

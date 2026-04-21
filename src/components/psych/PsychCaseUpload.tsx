@@ -81,6 +81,20 @@ function mapExtractionToInput(extracted: any): PsychCaseInput {
     hasScreeningTools: Array.isArray(extracted.screening_tools_used) && extracted.screening_tools_used.length > 0,
     screeningToolsUsed: Array.isArray(extracted.screening_tools_used) ? extracted.screening_tools_used : [],
 
+    // Safety lens
+    suicideIdeation: extracted.suicide_ideation ?? false,
+    suicidePlan: extracted.suicide_plan ?? false,
+    suicideIntent: extracted.suicide_intent ?? false,
+    statedSuicideRiskLevel: extracted.stated_suicide_risk_level ?? null,
+    protectiveFactors: Array.isArray(extracted.protective_factors) ? extracted.protective_factors : [],
+
+    // Necessity lens
+    symptomSeverity: extracted.symptom_severity ?? null,
+    functionalImpairmentLevel: extracted.functional_impairment_level ?? null,
+    parsedScales: Array.isArray(extracted.standardized_scale_scores)
+      ? extracted.standardized_scale_scores
+      : [],
+
     noteQuality: {
       hasFunctionalImpairment: extracted.functional_impairment_documented ?? false,
       hasSymptomSeverity: extracted.symptom_severity_documented ?? false,
