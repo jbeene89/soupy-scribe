@@ -39,6 +39,45 @@ export type CaseClassification =
 
 export type MDMLevel = 'straightforward' | 'low' | 'moderate' | 'high';
 
+// ── Safety vs billing lenses (kept distinct on purpose) ──
+// SuicideRiskLevel is the SAFETY lens — drives clinical risk + liability.
+// MedicalNecessityLevel is the BILLING lens — drives CPT level support.
+// They overlap but must NEVER be collapsed into a single "risk" score.
+export type SuicideRiskLevel = 'low' | 'moderate' | 'high';
+export type MedicalNecessityLevel = 'mild' | 'moderate' | 'severe';
+
+export interface SuicideRiskAssessment {
+  level: SuicideRiskLevel;
+  ideation: boolean;
+  plan: boolean;
+  intent: boolean;
+  protectiveFactors: string[];
+  safetyPlanDocumented: boolean;
+  evidenceQuote?: string | null;
+  /** True when the parser had no evidence either way (defaults to 'low' but flagged). */
+  inferred?: boolean;
+}
+
+export interface MedicalNecessityAssessment {
+  level: MedicalNecessityLevel;
+  symptomSeverity?: 'mild' | 'moderate' | 'severe' | null;
+  functionalImpairment?: 'none' | 'mild' | 'moderate' | 'marked' | null;
+  scaleEvidence: { scale: string; score?: number | null; severity?: string | null }[];
+  rationale: string;
+  /** True when the parser had no evidence either way. */
+  inferred?: boolean;
+}
+
+export interface DualRiskNarrative {
+  suicide: SuicideRiskAssessment;
+  necessity: MedicalNecessityAssessment;
+  /** One-sentence summary that explicitly distinguishes the two lenses. */
+  combinedNarrative: string;
+  /** Hard guardrail: true if the engine detected suicide-risk leaking into necessity (or vice versa). */
+  crossContaminationFlag: boolean;
+  crossContaminationReason?: string;
+}
+
 export interface PsychChecklistItem {
   id: string;
   category: 'documentation' | 'coding' | 'authorization' | 'billing' | 'note-quality' | 'em-coding' | 'revenue' | 'telehealth';
@@ -100,6 +139,16 @@ export interface PsychCaseInput {
   totalIntakeMinutes?: number;
   hasScreeningTools?: boolean;
   screeningToolsUsed?: string[];
+  // ── Safety lens inputs (parsed from note) ──
+  suicideIdeation?: boolean;
+  suicidePlan?: boolean;
+  suicideIntent?: boolean;
+  statedSuicideRiskLevel?: SuicideRiskLevel | null;
+  protectiveFactors?: string[];
+  // ── Necessity lens inputs (parsed from note) ──
+  symptomSeverity?: 'mild' | 'moderate' | 'severe' | null;
+  functionalImpairmentLevel?: 'none' | 'mild' | 'moderate' | 'marked' | null;
+  parsedScales?: { scale: string; score?: number | null; severity?: string | null }[];
 }
 
 export interface NoteQualityInput {
@@ -178,6 +227,8 @@ export interface PsychAuditResult {
   payerWarnings: string[];
   noteQualityIssues: string[];
   submitRecommendation: 'submit-now' | 'fix-first' | 'human-review';
+  /** Two distinct risk lenses: suicide/safety vs medical-necessity/billing. */
+  dualRisk?: DualRiskNarrative;
 }
 
 export interface RevenueLaneSummary {
