@@ -2,6 +2,8 @@ import type {
   PsychCaseInput, PsychAuditResult, PsychChecklistItem,
   MDMReview, MissedRevenueItem, SmallestFix, MDMLevel,
   CaseClassification, PsychBatchSummary, RevenueLaneSummary,
+  DualRiskNarrative, SuicideRiskAssessment, MedicalNecessityAssessment,
+  SuicideRiskLevel, MedicalNecessityLevel,
 } from './psychTypes';
 
 // ── 2026 Medicare National Payment Amounts (CY2026 Final Rule) ──
