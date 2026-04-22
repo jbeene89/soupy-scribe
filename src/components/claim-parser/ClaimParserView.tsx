@@ -199,6 +199,12 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
   // Parse one file via the edge function
   const parseOne = async (state: ParsedFileState): Promise<ParsedFileState> => {
     try {
+      // Refresh the session so we never send an expired/malformed JWT to the edge function.
+      // (Without this, an expired token surfaces as a cryptic "JW… not recognized" error.)
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        await supabase.auth.refreshSession();
+      }
       const { data, error } = await supabase.functions.invoke("claim-parser", {
         body: {
           sourceText: state.ingested.sourceText || undefined,
@@ -212,9 +218,12 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
       return { ...state, status: "ready", claim: data.claim };
     } catch (e: any) {
       console.error("Parse error", state.ingested.source.fileName, e);
-      const msg = e?.message?.includes("429") ? "Rate limited — try again in a moment."
-        : e?.message?.includes("402") ? "AI credits exhausted. Add credits in Workspace Settings."
-        : e?.message || "Could not extract from this file.";
+      const raw = String(e?.message || "");
+      const isJwtError = /jwt|jws|unauthorized|401/i.test(raw);
+      const msg = isJwtError ? "Your sign-in session expired. Please sign out and sign back in, then try again."
+        : raw.includes("429") ? "Rate limited — try again in a moment."
+        : raw.includes("402") ? "AI credits exhausted. Add credits in Workspace Settings."
+        : raw || "Could not extract from this file.";
       return { ...state, status: "error", errorMessage: msg };
     }
   };
