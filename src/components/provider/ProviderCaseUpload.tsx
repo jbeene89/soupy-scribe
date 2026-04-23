@@ -202,6 +202,67 @@ export function ProviderCaseUpload({ onCaseCreated }: ProviderCaseUploadProps) {
                   Load Sample
                 </Button>
               </div>
+
+              {/* File attachments */}
+              <div className="rounded-md border border-dashed bg-muted/20 p-3 space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  accept=".pdf,.docx,.txt,.md,.csv,.tsv,.rtf,.json,.xml,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/*"
+                  onChange={(e) => {
+                    if (e.target.files?.length) handleFiles(e.target.files);
+                    e.target.value = '';
+                  }}
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Upload className="h-3.5 w-3.5" />
+                    Attach PDF, DOCX, XLSX, or TXT — text is auto-extracted
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    disabled={!!reading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {reading ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Reading {reading}…</>
+                    ) : (
+                      <><Plus className="h-3.5 w-3.5 mr-1" />{files.length === 0 ? 'Choose files' : 'Add more'}</>
+                    )}
+                  </Button>
+                </div>
+                {files.length > 0 && (
+                  <div className="space-y-1">
+                    {files.map((f) => (
+                      <div key={f.id} className="flex items-center gap-2 rounded-md bg-background px-2 py-1.5 border">
+                        <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">{f.name}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {f.text.length.toLocaleString()} chars{f.pages ? ` · ${f.pages} page(s)` : ''}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeFile(f.id)}
+                          aria-label={`Remove ${f.name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <Textarea
                 placeholder="Paste clinical documentation here..."
                 value={sourceText}
