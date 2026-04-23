@@ -970,6 +970,7 @@ export type Database = {
           detected_implant_count: number | null
           estimated_loss: number | null
           expected_implant_count: number | null
+          ftd_review: Json | null
           id: string
           image_file_name: string | null
           image_mime_type: string | null
@@ -995,6 +996,7 @@ export type Database = {
           detected_implant_count?: number | null
           estimated_loss?: number | null
           expected_implant_count?: number | null
+          ftd_review?: Json | null
           id?: string
           image_file_name?: string | null
           image_mime_type?: string | null
@@ -1020,6 +1022,7 @@ export type Database = {
           detected_implant_count?: number | null
           estimated_loss?: number | null
           expected_implant_count?: number | null
+          ftd_review?: Json | null
           id?: string
           image_file_name?: string | null
           image_mime_type?: string | null

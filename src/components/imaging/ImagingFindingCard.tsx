@@ -1,13 +1,14 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScanSearch, AlertTriangle, CheckCircle2, FileSearch, User, Stethoscope, Link2 } from 'lucide-react';
+import { ScanSearch, AlertTriangle, CheckCircle2, FileSearch, User, Stethoscope, Link2, Eye, ShieldAlert, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import type { ImagingFinding } from '@/lib/imagingTypes';
 import { SEVERITY_LABELS } from '@/lib/imagingTypes';
 import { RelatedActivityBadge } from '@/components/system-impact/RelatedActivityBadge';
-import { updateFindingStatus, deleteImagingFinding } from '@/lib/imagingService';
+import { updateFindingStatus, deleteImagingFinding, runFtdReview } from '@/lib/imagingService';
 import { toast } from 'sonner';
 import { useAdminContext } from '@/components/admin/AdminContext';
 
@@ -23,6 +24,28 @@ interface Props { finding: ImagingFinding; }
 export function ImagingFindingCard({ finding: f }: Props) {
   const navigate = useNavigate();
   const { reloadImagingFindings } = useAdminContext();
+  const [ftdBusy, setFtdBusy] = useState(false);
+  const [ftdLocal, setFtdLocal] = useState(f.ftd_review);
+
+  const ftd = ftdLocal ?? f.ftd_review;
+
+  const runFtd = async () => {
+    setFtdBusy(true);
+    try {
+      const result = await runFtdReview(f.id);
+      setFtdLocal(result);
+      const flagged = result.possible_missed_findings?.length ?? 0;
+      toast.success(
+        flagged === 0 ? 'Second-opinion screen complete — no missed findings flagged' : `Second-opinion screen flagged ${flagged} possible missed finding(s)`,
+        { description: 'Screening aid only — clinician must confirm.' },
+      );
+      reloadImagingFindings();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Second-opinion review failed');
+    } finally {
+      setFtdBusy(false);
+    }
+  };
 
   const markReviewed = async () => {
     try {
@@ -149,6 +172,73 @@ export function ImagingFindingCard({ finding: f }: Props) {
                 ))}
               </ul>
             )}
+
+            {/* Failure-to-Diagnose Second-Opinion Screen */}
+            <div className="rounded-md border border-info-blue/30 bg-info-blue/5 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-info-blue" />
+                  <span className="text-sm font-medium">Second-opinion screen (FTD)</span>
+                  {ftd && (
+                    <Badge variant="outline" className="text-[10px]">
+                      {(ftd.possible_missed_findings?.length ?? 0)} possible missed
+                    </Badge>
+                  )}
+                  {ftd && (
+                    <span className="text-[10px] text-muted-foreground">conf {Math.round(ftd.confidence ?? 0)}%</span>
+                  )}
+                </div>
+                <Button size="sm" variant="outline" onClick={runFtd} disabled={ftdBusy || !f.image_storage_path}>
+                  {ftdBusy ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Reviewing…</> : <><Eye className="h-3 w-3 mr-1" />{ftd ? 'Re-run' : 'Run second-opinion'}</>}
+                </Button>
+              </div>
+
+              <div className="flex items-start gap-2 rounded bg-background/60 border border-info-blue/20 px-2 py-1.5">
+                <ShieldAlert className="h-3.5 w-3.5 text-info-blue mt-0.5 shrink-0" />
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  <strong className="text-foreground">Screening aid only — not a medical diagnosis.</strong> Items below are possibilities for a licensed clinician to confirm or rule out. Absence of findings does not rule out disease.
+                </p>
+              </div>
+
+              {ftd && (
+                <>
+                  {ftd.summary && <p className="text-xs text-muted-foreground italic">"{ftd.summary}"</p>}
+                  {ftd.possible_missed_findings && ftd.possible_missed_findings.length > 0 ? (
+                    <ul className="space-y-1.5">
+                      {ftd.possible_missed_findings.map((m, i) => (
+                        <li key={i} className="rounded border bg-background p-2 text-sm">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <span className="font-medium">{m.label}</span>
+                            <div className="flex items-center gap-1.5">
+                              {m.region && <span className="text-[10px] text-muted-foreground">{m.region}</span>}
+                              <Badge variant="outline" className={cn('border text-[10px]', sevColor[m.severity])}>
+                                {m.severity}
+                              </Badge>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{m.detail}</p>
+                          <p className="text-[10px] text-info-blue mt-1 inline-flex items-center gap-1">
+                            <ShieldAlert className="h-3 w-3" />Recommends clinician review
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-consensus inline-flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />No additional findings flagged on second pass.
+                    </p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    Reviewed {new Date(ftd.reviewed_at).toLocaleString()} · model: {ftd.model}
+                  </p>
+                </>
+              )}
+              {!ftd && !ftdBusy && (
+                <p className="text-[11px] text-muted-foreground">
+                  Run a separate second-opinion AI pass that looks specifically for things the first read may have missed (subtle fractures, secondary lesions, retained foreign bodies, hardware issues).
+                </p>
+              )}
+            </div>
 
             <div className="flex gap-2 pt-1 flex-wrap">
               {f.case_id && (
