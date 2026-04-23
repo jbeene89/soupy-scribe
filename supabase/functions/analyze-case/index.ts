@@ -394,14 +394,12 @@ serve(async (req) => {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (sourceText.length > MAX_SOURCE_TEXT_LENGTH) {
-        return new Response(JSON.stringify({ error: "Input text too large. Maximum 50,000 characters." }), {
-          status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Sanitize: remove null bytes and other non-printable Unicode that Postgres rejects
-      const sanitizedSourceText = sourceText.replace(/\u0000/g, "");
+      // Sanitize: remove null bytes that Postgres rejects, then gracefully truncate
+      // very long inputs instead of rejecting them outright.
+      const sanitizedSourceText = truncateSourceText(
+        sourceText.replace(/\u0000/g, ""),
+        MAX_SOURCE_TEXT_LENGTH,
+      );
 
       console.log("Extracting case data from source text...");
       const { result: extracted } = await callAI(
