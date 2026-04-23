@@ -959,6 +959,99 @@ export type Database = {
         }
         Relationships: []
       }
+      imaging_findings: {
+        Row: {
+          ai_confidence: number | null
+          ai_findings: Json
+          ai_summary: string | null
+          body_region: string | null
+          case_id: string | null
+          created_at: string
+          detected_implant_count: number | null
+          estimated_loss: number | null
+          expected_implant_count: number | null
+          id: string
+          image_file_name: string | null
+          image_mime_type: string | null
+          image_storage_path: string | null
+          metadata: Json | null
+          org_id: string | null
+          owner_id: string | null
+          patient_id: string | null
+          physician_name: string | null
+          procedure_label: string | null
+          reviewer_notes: string | null
+          severity: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ai_confidence?: number | null
+          ai_findings?: Json
+          ai_summary?: string | null
+          body_region?: string | null
+          case_id?: string | null
+          created_at?: string
+          detected_implant_count?: number | null
+          estimated_loss?: number | null
+          expected_implant_count?: number | null
+          id?: string
+          image_file_name?: string | null
+          image_mime_type?: string | null
+          image_storage_path?: string | null
+          metadata?: Json | null
+          org_id?: string | null
+          owner_id?: string | null
+          patient_id?: string | null
+          physician_name?: string | null
+          procedure_label?: string | null
+          reviewer_notes?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_confidence?: number | null
+          ai_findings?: Json
+          ai_summary?: string | null
+          body_region?: string | null
+          case_id?: string | null
+          created_at?: string
+          detected_implant_count?: number | null
+          estimated_loss?: number | null
+          expected_implant_count?: number | null
+          id?: string
+          image_file_name?: string | null
+          image_mime_type?: string | null
+          image_storage_path?: string | null
+          metadata?: Json | null
+          org_id?: string | null
+          owner_id?: string | null
+          patient_id?: string | null
+          physician_name?: string | null
+          procedure_label?: string | null
+          reviewer_notes?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imaging_findings_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "audit_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "imaging_findings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           admin_replied_at: string | null
