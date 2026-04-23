@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_SOURCE_TEXT_LENGTH = 50_000;
+const MAX_SOURCE_TEXT_LENGTH = 200_000;
 
 const PROVIDER_READINESS_PROMPT = `You are a medical compliance readiness advisor helping healthcare providers improve documentation quality, identify coding vulnerabilities, and assess appeal viability. You are NOT an auditor or enforcement agent. Your role is to help providers proactively strengthen their claims.
 
