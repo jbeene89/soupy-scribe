@@ -499,7 +499,7 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
         >
           <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
           <p className="text-sm font-medium">Drop files, folders, or ZIP archives here</p>
-          <p className="text-xs text-muted-foreground mt-1">PDF, TXT, CSV, HL7, JSON, XML — or click to browse</p>
+          <p className="text-xs text-muted-foreground mt-1">PDF, Word, Excel, text, JSON/XML/HL7, images, DICOM — or click to browse</p>
           <div className="flex items-center justify-center gap-2 mt-3">
             <Button
               variant="outline"
