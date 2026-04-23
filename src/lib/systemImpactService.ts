@@ -6,6 +6,7 @@ import type {
   ERAcuteEvent,
   PatientAdvocateEvent,
 } from './operationalTypes';
+import type { ImagingFinding } from './imagingTypes';
 
 // ─── Cost assumptions (industry-average, conservative) ───
 export const COST_ASSUMPTIONS = {
@@ -24,7 +25,8 @@ export type ImpactCategory =
   | 'denied_claim'
   | 'postop_delay'
   | 'advocate_event'
-  | 'er_acute';
+  | 'er_acute'
+  | 'imaging';
 
 export interface ImpactEntry {
   id: string;
@@ -101,6 +103,7 @@ export interface SystemImpactInput {
   postOpEvents: PostOpFlowEvent[];
   erAcuteEvents: ERAcuteEvent[];
   advocateEvents: PatientAdvocateEvent[];
+  imagingFindings?: ImagingFinding[];
 }
 
 export function buildImpactEntries(input: SystemImpactInput): ImpactEntry[] {
@@ -251,6 +254,32 @@ export function buildImpactEntries(input: SystemImpactInput): ImpactEntry[] {
         cpt_count: c.cptCodes.length,
       },
       module_path: '/app/cases',
+    });
+  }
+
+  for (const f of input.imagingFindings ?? []) {
+    if (f.status === 'dismissed') continue;
+    if (f.estimated_loss <= 0 && f.severity === 'low') continue;
+    entries.push({
+      id: `img-${f.id}`,
+      source_id: f.id,
+      category: 'imaging',
+      category_label: 'Imaging Audit',
+      occurred_at: f.created_at,
+      estimated_loss: f.estimated_loss,
+      description: f.ai_summary || `${f.procedure_label || 'Imaging'} — ${f.body_region ?? 'unspecified region'}`,
+      patient_id: f.patient_id,
+      physician_name: f.physician_name,
+      case_id: f.case_id,
+      severity: f.severity,
+      detail: {
+        procedure: f.procedure_label,
+        body_region: f.body_region,
+        expected_implants: f.expected_implant_count,
+        detected_implants: f.detected_implant_count,
+        confidence: f.ai_confidence,
+      },
+      module_path: '/app/imaging',
     });
   }
 
@@ -444,6 +473,7 @@ function formatCategoryShort(c: ImpactCategory): string {
     postop_delay: 'Post-op',
     advocate_event: 'Advocate',
     er_acute: 'ER',
+    imaging: 'Imaging',
   };
   return map[c];
 }
