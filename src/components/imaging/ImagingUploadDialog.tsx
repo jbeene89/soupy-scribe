@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, Sparkles, Link2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { analyzeAndSaveImaging } from '@/lib/imagingService';
 import { BODY_REGIONS } from '@/lib/imagingTypes';
 import { useAdminContext } from '@/components/admin/AdminContext';
+import { extractCuesFromFilename, describeCues, findCaseMatches, type ImagingCues, type CaseMatch } from '@/lib/imagingCueExtractor';
 
 interface Props {
   open: boolean;
@@ -27,16 +29,35 @@ export function ImagingUploadDialog({ open, onOpenChange, onSaved }: Props) {
   const [physicianName, setPhysicianName] = useState('');
   const [linkedCaseId, setLinkedCaseId] = useState<string>('none');
   const [busy, setBusy] = useState(false);
+  const [cues, setCues] = useState<ImagingCues | null>(null);
+  const [matches, setMatches] = useState<CaseMatch[]>([]);
 
   const reset = () => {
     setFile(null); setPreviewUrl(null); setProcedureLabel(''); setBodyRegion('knee');
     setExpectedImplants('1'); setPatientId(''); setPhysicianName(''); setLinkedCaseId('none');
+    setCues(null); setMatches([]);
   };
 
   const handleFile = (f: File | null) => {
     setFile(f);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(f ? URL.createObjectURL(f) : null);
+    if (!f) { setCues(null); setMatches([]); return; }
+
+    // Extract procedure cues from the filename and auto-suggest a link.
+    const c = extractCuesFromFilename(f.name);
+    setCues(c);
+    if (c.bodyRegion) setBodyRegion(c.bodyRegion);
+    if (c.patientId && !patientId) setPatientId(c.patientId);
+    if (c.cptCodes.length && !procedureLabel) {
+      setProcedureLabel(`CPT ${c.cptCodes.slice(0, 2).join(', ')}`);
+    }
+    const found = findCaseMatches(c, allCases, { floor: 20, limit: 3 });
+    setMatches(found);
+    if (found[0]) {
+      handleCaseLink(found[0].case.id);
+      toast.success(`Auto-linked to ${found[0].case.caseNumber} from filename cues`);
+    }
   };
 
   const handleCaseLink = (id: string) => {
