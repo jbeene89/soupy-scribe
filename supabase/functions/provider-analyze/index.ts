@@ -88,14 +88,15 @@ serve(async (req) => {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (sourceText.length > MAX_SOURCE_TEXT_LENGTH) {
-        return new Response(JSON.stringify({ error: "Input text too large. Maximum 50,000 characters." }), {
-          status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      // Gracefully truncate over-long inputs (keep head + tail) instead of rejecting.
+      const safeSourceText = sourceText.length > MAX_SOURCE_TEXT_LENGTH
+        ? sourceText.slice(0, Math.floor(MAX_SOURCE_TEXT_LENGTH * 0.6)) +
+          `\n\n--- [TRUNCATED ${sourceText.length - MAX_SOURCE_TEXT_LENGTH} chars] ---\n\n` +
+          sourceText.slice(sourceText.length - (MAX_SOURCE_TEXT_LENGTH - Math.floor(MAX_SOURCE_TEXT_LENGTH * 0.6) - 200))
+        : sourceText;
 
       console.log("Provider: extracting case data...");
-      const extracted = await callAI(LOVABLE_API_KEY, "google/gemini-2.5-flash", EXTRACTION_PROMPT, sourceText, [{
+      const extracted = await callAI(LOVABLE_API_KEY, "google/gemini-2.5-flash", EXTRACTION_PROMPT, safeSourceText, [{
         type: "function",
         function: {
           name: "extract_case_data",
