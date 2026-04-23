@@ -97,7 +97,13 @@ async function extractTextFromPDF(file: File): Promise<string> {
   return pages.join('\n\n--- Page Break ---\n\n');
 }
 
-const SUPPORTED_EXTENSIONS = ['.pdf', '.txt', '.csv', '.hl7', '.json', '.xml'];
+const SUPPORTED_EXTENSIONS = [
+  '.pdf', '.docx', '.xlsx', '.xls',
+  '.txt', '.md', '.csv', '.tsv', '.rtf',
+  '.hl7', '.json', '.xml',
+  '.png', '.jpg', '.jpeg', '.webp',
+  '.tif', '.tiff', '.dcm',
+];
 
 const isSupportedFile = (name: string) => {
   const lower = name.toLowerCase();
@@ -151,13 +157,36 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
   };
 
   const parseFile = async (file: File): Promise<{ name: string; text: string }> => {
-    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+    const lower = file.name.toLowerCase();
+    // PDFs: keep dedicated extractor (handles page breaks for batch flow)
+    if (file.type === 'application/pdf' || lower.endsWith('.pdf')) {
       const text = await extractTextFromPDF(file);
-      if (!text.trim()) throw new Error('No text found — may be a scanned image');
+      if (!text.trim()) throw new Error('No readable text — may be a scanned image');
       return { name: file.name, text };
     }
-    const text = await file.text();
-    return { name: file.name, text };
+    // Clinical images / DICOM: accept but explain
+    if (
+      file.type.startsWith('image/') ||
+      lower.endsWith('.tif') || lower.endsWith('.tiff') ||
+      lower.endsWith('.dcm') || lower.endsWith('.dicom')
+    ) {
+      return {
+        name: file.name,
+        text: `[Clinical image attached: ${file.name}]\n(Image-only file — no text was extracted. The Imaging Audit module will read these directly when available.)`,
+      };
+    }
+    // Everything else (.docx, .xlsx, .txt, .csv, .json, .xml, .hl7, .md, .rtf, .tsv) → unified extractor
+    try {
+      const result = await extractTextFromFile(file);
+      if (!result.text.trim() && result.warning) {
+        return { name: file.name, text: `[${result.warning}]` };
+      }
+      return { name: file.name, text: result.text };
+    } catch {
+      // Last-resort fallback: read as plain text
+      const text = await file.text();
+      return { name: file.name, text };
+    }
   };
 
   const addFilesFromArray = async (fileArray: globalThis.File[]) => {
