@@ -2,13 +2,16 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
 import type { AppMode } from '@/lib/providerTypes';
 import type { ORReadinessEvent, TriageAccuracyEvent, PostOpFlowEvent, ERAcuteEvent, PatientAdvocateEvent } from '@/lib/operationalTypes';
+import type { ImagingFinding } from '@/lib/imagingTypes';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import { deleteCase, deriveLivePatterns, type LivePhysicianPattern } from '@/lib/soupyEngineService';
 import { fetchCases, fetchCase } from '@/lib/caseService';
 import { fetchORReadinessEvents, fetchTriageAccuracyEvents, fetchPostOpFlowEvents } from '@/lib/operationalService';
 import { fetchERAcuteEvents, fetchPatientAdvocateEvents } from '@/lib/erAcuteService';
+import { fetchImagingFindings } from '@/lib/imagingService';
 import { mockORReadinessEvents, mockTriageEvents, mockPostOpFlowEvents } from '@/lib/operationalMockData';
 import { mockERAcuteEvents, mockPatientAdvocateEvents } from '@/lib/erAcuteMockData';
+import { mockImagingFindings } from '@/lib/imagingMockData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -45,6 +48,8 @@ interface AdminContextType {
   postOpEvents: PostOpFlowEvent[];
   erAcuteEvents: ERAcuteEvent[];
   advocateEvents: PatientAdvocateEvent[];
+  imagingFindings: ImagingFinding[];
+  reloadImagingFindings: () => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType>(null!);
@@ -68,6 +73,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [livePostOpEvents, setLivePostOpEvents] = useState<PostOpFlowEvent[]>([]);
   const [liveERAcuteEvents, setLiveERAcuteEvents] = useState<ERAcuteEvent[]>([]);
   const [liveAdvocateEvents, setLiveAdvocateEvents] = useState<PatientAdvocateEvent[]>([]);
+  const [liveImagingFindings, setLiveImagingFindings] = useState<ImagingFinding[]>([]);
 
   const loadLiveCases = useCallback(async () => {
     setLoadingLive(true);
@@ -101,9 +107,19 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const loadLiveImagingFindings = useCallback(async () => {
+    try {
+      const findings = await fetchImagingFindings();
+      setLiveImagingFindings(findings);
+    } catch (err) {
+      console.error('Failed to load imaging findings:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadLiveCases();
     loadLiveOperationalEvents();
+    loadLiveImagingFindings();
 
     const channel = supabase
       .channel('admin-realtime')
@@ -114,10 +130,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'postop_flow_events' }, () => loadLiveOperationalEvents())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'er_acute_events' }, () => loadLiveOperationalEvents())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'patient_advocate_events' }, () => loadLiveOperationalEvents())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'imaging_findings' }, () => loadLiveImagingFindings())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [loadLiveCases, loadLiveOperationalEvents]);
+  }, [loadLiveCases, loadLiveOperationalEvents, loadLiveImagingFindings]);
 
   const allCases = dataSource === 'live' ? liveCases : [...mockCases, ...liveCases];
   const activeCases = allCases.filter(c => c.status === 'pending' || c.status === 'in-review');
@@ -128,6 +145,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const postOpEvents = dataSource === 'live' ? livePostOpEvents : [...mockPostOpFlowEvents, ...livePostOpEvents];
   const erAcuteEvents = dataSource === 'live' ? liveERAcuteEvents : [...mockERAcuteEvents, ...liveERAcuteEvents];
   const advocateEvents = dataSource === 'live' ? liveAdvocateEvents : [...mockPatientAdvocateEvents, ...liveAdvocateEvents];
+  const imagingFindings = dataSource === 'live' ? liveImagingFindings : [...mockImagingFindings, ...liveImagingFindings];
 
   const handleModeChange = (mode: AppMode) => {
     sessionStorage.setItem('soupy_app_mode', mode);
@@ -182,6 +200,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       handleCaseCreated, handleDecisionMade, loadLiveCases,
       livePatterns, mockPatternsData: mockPatterns,
       orEvents, triageEvents, postOpEvents, erAcuteEvents, advocateEvents,
+      imagingFindings, reloadImagingFindings: loadLiveImagingFindings,
     }}>
       {children}
     </AdminContext.Provider>
