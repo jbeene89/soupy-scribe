@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { submitCaseText, runSOUPYAnalysis } from '@/lib/caseService';
 import { listPayerProfilesDirect } from '@/lib/soupyEngineService';
 import JSZip from 'jszip';
+import { extractTextFromFile } from '@/lib/fileTextExtractor';
 
 interface CaseUploadProps {
   onCaseCreated: (caseId: string) => void;
