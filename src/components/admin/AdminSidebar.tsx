@@ -34,6 +34,7 @@ import {
   HeartPulse,
   ClipboardCheck,
   Network,
+  ScanSearch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -56,6 +57,7 @@ const EXPERIMENTAL_NAV = [
   { title: 'Post-Op Flow', path: '/app/postop', icon: Bed },
   { title: 'ER / Acute', path: '/app/er-acute', icon: Siren },
   { title: 'Patient Advocate', path: '/app/advocate', icon: HeartHandshake },
+  { title: 'Imaging Audit', path: '/app/imaging', icon: ScanSearch },
 ];
 
 const PROVIDER_NAV = [
