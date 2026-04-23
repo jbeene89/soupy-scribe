@@ -7,7 +7,20 @@ const corsHeaders = {
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const MAX_SOURCE_TEXT_LENGTH = 50_000;
+const MAX_SOURCE_TEXT_LENGTH = 200_000;
+
+// Gracefully shrink very long inputs by keeping the first and last portions,
+// where headers, codes, impressions, and signatures usually live.
+function truncateSourceText(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const head = Math.floor(max * 0.6);
+  const tail = max - head - 200;
+  return (
+    text.slice(0, head) +
+    `\n\n--- [TRUNCATED ${text.length - max} chars for length] ---\n\n` +
+    text.slice(text.length - tail)
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════
 // SOUPY ENGINE v3 — Consolidated, Defensible, Enterprise-Grade
