@@ -1,35 +1,36 @@
 project_id = "kxhqiapthyxjaforjlnf"
 
-# AI / analysis edge functions — REQUIRE authentication.
-# These call paid AI models on behalf of the signed-in user. Leaving them
-# unauthenticated lets anyone on the internet burn AI credits and scrape
-# proprietary prompts.
+# AI / analysis edge functions — authentication is enforced INSIDE each function
+# via supabase.auth.getClaims(). The platform-level verify_jwt gateway is
+# disabled because it only understands HS256 tokens and rejects the new ES256
+# (asymmetric) JWTs that Supabase now issues, with the misleading error
+# "Unsupported JWT algorithm ES256". The in-function check handles both.
 [functions.analyze-case]
-verify_jwt = true
+verify_jwt = false
 
 [functions.provider-analyze]
-verify_jwt = true
+verify_jwt = false
 
 [functions.analyze-v3]
-verify_jwt = true
+verify_jwt = false
 
 [functions.pre-appeal-analyze]
-verify_jwt = true
+verify_jwt = false
 
 [functions.psych-parse-note]
-verify_jwt = true
+verify_jwt = false
 
 [functions.claim-parser]
-verify_jwt = true
+verify_jwt = false
 
 [functions.claim-perspectives]
-verify_jwt = true
+verify_jwt = false
 
 [functions.claim-clinical-crosswalk]
-verify_jwt = true
+verify_jwt = false
 
 [functions.note-parse-structured]
-verify_jwt = true
+verify_jwt = false
 
 # soupy-engine handles a mix of authed and admin/health actions.
 # Auth is enforced per-action inside the function itself.
@@ -37,11 +38,12 @@ verify_jwt = true
 verify_jwt = false
 
 # Email queue processor — invoked by pg_cron with service-role JWT.
+# Auth handled in-function (service role key check).
 [functions.process-email-queue]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-transactional-email]
-verify_jwt = true
+verify_jwt = false
 
 # Public web pages / webhook handlers — must remain unauthenticated.
 [functions.preview-transactional-email]
