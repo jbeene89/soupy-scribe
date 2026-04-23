@@ -8,6 +8,7 @@ import { ConsensusMeter } from './ConsensusMeter';
 import { CPTCodeBadge } from './CPTCodeBadge';
 import { CaseCard } from './spark/CaseCard';
 import { CaseCardSkeleton } from './spark/LoadingState';
+import { RelatedActivityBadge } from './system-impact/RelatedActivityBadge';
 import { deriveCaseSignals } from '@/lib/caseIntelligence';
 import { cn } from '@/lib/utils';
 import { Clock, CheckCircle, XCircle, Search, FileText, LayoutGrid, List, AlertTriangle, AlertCircle, ShieldAlert, Trash2, Link2 } from 'lucide-react';
@@ -178,6 +179,11 @@ export function CaseQueue({ cases, onSelectCase, selectedCaseId, loading, onDele
                     <div>
                       <p className="text-sm">{c.physicianName}</p>
                       <p className="text-xs text-muted-foreground font-mono">{c.physicianId}</p>
+                      <RelatedActivityBadge
+                        physicianName={c.physicianName}
+                        excludeCategory="denied_claim"
+                        className="mt-1"
+                      />
                     </div>
                   </TableCell>
                   <TableCell>

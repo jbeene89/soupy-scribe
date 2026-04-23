@@ -33,6 +33,7 @@ import {
   HeartHandshake,
   HeartPulse,
   ClipboardCheck,
+  Network,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -40,6 +41,7 @@ import { AppModeToggle } from '@/components/provider/AppModeToggle';
 
 const PAYER_NAV = [
   { title: 'Case Queue', path: '/app', icon: FileText },
+  { title: 'System Impact', path: '/app/system-impact', icon: Network },
   { title: 'Pattern Analysis', path: '/app/patterns', icon: BarChart3 },
   { title: 'Value Demo', path: '/app/comparison', icon: GitCompare },
   { title: 'Enhancement Map', path: '/app/enhancements', icon: Layers },
@@ -59,6 +61,7 @@ const EXPERIMENTAL_NAV = [
 const PROVIDER_NAV = [
   { title: 'Dashboard', path: '/app', icon: LayoutDashboard },
   { title: 'Case Reviews', path: '/app/cases', icon: FileText },
+  { title: 'System Impact', path: '/app/system-impact', icon: Network },
   { title: 'Education Insights', path: '/app/education', icon: GraduationCap },
 ];
 
