@@ -6,9 +6,10 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileText, Brain, CheckCircle, Loader2, AlertCircle, X } from 'lucide-react';
+import { Upload, FileText, Brain, CheckCircle, Loader2, AlertCircle, X, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { submitProviderCase, runProviderAnalysis } from '@/lib/providerService';
+import { extractTextFromFile } from '@/lib/fileTextExtractor';
 
 interface ProviderCaseUploadProps {
   onCaseCreated: (caseId: string) => void;
@@ -53,6 +54,15 @@ Total: $33,200`;
 
 type UploadStep = 'input' | 'extracting' | 'extracted' | 'analyzing' | 'complete' | 'error';
 
+interface AttachedFile {
+  id: string;
+  name: string;
+  size: number;
+  text: string;
+  pages?: number;
+  warning?: string;
+}
+
 export function ProviderCaseUpload({ onCaseCreated }: ProviderCaseUploadProps) {
   const [open, setOpen] = useState(false);
   const [sourceText, setSourceText] = useState('');
@@ -60,6 +70,9 @@ export function ProviderCaseUpload({ onCaseCreated }: ProviderCaseUploadProps) {
   const [caseId, setCaseId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<any>(null);
+  const [files, setFiles] = useState<AttachedFile[]>([]);
+  const [reading, setReading] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
     setSourceText('');
@@ -67,6 +80,53 @@ export function ProviderCaseUpload({ onCaseCreated }: ProviderCaseUploadProps) {
     setCaseId(null);
     setError(null);
     setExtractedData(null);
+    setFiles([]);
+    setReading(null);
+  };
+
+  const handleFiles = async (incoming: FileList | File[]) => {
+    const list = Array.from(incoming);
+    for (const f of list) {
+      try {
+        setReading(f.name);
+        const result = await extractTextFromFile(f);
+        if (!result.text || result.text.trim().length < 10) {
+          toast.error(`No text extracted from ${f.name}`, {
+            description: 'Scanned PDFs without a text layer aren\'t supported here — paste the text instead.',
+          });
+          continue;
+        }
+        const attached: AttachedFile = {
+          id: `f-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: f.name,
+          size: f.size,
+          text: result.text,
+          pages: result.pages,
+          warning: result.warning,
+        };
+        setFiles((prev) => [...prev, attached]);
+        // Append into the source text area so the user sees what will be analyzed.
+        setSourceText((prev) => {
+          const header = `\n\n----- ${f.name} -----\n`;
+          return (prev ? prev + header : `----- ${f.name} -----\n`) + result.text;
+        });
+        toast.success(`Loaded ${f.name}`, { description: `${result.text.length.toLocaleString()} chars extracted` });
+      } catch (err) {
+        toast.error(`Couldn't read ${f.name}`, {
+          description: err instanceof Error ? err.message : 'Extraction failed',
+        });
+      } finally {
+        setReading(null);
+      }
+    }
+  };
+
+  const removeFile = (id: string) => {
+    const f = files.find((x) => x.id === id);
+    if (!f) return;
+    setFiles((prev) => prev.filter((x) => x.id !== id));
+    // Best-effort: strip the chunk we appended.
+    setSourceText((prev) => prev.replace(new RegExp(`\\n*-----\\s*${f.name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\s*-----\\n[\\s\\S]*?(?=\\n*-----|$)`), '').trim());
   };
 
   const handleSubmit = async () => {
@@ -142,6 +202,67 @@ export function ProviderCaseUpload({ onCaseCreated }: ProviderCaseUploadProps) {
                   Load Sample
                 </Button>
               </div>
+
+              {/* File attachments */}
+              <div className="rounded-md border border-dashed bg-muted/20 p-3 space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  accept=".pdf,.docx,.txt,.md,.csv,.tsv,.rtf,.json,.xml,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/*"
+                  onChange={(e) => {
+                    if (e.target.files?.length) handleFiles(e.target.files);
+                    e.target.value = '';
+                  }}
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Upload className="h-3.5 w-3.5" />
+                    Attach PDF, DOCX, XLSX, or TXT — text is auto-extracted
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    disabled={!!reading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {reading ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Reading {reading}…</>
+                    ) : (
+                      <><Plus className="h-3.5 w-3.5 mr-1" />{files.length === 0 ? 'Choose files' : 'Add more'}</>
+                    )}
+                  </Button>
+                </div>
+                {files.length > 0 && (
+                  <div className="space-y-1">
+                    {files.map((f) => (
+                      <div key={f.id} className="flex items-center gap-2 rounded-md bg-background px-2 py-1.5 border">
+                        <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">{f.name}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {f.text.length.toLocaleString()} chars{f.pages ? ` · ${f.pages} page(s)` : ''}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeFile(f.id)}
+                          aria-label={`Remove ${f.name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <Textarea
                 placeholder="Paste clinical documentation here..."
                 value={sourceText}

@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { analyzeAndSaveImaging } from '@/lib/imagingService';
 import { BODY_REGIONS } from '@/lib/imagingTypes';
 import { useAdminContext } from '@/components/admin/AdminContext';
-import { extractCuesFromFilename, describeCues, findCaseMatches, type ImagingCues, type CaseMatch } from '@/lib/imagingCueExtractor';
+import { extractAllCues, describeCues, findCaseMatches, type ImagingCues, type CaseMatch } from '@/lib/imagingCueExtractor';
 
 interface Props {
   open: boolean;
@@ -38,14 +38,14 @@ export function ImagingUploadDialog({ open, onOpenChange, onSaved }: Props) {
     setCues(null); setMatches([]);
   };
 
-  const handleFile = (f: File | null) => {
+  const handleFile = async (f: File | null) => {
     setFile(f);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(f ? URL.createObjectURL(f) : null);
     if (!f) { setCues(null); setMatches([]); return; }
 
-    // Extract procedure cues from the filename and auto-suggest a link.
-    const c = extractCuesFromFilename(f.name);
+    // Extract procedure cues from filename + EXIF + DICOM tags, then auto-suggest a link.
+    const c = await extractAllCues(f);
     setCues(c);
     if (c.bodyRegion) setBodyRegion(c.bodyRegion);
     if (c.patientId && !patientId) setPatientId(c.patientId);
@@ -56,7 +56,10 @@ export function ImagingUploadDialog({ open, onOpenChange, onSaved }: Props) {
     setMatches(found);
     if (found[0]) {
       handleCaseLink(found[0].case.id);
-      toast.success(`Auto-linked to ${found[0].case.caseNumber} from filename cues`);
+      const srcs = Array.from(new Set(Object.values(c.sources ?? {}).filter(Boolean)));
+      toast.success(`Auto-linked to ${found[0].case.caseNumber}`, {
+        description: srcs.length ? `Cues from ${srcs.join(' + ')}` : 'Cues from filename',
+      });
     }
   };
 
