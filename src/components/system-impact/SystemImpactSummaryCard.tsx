@@ -75,7 +75,7 @@ export function SystemImpactSummaryCard() {
               className={cn(
                 'rounded-md border p-3 col-span-2 sm:col-span-1',
                 topPattern.severity === 'critical' && 'border-destructive/40 bg-destructive/5',
-                topPattern.severity === 'warning' && 'border-amber-500/40 bg-amber-500/5'
+                topPattern.severity === 'warning' && 'border-disagreement/40 bg-disagreement/5'
               )}
             >
               <div className="text-[10px] uppercase text-muted-foreground tracking-wide flex items-center gap-1">
