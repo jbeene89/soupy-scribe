@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, Sparkles, Link2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { analyzeAndSaveImaging } from '@/lib/imagingService';
 import { BODY_REGIONS } from '@/lib/imagingTypes';
 import { useAdminContext } from '@/components/admin/AdminContext';
+import { extractCuesFromFilename, describeCues, findCaseMatches, type ImagingCues, type CaseMatch } from '@/lib/imagingCueExtractor';
 
 interface Props {
   open: boolean;
@@ -27,16 +29,35 @@ export function ImagingUploadDialog({ open, onOpenChange, onSaved }: Props) {
   const [physicianName, setPhysicianName] = useState('');
   const [linkedCaseId, setLinkedCaseId] = useState<string>('none');
   const [busy, setBusy] = useState(false);
+  const [cues, setCues] = useState<ImagingCues | null>(null);
+  const [matches, setMatches] = useState<CaseMatch[]>([]);
 
   const reset = () => {
     setFile(null); setPreviewUrl(null); setProcedureLabel(''); setBodyRegion('knee');
     setExpectedImplants('1'); setPatientId(''); setPhysicianName(''); setLinkedCaseId('none');
+    setCues(null); setMatches([]);
   };
 
   const handleFile = (f: File | null) => {
     setFile(f);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(f ? URL.createObjectURL(f) : null);
+    if (!f) { setCues(null); setMatches([]); return; }
+
+    // Extract procedure cues from the filename and auto-suggest a link.
+    const c = extractCuesFromFilename(f.name);
+    setCues(c);
+    if (c.bodyRegion) setBodyRegion(c.bodyRegion);
+    if (c.patientId && !patientId) setPatientId(c.patientId);
+    if (c.cptCodes.length && !procedureLabel) {
+      setProcedureLabel(`CPT ${c.cptCodes.slice(0, 2).join(', ')}`);
+    }
+    const found = findCaseMatches(c, allCases, { floor: 20, limit: 3 });
+    setMatches(found);
+    if (found[0]) {
+      handleCaseLink(found[0].case.id);
+      toast.success(`Auto-linked to ${found[0].case.caseNumber} from filename cues`);
+    }
   };
 
   const handleCaseLink = (id: string) => {
@@ -101,6 +122,51 @@ export function ImagingUploadDialog({ open, onOpenChange, onSaved }: Props) {
           </div>
 
           <div className="space-y-3">
+            {cues && (cues.cptCodes.length || cues.bodyRegion || cues.laterality || cues.patientId || cues.physicianFragment || cues.procedureKeywords.length) ? (
+              <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-medium">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  Detected from filename
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {describeCues(cues).map((d) => (
+                    <Badge key={d} variant="secondary" className="text-[10px]">{d}</Badge>
+                  ))}
+                </div>
+                {matches.length > 0 && (
+                  <div className="space-y-1 pt-1 border-t">
+                    <div className="text-[11px] text-muted-foreground">Suggested case matches:</div>
+                    {matches.map((m) => (
+                      <button
+                        key={m.case.id}
+                        type="button"
+                        onClick={() => handleCaseLink(m.case.id)}
+                        className={`w-full text-left rounded px-2 py-1.5 text-xs border transition-colors ${
+                          linkedCaseId === m.case.id ? 'bg-primary/10 border-primary' : 'hover:bg-muted border-border'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium flex items-center gap-1">
+                            <Link2 className="h-3 w-3" />
+                            {m.case.caseNumber}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">score {m.score}</span>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          {m.case.patientId} · {m.case.physicianName} · {m.reasons[0]}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {matches.length === 0 && (
+                  <div className="text-[11px] text-muted-foreground italic">
+                    No confident case match — review the link below or leave unlinked.
+                  </div>
+                )}
+              </div>
+            ) : null}
+
             <div>
               <Label>Link to existing case (auto-fills patient & surgeon)</Label>
               <Select value={linkedCaseId} onValueChange={handleCaseLink} disabled={busy}>
