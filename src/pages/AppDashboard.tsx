@@ -6,6 +6,7 @@ import { ProviderCaseDetail } from '@/components/provider/ProviderCaseDetail';
 import { CaseUpload } from '@/components/CaseUpload';
 import { ProviderCaseUpload } from '@/components/provider/ProviderCaseUpload';
 import { PsychPracticeModule } from '@/components/psych/PsychPracticeModule';
+import { SystemImpactSummaryCard } from '@/components/system-impact/SystemImpactSummaryCard';
 import { Scale } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,6 +37,7 @@ export default function AppDashboard() {
   if (appMode === 'provider') {
     return (
       <div className="space-y-6">
+        <SystemImpactSummaryCard />
         <Tabs defaultValue="dashboard">
           <div className="flex items-center justify-between">
             <TabsList>
@@ -70,6 +72,7 @@ export default function AppDashboard() {
   // Payer mode: show case queue with upload
   return (
     <div className="space-y-4">
+      <SystemImpactSummaryCard />
       {/* Payer value banner */}
       {posture === 'compliance-coaching' && (
         <div className="rounded-lg border bg-card p-5 shadow-sm">

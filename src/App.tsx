@@ -16,6 +16,7 @@ import { AppORReadiness, AppTriageAccuracy, AppPostOpFlow, AppERAcute, AppPatien
 import { AppComparison, AppEnhancementMap, AppAIPipeline, AppPlatformValue, AppGhostCases, AppEducation } from "./pages/AppPlatform";
 import AppHistory from "./pages/AppHistory";
 import AppInbox from "./pages/AppInbox";
+import AppSystemImpact from "./pages/AppSystemImpact";
 import Unsubscribe from "./pages/Unsubscribe";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="education" element={<AppEducation />} />
               <Route path="history" element={<AppHistory />} />
               <Route path="inbox" element={<AppInbox />} />
+              <Route path="system-impact" element={<AppSystemImpact />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
