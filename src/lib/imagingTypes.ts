@@ -14,6 +14,28 @@ export interface ImagingSubFinding {
   matches_billing?: boolean;
 }
 
+/**
+ * Failure-to-Diagnose second-opinion screen.
+ * SCREENING AID ONLY — never a diagnosis. Every flagged item must be
+ * reviewed by a licensed clinician.
+ */
+export interface FtdMissedFinding {
+  label: string;
+  severity: ImagingSeverity;
+  detail: string;
+  region?: string;
+  recommend_human_review: boolean;
+}
+
+export interface FtdReview {
+  summary: string;
+  confidence: number;
+  possible_missed_findings: FtdMissedFinding[];
+  disclaimer: string;
+  reviewed_at: string;
+  model: string;
+}
+
 export interface ImagingFinding {
   id: string;
   case_id?: string;
@@ -36,6 +58,7 @@ export interface ImagingFinding {
   status: ImagingStatus;
   reviewer_notes?: string;
   cpt_codes?: string[]; // copied from linked case for display
+  ftd_review?: FtdReview;
   created_at: string;
   updated_at?: string;
 }

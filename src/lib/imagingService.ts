@@ -4,7 +4,7 @@
 // - Persists the structured finding in imaging_findings.
 // - Provides fetch / update / delete helpers.
 import { supabase } from '@/integrations/supabase/client';
-import type { ImagingFinding, ImagingSubFinding } from './imagingTypes';
+import type { ImagingFinding, ImagingSubFinding, FtdReview } from './imagingTypes';
 
 const BUCKET = 'case-files';
 
@@ -31,6 +31,7 @@ function rowToFinding(row: any, previewUrl?: string, cptCodes?: string[]): Imagi
     status: (row.status as ImagingFinding['status']) || 'analyzed',
     reviewer_notes: row.reviewer_notes ?? undefined,
     cpt_codes: cptCodes,
+    ftd_review: row.ftd_review ?? undefined,
     created_at: row.created_at,
     updated_at: row.updated_at ?? undefined,
   };
@@ -163,4 +164,19 @@ export async function deleteImagingFinding(id: string, storagePath?: string): Pr
   }
   const { error } = await supabase.from('imaging_findings').delete().eq('id', id);
   if (error) throw error;
+}
+
+/**
+ * Run the Failure-to-Diagnose second-opinion screen on an existing finding.
+ * The edge function loads the stored image, runs an adversarial vision pass,
+ * persists the result on the row, and returns it.
+ * SCREENING AID ONLY — disclaimer is embedded in every response.
+ */
+export async function runFtdReview(findingId: string): Promise<FtdReview> {
+  const { data, error } = await supabase.functions.invoke('imaging-ftd-review', {
+    body: { findingId },
+  });
+  if (error) throw new Error(error.message || 'FTD review failed');
+  if (!data?.ftd_review) throw new Error('FTD review returned no data');
+  return data.ftd_review as FtdReview;
 }
