@@ -194,7 +194,7 @@ export function CaseUpload({ onCaseCreated }: CaseUploadProps) {
     // Filter supported files only
     const supported = fileArray.filter(f => isSupportedFile(f.name));
     if (supported.length === 0) {
-      toast.error('No supported files found (PDF, TXT, CSV, HL7, JSON, XML)');
+      toast.error('No supported files found. Try PDF, Word, Excel, text/CSV/JSON/XML/HL7, or images (PNG/JPG/TIFF/DICOM).');
       return;
     }
     if (supported.length < fileArray.length) {
