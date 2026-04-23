@@ -54,3 +54,9 @@ verify_jwt = false
 
 [functions.handle-email-suppression]
 verify_jwt = false
+
+[functions.imaging-analyze]
+verify_jwt = false
+
+[functions.imaging-ftd-review]
+verify_jwt = false
