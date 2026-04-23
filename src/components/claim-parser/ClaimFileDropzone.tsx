@@ -180,7 +180,7 @@ export function ClaimFileDropzone({ onIngested, busy }: ClaimFileDropzoneProps) 
         ref={inputRef}
         type="file"
         className="hidden"
-        accept=".pdf,.docx,.txt,.md,.csv,.rtf,.png,.jpg,.jpeg,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/*,image/*"
+        accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.tsv,.rtf,.json,.xml,.hl7,.png,.jpg,.jpeg,.webp,.tif,.tiff,.dcm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/dicom,text/*,image/*"
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) handleFile(f);
