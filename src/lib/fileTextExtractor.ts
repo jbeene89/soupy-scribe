@@ -5,6 +5,7 @@
  */
 import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
 
 // Configure pdf.js worker (Vite-friendly: use the bundled worker)
 // We use the legacy build for max compatibility.
@@ -53,14 +54,45 @@ export async function extractTextFromFile(file: File): Promise<ExtractionResult>
     name.endsWith('.txt') ||
     name.endsWith('.md') ||
     name.endsWith('.csv') ||
+    name.endsWith('.tsv') ||
+    name.endsWith('.json') ||
+    name.endsWith('.xml') ||
+    name.endsWith('.hl7') ||
     name.endsWith('.rtf')
   ) {
     const text = await file.text();
     return { text: cleanText(text) };
   }
 
+  // XLSX / XLS — convert each sheet to CSV-ish text
+  if (
+    name.endsWith('.xlsx') ||
+    name.endsWith('.xls') ||
+    type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    type === 'application/vnd.ms-excel'
+  ) {
+    return await extractXlsx(file);
+  }
+
+  // TIFF / DICOM / other clinical image formats — accepted as attachments,
+  // but no text layer to extract. Caller should treat the file as image-only.
+  if (
+    name.endsWith('.tif') ||
+    name.endsWith('.tiff') ||
+    name.endsWith('.dcm') ||
+    name.endsWith('.dicom') ||
+    type === 'image/tiff' ||
+    type === 'application/dicom'
+  ) {
+    return {
+      text: '',
+      warning:
+        'This is a clinical image file (TIFF/DICOM). It will be attached to the case as an image — no text was extracted. The imaging audit module (coming soon) will read these directly.',
+    };
+  }
+
   throw new Error(
-    `Unsupported file type: ${file.type || name.split('.').pop()}. Please upload a PDF, Word document, or text file.`
+    `Unsupported file type: ${file.type || name.split('.').pop()}. Supported formats: PDF, Word (.docx), Excel (.xlsx), text (.txt/.csv/.tsv/.md/.rtf/.json/.xml/.hl7), and clinical images (.tiff/.dcm).`
   );
 }
 
@@ -95,6 +127,26 @@ async function extractDocx(file: File): Promise<ExtractionResult> {
   const buf = await file.arrayBuffer();
   const result = await mammoth.extractRawText({ arrayBuffer: buf });
   return { text: cleanText(result.value) };
+}
+
+async function extractXlsx(file: File): Promise<ExtractionResult> {
+  const buf = await file.arrayBuffer();
+  const workbook = XLSX.read(buf, { type: 'array' });
+  const chunks: string[] = [];
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    const csv = XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
+    if (csv.trim().length === 0) continue;
+    chunks.push(`=== Sheet: ${sheetName} ===\n${csv}`);
+  }
+  const text = cleanText(chunks.join('\n\n'));
+  if (text.trim().length < 5) {
+    return {
+      text: '',
+      warning: 'This spreadsheet appears to be empty or contains only formatting.',
+    };
+  }
+  return { text };
 }
 
 function cleanText(s: string): string {
