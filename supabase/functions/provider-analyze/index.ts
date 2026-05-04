@@ -95,12 +95,14 @@ serve(async (req) => {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // Gracefully truncate over-long inputs (keep head + tail) instead of rejecting.
-      const safeSourceText = sourceText.length > MAX_SOURCE_TEXT_LENGTH
-        ? sourceText.slice(0, Math.floor(MAX_SOURCE_TEXT_LENGTH * 0.6)) +
-          `\n\n--- [TRUNCATED ${sourceText.length - MAX_SOURCE_TEXT_LENGTH} chars] ---\n\n` +
-          sourceText.slice(sourceText.length - (MAX_SOURCE_TEXT_LENGTH - Math.floor(MAX_SOURCE_TEXT_LENGTH * 0.6) - 200))
+      // Cap absolute size, then run priority-extraction long-context pass instead
+      // of naive head/tail truncation. This prevents prior-auth/denial/conservative-
+      // therapy notes buried deep in a large C-file from being silently dropped.
+      const capped = sourceText.length > MAX_SOURCE_TEXT_LENGTH
+        ? sourceText.slice(0, MAX_SOURCE_TEXT_LENGTH)
         : sourceText;
+      console.log(`Provider: preparing long context (${capped.length} chars)...`);
+      const { prepared: safeSourceText, manifest: contextManifest } = await prepareLongContext(capped, LOVABLE_API_KEY);
 
       console.log("Provider: extracting case data...");
       const extracted = await callAI(LOVABLE_API_KEY, "google/gemini-2.5-flash", EXTRACTION_PROMPT, safeSourceText, [{
@@ -166,7 +168,7 @@ serve(async (req) => {
           source_text: sourceText,
           status: "pending",
           risk_score: {},
-          metadata: { summary: extracted.summary, procedure_type: extracted.procedure_type, mode: "provider" },
+          metadata: { summary: extracted.summary, procedure_type: extracted.procedure_type, mode: "provider", contextManifest },
           owner_id: userId,
           body_region: extracted.body_region || null,
           linked_case_id: linkedCaseId,
@@ -177,6 +179,19 @@ serve(async (req) => {
       if (caseError) {
         console.error("DB insert error:", caseError);
         throw new Error("Failed to create case");
+      }
+
+      // Zero-day / novel-code detection — flag and route to relaxed-anchor posture.
+      const novelCodes = detectNovelCodes(extracted.cpt_codes || []);
+      if (novelCodes.length > 0) {
+        await supabase.from("novel_code_cases").insert({
+          case_id: newCase.id,
+          novel_codes: novelCodes,
+          posture: "relaxed_anchor",
+          requires_human_review: true,
+          rationale: `Detected unmapped/Category III code(s): ${novelCodes.join(", ")}. Adversarial role weight reduced; human review required.`,
+        });
+        console.log(`Provider: novel codes detected for ${newCase.id}: ${novelCodes.join(", ")}`);
       }
 
       return new Response(JSON.stringify({ success: true, caseId: newCase.id, extracted, linkedTo: linkedCaseId ? { caseId: linkedCaseId } : null }), {
