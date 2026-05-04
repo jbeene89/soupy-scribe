@@ -21,7 +21,23 @@ interface CaseReportData {
   winningPacket?: MinimalWinningPacket | null;
   floorEvents?: ConfidenceFloorEvent[];
   posture?: AuditPosture;
+  /** Optional list of section ids to include. Omit/empty for full report. */
+  sections?: string[];
 }
+
+export const CASE_REPORT_SECTIONS = [
+  { id: 'overview', label: 'Case Overview', description: 'Header, IDs, claim amount, codes' },
+  { id: 'disposition', label: 'Disposition & Score Cards', description: 'Risk, confidence, evidence, consensus' },
+  { id: 'risk-factors', label: 'Risk Factors / Findings', description: 'Triggered factors with evidence' },
+  { id: 'analyses', label: 'AI Role Analyses', description: 'Builder, Red Team, Analyst, Breaker' },
+  { id: 'contradictions', label: 'Contradictions', description: 'Cross-perspective conflicts' },
+  { id: 'evidence', label: 'Evidence Sufficiency', description: 'Defensibility scoring' },
+  { id: 'action', label: 'Recommended Action', description: 'Action pathway + rationale' },
+  { id: 'trace', label: 'Decision Trace', description: 'Final recommendation, consensus grade' },
+  { id: 'packet', label: 'Minimal Winning Packet', description: 'Top priority + checklist' },
+  { id: 'floors', label: 'Confidence Floor Breaches', description: 'Threshold events + routing' },
+  { id: 'readiness', label: 'Export Readiness', description: 'Final readiness assessment' },
+];
 
 const POSTURE_LABELS: Record<AuditPosture, { title: string; subtitle: string; footer: string }> = {
   'payment-integrity': {
@@ -41,6 +57,11 @@ export function exportCaseReportPDF(data: CaseReportData) {
   const ctx = createPDFContext();
   const labels = POSTURE_LABELS[posture];
   const isCAP = posture === 'compliance-coaching';
+  const allIds = CASE_REPORT_SECTIONS.map(s => s.id);
+  const enabled = new Set(
+    !data.sections || data.sections.length === 0 ? allIds : data.sections
+  );
+  const has = (id: string) => enabled.has(id);
 
   const signals = deriveCaseSignals(auditCase, {
     contradictions: data.contradictions,
@@ -55,6 +76,7 @@ export function exportCaseReportPDF(data: CaseReportData) {
   addSpacer(ctx, 6);
 
   // ── Case Overview (two-column grid) ──
+  if (has('overview')) {
   addSectionHeader(ctx, 'Case Overview');
   addKeyValueGrid(ctx, [
     ['Case Number', auditCase.caseNumber],
@@ -68,8 +90,10 @@ export function exportCaseReportPDF(data: CaseReportData) {
   ]);
   addKeyValue(ctx, 'Audit Mode', isCAP ? 'Claim Accuracy Program' : 'Payment Integrity');
   addSpacer(ctx, 8);
+  }
 
   // ── Disposition Alert ──
+  if (has('disposition')) {
   const dispSeverity = signals.riskLevel === 'critical' || signals.riskLevel === 'high' ? 'error'
     : signals.riskLevel === 'medium' ? 'warning' : 'success';
   addAlertBox(ctx, signals.disposition.description, dispSeverity as any, signals.disposition.label);
@@ -89,8 +113,10 @@ export function exportCaseReportPDF(data: CaseReportData) {
     addAlertBox(ctx, signals.humanReview.reasons.join(' • '), 'warning', 'Human Review Required');
     addSpacer(ctx, 4);
   }
+  }
 
   // ── Risk Factors ──
+  if (has('risk-factors')) {
   const triggeredFactors = auditCase.riskScore?.factors.filter(f => f.triggered) || [];
   if (triggeredFactors.length > 0) {
     addSectionHeader(ctx, isCAP ? 'Claim Accuracy Findings' : 'Active Risk Factors', [185, 28, 28]);
@@ -105,9 +131,10 @@ export function exportCaseReportPDF(data: CaseReportData) {
     });
     addDivider(ctx);
   }
+  }
 
   // ── AI Role Analyses ──
-  if (auditCase.analyses.length > 0) {
+  if (has('analyses') && auditCase.analyses.length > 0) {
     addSectionHeader(ctx, 'AI Role Analyses');
     const roleLabels: Record<string, string> = {
       builder: 'Builder (Clinical Analyst)',
@@ -154,7 +181,7 @@ export function exportCaseReportPDF(data: CaseReportData) {
   }
 
   // ── Contradictions ──
-  if (data.contradictions && data.contradictions.length > 0) {
+  if (has('contradictions') && data.contradictions && data.contradictions.length > 0) {
     addSectionHeader(ctx, isCAP ? 'Consistency Findings' : 'Contradictions Detected', [217, 119, 6]);
     data.contradictions.forEach(c => {
       addBullet(ctx, `[${c.severity.toUpperCase()}] ${c.contradiction_type}: ${c.description}`);
@@ -164,7 +191,7 @@ export function exportCaseReportPDF(data: CaseReportData) {
   }
 
   // ── Evidence Sufficiency ──
-  if (data.evidenceSuff) {
+  if (has('evidence') && data.evidenceSuff) {
     addSectionHeader(ctx, 'Evidence Sufficiency');
     addKeyValueGrid(ctx, [
       ['Overall Score', `${Math.round(data.evidenceSuff.overall_score)}%`],
@@ -180,7 +207,7 @@ export function exportCaseReportPDF(data: CaseReportData) {
   }
 
   // ── Action Pathway ──
-  if (data.actionPathway) {
+  if (has('action') && data.actionPathway) {
     addSectionHeader(ctx, 'Recommended Action', [22, 163, 74]);
     addAlertBox(ctx, data.actionPathway.action_rationale, 'info', data.actionPathway.recommended_action);
     addKeyValueGrid(ctx, [
@@ -191,7 +218,7 @@ export function exportCaseReportPDF(data: CaseReportData) {
   }
 
   // ── Decision Trace ──
-  if (data.decisionTrace) {
+  if (has('trace') && data.decisionTrace) {
     addSectionHeader(ctx, 'Decision Trace');
     addKeyValueGrid(ctx, [
       ['Final Recommendation', data.decisionTrace.final_recommendation || 'N/A'],
@@ -206,7 +233,7 @@ export function exportCaseReportPDF(data: CaseReportData) {
   }
 
   // ── Minimal Winning Packet ──
-  if (data.winningPacket) {
+  if (has('packet') && data.winningPacket) {
     addSectionHeader(ctx, isCAP ? 'Priority Documentation Packet' : 'Minimal Winning Packet');
     if (data.winningPacket.top_priority_item) {
       addAlertBox(ctx, data.winningPacket.top_priority_item, 'info', 'Top Priority Item');
@@ -224,7 +251,7 @@ export function exportCaseReportPDF(data: CaseReportData) {
   }
 
   // ── Confidence Floor Events ──
-  if (data.floorEvents && data.floorEvents.length > 0) {
+  if (has('floors') && data.floorEvents && data.floorEvents.length > 0) {
     addSectionHeader(ctx, 'Confidence Floor Breaches', [185, 28, 28]);
     const rows = data.floorEvents.map(e => [
       e.floor_type,
@@ -244,12 +271,14 @@ export function exportCaseReportPDF(data: CaseReportData) {
   }
 
   // ── Export Readiness ──
+  if (has('readiness')) {
   const readiness = evaluateExportReadiness(auditCase, { evidenceSuff: data.evidenceSuff, contradictions: data.contradictions });
   addSectionHeader(ctx, 'Export Readiness');
   const readinessColor = readiness.label.toLowerCase().includes('ready') ? 'success' : 'warning';
   addAlertBox(ctx, readiness.description, readinessColor as any, readiness.label);
   if (readiness.missingItems.length > 0) {
     readiness.missingItems.forEach(m => addBullet(ctx, m));
+  }
   }
 
   addFooter(ctx, labels.footer);
