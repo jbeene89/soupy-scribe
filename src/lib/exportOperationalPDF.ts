@@ -17,13 +17,41 @@ function postureLabel(posture: AuditPosture) {
   return posture === 'compliance-coaching' ? 'Claim Accuracy' : 'Payment Integrity';
 }
 
+export const OR_READINESS_SECTIONS = [
+  { id: 'summary', label: 'Executive Summary', description: 'Score cards: events, delay, cost, safety' },
+  { id: 'alerts', label: 'Safety & Pattern Alerts', description: 'Sterile, repeat, under-anesthesia warnings' },
+  { id: 'by-type', label: 'Breakdown by Event Type', description: 'Counts, delays, cost per type' },
+  { id: 'classification', label: 'Classification Distribution', description: 'Repeat vs one-off etc.' },
+  { id: 'log', label: 'Detailed Event Log', description: 'Per-event table' },
+];
+
+export const TRIAGE_SECTIONS = [
+  { id: 'summary', label: 'Executive Summary', description: 'Predictability, foreseeability, extra time' },
+  { id: 'distribution', label: 'Foreseeability Breakdown', description: 'Distribution by class' },
+  { id: 'surgeons', label: 'Surgeon Profile', description: 'Booking accuracy by surgeon' },
+  { id: 'log', label: 'Case Detail Log', description: 'Per-case table' },
+];
+
+export const POSTOP_SECTIONS = [
+  { id: 'summary', label: 'Executive Summary', description: 'Wait, idle, beds, intervention' },
+  { id: 'alerts', label: 'Resource & Intervention Alerts', description: 'Avoidable consumption, success rate' },
+  { id: 'categories', label: 'Delay Category Breakdown', description: 'Root-cause table' },
+  { id: 'log', label: 'Event Log', description: 'Per-event table' },
+];
+
+function makeHas(sectionIds: string[] | undefined, all: string[]) {
+  const enabled = new Set(!sectionIds || sectionIds.length === 0 ? all : sectionIds);
+  return (id: string) => enabled.has(id);
+}
+
 /* ═══════════════════════════════════════════════════
    OR Readiness & Sterile Integrity PDF
    ═══════════════════════════════════════════════════ */
 
-export function exportORReadinessPDF(events: ORReadinessEvent[], posture: AuditPosture = 'payment-integrity') {
+export function exportORReadinessPDF(events: ORReadinessEvent[], posture: AuditPosture = 'payment-integrity', sectionIds?: string[]) {
   const ctx = createPDFContext();
   const isPayer = posture === 'payment-integrity';
+  const has = makeHas(sectionIds, OR_READINESS_SECTIONS.map(s => s.id));
 
   addDocumentHeader(ctx,
     isPayer ? 'OR Readiness — Payment Integrity Report' : 'OR Readiness — Operational Improvement Report',
@@ -39,6 +67,7 @@ export function exportORReadinessPDF(events: ORReadinessEvent[], posture: AuditP
   const safetyFlags = events.filter(e => e.safety_flag).length;
   const underAnesthesia = events.filter(e => e.patient_wait_status === 'under_anesthesia').length;
 
+  if (has('summary')) {
   addSectionHeader(ctx, 'Executive Summary');
   addScoreCards(ctx, [
     { label: 'Total Events', value: String(events.length), color: 'blue' },
@@ -46,7 +75,9 @@ export function exportORReadinessPDF(events: ORReadinessEvent[], posture: AuditP
     { label: 'Est. Cost Impact', value: `$${totalCost.toLocaleString()}`, sublabel: '$80/min base', color: 'red' },
     { label: 'Safety Flags', value: String(safetyFlags), sublabel: safetyFlags > 0 ? 'Action Required' : 'Clear', color: safetyFlags > 0 ? 'red' : 'green' },
   ]);
+  }
 
+  if (has('alerts')) {
   // ── Safety Alert ──
   const sterilEvents = events.filter(e => e.event_type === 'sterilization_lapse' || e.event_type === 'contaminated');
   if (sterilEvents.length > 0) {
@@ -74,8 +105,10 @@ export function exportORReadinessPDF(events: ORReadinessEvent[], posture: AuditP
     );
     addSpacer(ctx, 4);
   }
+  }
 
   // ── Breakdown by Event Type ──
+  if (has('by-type')) {
   addSectionHeader(ctx, 'Breakdown by Event Type');
   const typeGroups: Record<string, ORReadinessEvent[]> = {};
   events.forEach(e => {
@@ -98,8 +131,10 @@ export function exportORReadinessPDF(events: ORReadinessEvent[], posture: AuditP
     { header: 'Est. Cost', width: 100, align: 'right' },
     { header: 'Safety', width: ctx.maxWidth - 410, align: 'center' },
   ], typeRows);
+  }
 
   // ── Classification Distribution ──
+  if (has('classification')) {
   addSectionHeader(ctx, 'Classification Distribution');
   const classGroups: Record<string, number> = {};
   events.forEach(e => {
@@ -111,8 +146,10 @@ export function exportORReadinessPDF(events: ORReadinessEvent[], posture: AuditP
     addBullet(ctx, `${label}: ${count} events (${pct}%)`);
   });
   addSpacer(ctx, 6);
+  }
 
   // ── Detailed Event Log ──
+  if (has('log')) {
   addSectionHeader(ctx, 'Event Log');
   const logRows = events.slice(0, 50).map(e => [
     new Date(e.created_at).toLocaleDateString(),
@@ -134,6 +171,7 @@ export function exportORReadinessPDF(events: ORReadinessEvent[], posture: AuditP
   if (events.length > 50) {
     addBody(ctx, `Showing 50 of ${events.length} events. Full data available in the application.`);
   }
+  }
 
   addFooter(ctx, POSTURE_FOOTER[posture]);
   ctx.doc.save(`OR_Readiness_Report_${Date.now()}.pdf`);
@@ -143,9 +181,10 @@ export function exportORReadinessPDF(events: ORReadinessEvent[], posture: AuditP
    Triage Accuracy PDF
    ═══════════════════════════════════════════════════ */
 
-export function exportTriageAccuracyPDF(events: TriageAccuracyEvent[], posture: AuditPosture = 'payment-integrity') {
+export function exportTriageAccuracyPDF(events: TriageAccuracyEvent[], posture: AuditPosture = 'payment-integrity', sectionIds?: string[]) {
   const ctx = createPDFContext();
   const isPayer = posture === 'payment-integrity';
+  const has = makeHas(sectionIds, TRIAGE_SECTIONS.map(s => s.id));
 
   addDocumentHeader(ctx,
     isPayer ? 'Case-Triage Accuracy — Payment Integrity Report' : 'Case-Triage Accuracy — Booking Accuracy Report',
@@ -162,6 +201,7 @@ export function exportTriageAccuracyPDF(events: TriageAccuracyEvent[], posture: 
   const staffMismatches = events.filter(e => (e.actual_staff_count || 0) > (e.expected_staff_count || 0)).length;
   const pendingFollowUps = events.filter(e => e.follow_up_status === 'pending' || e.follow_up_status === 'escalated').length;
 
+  if (has('summary')) {
   addSectionHeader(ctx, 'Executive Summary');
   addScoreCards(ctx, [
     { label: 'Total Cases', value: String(events.length), color: 'blue' },
@@ -174,8 +214,10 @@ export function exportTriageAccuracyPDF(events: TriageAccuracyEvent[], posture: 
     addAlertBox(ctx, `${pendingFollowUps} case(s) have pending or escalated follow-ups that require attention.`, 'warning', 'Follow-Up Required');
     addSpacer(ctx, 4);
   }
+  }
 
   // ── Foreseeability Distribution ──
+  if (has('distribution')) {
   addSectionHeader(ctx, 'Foreseeability Breakdown');
   FORESEEABILITY_OPTIONS.forEach(opt => {
     const count = events.filter(e => e.foreseeability_class === opt.value).length;
@@ -183,8 +225,10 @@ export function exportTriageAccuracyPDF(events: TriageAccuracyEvent[], posture: 
     addBullet(ctx, `${opt.label}: ${count} cases (${pct}%)`);
   });
   addSpacer(ctx, 6);
+  }
 
   // ── Top Surgeons by Predictable Mismatches ──
+  if (has('surgeons')) {
   addSectionHeader(ctx, isPayer ? 'Surgeon Risk Profile' : 'Surgeon Booking Accuracy');
   const surgeonGroups: Record<string, TriageAccuracyEvent[]> = {};
   events.forEach(e => {
@@ -211,8 +255,10 @@ export function exportTriageAccuracyPDF(events: TriageAccuracyEvent[], posture: 
     { header: 'Avg Δ', width: 50, align: 'center' },
     { header: 'Extra Time', width: ctx.maxWidth - 380, align: 'right' },
   ], surgeonRows);
+  }
 
   // ── Detailed Log ──
+  if (has('log')) {
   addSectionHeader(ctx, 'Case Detail Log');
   const logRows = events.slice(0, 40).map(e => [
     new Date(e.created_at).toLocaleDateString(),
@@ -234,6 +280,7 @@ export function exportTriageAccuracyPDF(events: TriageAccuracyEvent[], posture: 
   if (events.length > 40) {
     addBody(ctx, `Showing 40 of ${events.length} cases. Full data available in the application.`);
   }
+  }
 
   addFooter(ctx, POSTURE_FOOTER[posture]);
   ctx.doc.save(`Triage_Accuracy_Report_${Date.now()}.pdf`);
@@ -243,9 +290,10 @@ export function exportTriageAccuracyPDF(events: TriageAccuracyEvent[], posture: 
    Post-Op Flow PDF
    ═══════════════════════════════════════════════════ */
 
-export function exportPostOpFlowPDF(events: PostOpFlowEvent[], posture: AuditPosture = 'payment-integrity') {
+export function exportPostOpFlowPDF(events: PostOpFlowEvent[], posture: AuditPosture = 'payment-integrity', sectionIds?: string[]) {
   const ctx = createPDFContext();
   const isPayer = posture === 'payment-integrity';
+  const has = makeHas(sectionIds, POSTOP_SECTIONS.map(s => s.id));
 
   addDocumentHeader(ctx,
     isPayer ? 'Post-Op Flow — Payment Integrity Report' : 'Post-Op Flow — Recovery Efficiency Report',
@@ -264,6 +312,7 @@ export function exportPostOpFlowPDF(events: PostOpFlowEvent[], posture: AuditPos
   const interventions = events.filter(e => e.intervention_applied);
   const effectiveCount = interventions.filter(e => e.intervention_effective).length;
 
+  if (has('summary')) {
   addSectionHeader(ctx, 'Executive Summary');
   addScoreCards(ctx, [
     { label: 'Total Events', value: String(events.length), color: 'blue' },
@@ -271,7 +320,9 @@ export function exportPostOpFlowPDF(events: PostOpFlowEvent[], posture: AuditPos
     { label: 'Staff Idle Time', value: `${totalStaffIdle} min`, color: 'amber' },
     { label: 'No Bed Available', value: `${noBed}/${events.length}`, sublabel: `${events.length ? Math.round((noBed / events.length) * 100) : 0}%`, color: noBed > 0 ? 'red' : 'green' },
   ]);
+  }
 
+  if (has('alerts')) {
   // ── Extra Resource Consumption ──
   if (totalExtraAnesthesia > 0 || totalExtraMonitoring > 0) {
     addAlertBox(ctx,
@@ -291,8 +342,10 @@ export function exportPostOpFlowPDF(events: PostOpFlowEvent[], posture: AuditPos
     );
     addSpacer(ctx, 4);
   }
+  }
 
   // ── Delay Category Breakdown ──
+  if (has('categories')) {
   addSectionHeader(ctx, isPayer ? 'Root-Cause Analysis' : 'Delay Category Breakdown');
   const catGroups: Record<string, PostOpFlowEvent[]> = {};
   events.forEach(e => {
@@ -316,8 +369,10 @@ export function exportPostOpFlowPDF(events: PostOpFlowEvent[], posture: AuditPos
     { header: 'Avg Idle', width: 80, align: 'center' },
     { header: 'No Bed', width: ctx.maxWidth - 370, align: 'center' },
   ], catRows);
+  }
 
   // ── Event Log ──
+  if (has('log')) {
   addSectionHeader(ctx, 'Event Log');
   const logRows = events.slice(0, 40).map(e => [
     new Date(e.created_at).toLocaleDateString(),
@@ -338,6 +393,7 @@ export function exportPostOpFlowPDF(events: PostOpFlowEvent[], posture: AuditPos
 
   if (events.length > 40) {
     addBody(ctx, `Showing 40 of ${events.length} events. Full data available in the application.`);
+  }
   }
 
   addFooter(ctx, POSTURE_FOOTER[posture]);
