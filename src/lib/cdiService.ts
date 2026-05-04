@@ -11,6 +11,15 @@ export async function listCDIFindings(caseId: string): Promise<CDIFinding[]> {
   return (data ?? []) as unknown as CDIFinding[];
 }
 
+export async function listAllCDIFindings(): Promise<CDIFinding[]> {
+  const { data, error } = await supabase
+    .from('cdi_findings')
+    .select('*')
+    .order('estimated_revenue_impact', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as CDIFinding[];
+}
+
 export async function runCDIAnalysis(args: {
   caseId: string;
   sourceText: string | null | undefined;
