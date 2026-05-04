@@ -16,6 +16,21 @@ function detectNovelCodes(codes: string[]): string[] {
   return (codes || []).filter((c) => NOVEL_CODE_PATTERNS.some((re) => re.test(c.trim())));
 }
 
+// Clamp date_of_service to today if missing, malformed, or in the future.
+function sanitizeDateOfService(raw: unknown): string {
+  const today = new Date();
+  const todayIso = today.toISOString().slice(0, 10);
+  if (typeof raw !== "string") return todayIso;
+  const m = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return todayIso;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  const parsed = new Date(Date.UTC(y, mo - 1, d));
+  if (parsed.getUTCFullYear() !== y || parsed.getUTCMonth() !== mo - 1 || parsed.getUTCDate() !== d) return todayIso;
+  if (y < 1990) return todayIso;
+  if (parsed.getTime() > today.getTime()) return todayIso;
+  return raw.trim();
+}
+
 // Gracefully shrink very long inputs by keeping the first and last portions,
 // where headers, codes, impressions, and signatures usually live.
 function truncateSourceText(text: string, max: number): string {
@@ -255,7 +270,9 @@ Return a JSON object with these fields:
 - procedure_type: string (e.g., "orthopedic surgery", "emergency medicine", "spine surgery")
 - body_region: string (primary anatomical body region involved, e.g. "left testicle", "lumbar spine L4-L5", "right knee", "abdomen". Include laterality when documented. If multiple regions, pick the primary one.)
 
-If information is missing, make reasonable inferences from the clinical context. Always extract CPT and ICD codes if present.`;
+If information is missing, make reasonable inferences from the clinical context. Always extract CPT and ICD codes if present.
+
+CRITICAL: date_of_service MUST come from the source document and MUST NOT be in the future. If no date is documented, use today's date in YYYY-MM-DD format. Never fabricate future dates.`;
 
 const ANALYSIS_PROMPT = `Analyze this medical billing case for audit compliance. 
 
@@ -453,7 +470,7 @@ serve(async (req) => {
           patient_id: extracted.patient_id,
           physician_id: extracted.physician_id,
           physician_name: extracted.physician_name,
-          date_of_service: extracted.date_of_service,
+          date_of_service: sanitizeDateOfService(extracted.date_of_service),
           cpt_codes: extracted.cpt_codes,
           icd_codes: extracted.icd_codes,
           claim_amount: extracted.claim_amount,
