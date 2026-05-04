@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { prepareLongContext, prepareLongContextSync } from "../_shared/longContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,7 +8,13 @@ const corsHeaders = {
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const MAX_SOURCE_TEXT_LENGTH = 200_000;
+const MAX_SOURCE_TEXT_LENGTH = 2_000_000; // ~2MB; long-context handler compresses safely
+
+// Novel / unmapped codes that should trigger relaxed-anchor posture (zero-day protection).
+const NOVEL_CODE_PATTERNS = [/^29999$/i, /^99499$/i, /^[0-9]{4}T$/i, /-22$/];
+function detectNovelCodes(codes: string[]): string[] {
+  return (codes || []).filter((c) => NOVEL_CODE_PATTERNS.some((re) => re.test(c.trim())));
+}
 
 // Gracefully shrink very long inputs by keeping the first and last portions,
 // where headers, codes, impressions, and signatures usually live.
