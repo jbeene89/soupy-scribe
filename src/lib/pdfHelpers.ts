@@ -124,12 +124,13 @@ export function addSectionHeader(ctx: PDFContext, text: string, color: RGB = COL
 
 /* ─── Titles & Text ─── */
 export function addTitle(ctx: PDFContext, text: string, size = 14) {
-  checkPage(ctx, size + 16);
   ctx.doc.setFont('helvetica', 'bold');
   ctx.doc.setFontSize(size);
+  const lines = ctx.doc.splitTextToSize(text, ctx.maxWidth);
+  checkPage(ctx, lines.length * (size + 4) + 6);
   ctx.doc.setTextColor(...COLORS.brand);
-  ctx.doc.text(text, ctx.margin, ctx.y);
-  ctx.y += size + 6;
+  ctx.doc.text(lines, ctx.margin, ctx.y);
+  ctx.y += lines.length * (size + 4) + 2;
 }
 
 export function addSubtitle(ctx: PDFContext, text: string, size = 11) {
