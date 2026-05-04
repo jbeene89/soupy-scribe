@@ -8,6 +8,23 @@ function detectNovelCodes(codes: string[]): string[] {
   return (codes || []).filter((c) => NOVEL_CODE_PATTERNS.some((re) => re.test(c.trim())));
 }
 
+// Clamp date_of_service to today if missing, malformed, or in the future.
+// LLMs occasionally hallucinate future dates when the source text is sparse.
+function sanitizeDateOfService(raw: unknown): string {
+  const today = new Date();
+  const todayIso = today.toISOString().slice(0, 10);
+  if (typeof raw !== "string") return todayIso;
+  const m = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return todayIso;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  const parsed = new Date(Date.UTC(y, mo - 1, d));
+  if (parsed.getUTCFullYear() !== y || parsed.getUTCMonth() !== mo - 1 || parsed.getUTCDate() !== d) return todayIso;
+  // Reject obviously-bad years and any future date
+  if (y < 1990) return todayIso;
+  if (parsed.getTime() > today.getTime()) return todayIso;
+  return raw.trim();
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -29,6 +46,8 @@ Analyze the provided case and return a comprehensive compliance readiness assess
 const EXTRACTION_PROMPT = `You are a medical coding expert. Extract structured data from this case file text.
 
 Return structured data with: patient_id, physician_id, physician_name, date_of_service (YYYY-MM-DD), cpt_codes (string[]), icd_codes (string[]), claim_amount (number), summary (string), procedure_type (string), body_region (string - primary anatomical body region involved, e.g. "left testicle", "lumbar spine L4-L5", "right knee". Include laterality when documented.)
+
+CRITICAL: date_of_service MUST be a real date taken from the source document and MUST NOT be in the future. If no date of service is documented, use today's date in YYYY-MM-DD format. Never fabricate or guess future dates.
 
 If information is missing, make reasonable inferences from the clinical context.`;
 
@@ -161,7 +180,7 @@ serve(async (req) => {
           patient_id: extracted.patient_id,
           physician_id: extracted.physician_id,
           physician_name: extracted.physician_name,
-          date_of_service: extracted.date_of_service,
+          date_of_service: sanitizeDateOfService(extracted.date_of_service),
           cpt_codes: extracted.cpt_codes,
           icd_codes: extracted.icd_codes,
           claim_amount: extracted.claim_amount,
