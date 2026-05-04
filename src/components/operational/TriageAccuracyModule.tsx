@@ -8,7 +8,8 @@ import { cn } from '@/lib/utils';
 import type { TriageAccuracyEvent } from '@/lib/operationalTypes';
 import { FORESEEABILITY_OPTIONS } from '@/lib/operationalTypes';
 import { Progress } from '@/components/ui/progress';
-import { exportTriageAccuracyPDF } from '@/lib/exportOperationalPDF';
+import { exportTriageAccuracyPDF, TRIAGE_SECTIONS } from '@/lib/exportOperationalPDF';
+import { SectionExportMenu } from '@/components/SectionExportMenu';
 
 interface Props {
   events: TriageAccuracyEvent[];
@@ -93,10 +94,11 @@ export function TriageAccuracyModule({ events, posture }: Props) {
             {isPayer ? 'Identify systematic under-calling that drives unexpected claim complexity and cost.' : 'Compare pre-op booking accuracy against actual intra-operative needs to improve scheduling.'}
           </p>
         </div>
-        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => exportTriageAccuracyPDF(events, posture)}>
-          <Download className="h-3.5 w-3.5" />
-          Export PDF
-        </Button>
+        <SectionExportMenu
+          sections={TRIAGE_SECTIONS}
+          buttonLabel="Export PDF"
+          onExport={(ids) => exportTriageAccuracyPDF(events, posture, ids)}
+        />
       </div>
 
       {/* Score Cards */}
