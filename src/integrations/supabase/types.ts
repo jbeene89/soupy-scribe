@@ -1530,6 +1530,42 @@ export type Database = {
           },
         ]
       }
+      preference_cards: {
+        Row: {
+          created_at: string
+          id: string
+          items: Json
+          notes: string | null
+          owner_id: string
+          procedure_label: string
+          service_line: string | null
+          surgeon_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          owner_id: string
+          procedure_label: string
+          service_line?: string | null
+          surgeon_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          items?: Json
+          notes?: string | null
+          owner_id?: string
+          procedure_label?: string
+          service_line?: string | null
+          surgeon_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       processing_queue: {
         Row: {
           case_id: string
@@ -1754,6 +1790,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      supply_catalog: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string
+          equivalent_sku: string | null
+          id: string
+          notes: string | null
+          owner_id: string | null
+          pack_size: number
+          sku: string
+          unit_price: number
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description: string
+          equivalent_sku?: string | null
+          id?: string
+          notes?: string | null
+          owner_id?: string | null
+          pack_size?: number
+          sku: string
+          unit_price?: number
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string
+          equivalent_sku?: string | null
+          id?: string
+          notes?: string | null
+          owner_id?: string | null
+          pack_size?: number
+          sku?: string
+          unit_price?: number
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: []
+      }
+      supply_waste_events: {
+        Row: {
+          case_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          opened_items: Json
+          owner_id: string
+          procedure_label: string | null
+          room_id: string | null
+          savings_opportunity: number
+          service_line: string | null
+          suggested_swap: string | null
+          surgeon_name: string | null
+          used_items: Json
+          waste_cost: number
+        }
+        Insert: {
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_items?: Json
+          owner_id: string
+          procedure_label?: string | null
+          room_id?: string | null
+          savings_opportunity?: number
+          service_line?: string | null
+          suggested_swap?: string | null
+          surgeon_name?: string | null
+          used_items?: Json
+          waste_cost?: number
+        }
+        Update: {
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_items?: Json
+          owner_id?: string
+          procedure_label?: string | null
+          room_id?: string | null
+          savings_opportunity?: number
+          service_line?: string | null
+          suggested_swap?: string | null
+          surgeon_name?: string | null
+          used_items?: Json
+          waste_cost?: number
+        }
+        Relationships: []
       }
       suppressed_emails: {
         Row: {
