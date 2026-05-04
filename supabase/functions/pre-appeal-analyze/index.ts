@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { prepareLongContext } from "../_shared/longContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -233,7 +234,7 @@ ${contradictionsSummary}
 ${evidenceSummary}
 ${actionSummary}
 
-Source Documentation (excerpt): ${auditCase.source_text?.substring(0, 3000) || "Not available"}
+Source Documentation: ${auditCase.source_text ? (await prepareLongContext(auditCase.source_text, LOVABLE_API_KEY)).prepared : "Not available"}
 
 Based on all of the above, analyze this case for pre-appeal resolution potential. Determine whether the denial/flag can be resolved without a formal appeal, what specific records or corrections would resolve it, and provide actionable guidance for both the provider and payer sides.`;
 

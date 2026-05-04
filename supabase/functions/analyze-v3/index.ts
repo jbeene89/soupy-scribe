@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { prepareLongContext } from "../_shared/longContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -355,7 +356,10 @@ serve(async (req) => {
     const completedAnalyses = analysisResults.filter(a => a.confidence > 0);
     const roleOrder = SOUPY_ROLES_META.map(r => r.role);
     const summary = (auditCase.metadata as any)?.summary || "Not available";
-    const sourceTextTrunc = auditCase.source_text?.substring(0, 3000) || "Not available";
+    const { prepared: sourceTextTrunc, manifest: longCtxManifest } = auditCase.source_text
+      ? await prepareLongContext(auditCase.source_text, LOVABLE_API_KEY)
+      : { prepared: "Not available", manifest: { strategy: "none" } };
+    console.log("v3 long-context manifest:", JSON.stringify(longCtxManifest));
 
     // ── Compute initial consensus ──
     let consensusScore = 50;

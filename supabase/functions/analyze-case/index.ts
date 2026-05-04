@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { prepareLongContext, prepareLongContextSync } from "../_shared/longContext.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,7 +8,13 @@ const corsHeaders = {
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const MAX_SOURCE_TEXT_LENGTH = 200_000;
+const MAX_SOURCE_TEXT_LENGTH = 2_000_000; // ~2MB; long-context handler compresses safely
+
+// Novel / unmapped codes that should trigger relaxed-anchor posture (zero-day protection).
+const NOVEL_CODE_PATTERNS = [/^29999$/i, /^99499$/i, /^[0-9]{4}T$/i, /-22$/];
+function detectNovelCodes(codes: string[]): string[] {
+  return (codes || []).filter((c) => NOVEL_CODE_PATTERNS.some((re) => re.test(c.trim())));
+}
 
 // Gracefully shrink very long inputs by keeping the first and last portions,
 // where headers, codes, impressions, and signatures usually live.
@@ -529,7 +536,24 @@ serve(async (req) => {
       }
 
       const summary = (auditCase.metadata as any)?.summary || "Not available";
-      const sourceTextTrunc = auditCase.source_text?.substring(0, 3000) || "Not available";
+      // ── Long-context handling: priority extraction + AI summary instead of 3k truncation ──
+      const { prepared: sourceTextTrunc, manifest: longCtxManifest } = auditCase.source_text
+        ? await prepareLongContext(auditCase.source_text, LOVABLE_API_KEY)
+        : { prepared: "Not available", manifest: { strategy: "none" } };
+      console.log("Long-context manifest:", JSON.stringify(longCtxManifest));
+
+      // ── Zero-day / novel-code detection (relaxed anchor posture) ──
+      const novelCodes = detectNovelCodes(auditCase.cpt_codes || []);
+      if (novelCodes.length > 0) {
+        await supabase.from("novel_code_cases").insert({
+          case_id: caseId,
+          novel_codes: novelCodes,
+          posture: "relaxed_anchor",
+          rationale: `Unmapped/unlisted codes detected: ${novelCodes.join(", ")}. Engine routed to relaxed-anchor posture and human review.`,
+          requires_human_review: true,
+        });
+        console.log(`Novel codes detected, relaxed-anchor posture: ${novelCodes.join(", ")}`);
+      }
 
       // ── Module 9: Source Reliability Weighting ──
       const { data: sourceWeights } = await supabase
