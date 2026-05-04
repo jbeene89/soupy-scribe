@@ -1,12 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { prepareLongContext, prepareLongContextSync } from "../_shared/longContext.ts";
+
+// Novel / unmapped codes that should trigger relaxed-anchor posture (zero-day protection).
+const NOVEL_CODE_PATTERNS = [/^29999$/i, /^99499$/i, /^[0-9]{4}T$/i, /-22$/];
+function detectNovelCodes(codes: string[]): string[] {
+  return (codes || []).filter((c) => NOVEL_CODE_PATTERNS.some((re) => re.test(c.trim())));
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_SOURCE_TEXT_LENGTH = 200_000;
+const MAX_SOURCE_TEXT_LENGTH = 2_000_000; // ~2MB; long-context handler compresses safely
 
 const PROVIDER_READINESS_PROMPT = `You are a medical compliance readiness advisor helping healthcare providers improve documentation quality, identify coding vulnerabilities, and assess appeal viability. You are NOT an auditor or enforcement agent. Your role is to help providers proactively strengthen their claims.
 
