@@ -34,6 +34,7 @@ import { AuthGate } from '@/components/AuthGate';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PreAppealResolutionTab } from '@/components/pre-appeal/PreAppealResolutionTab';
+import { CDIFindingsPanel } from '@/components/provider/CDIFindingsPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { StandardizedScalesPanel } from '@/components/psych/StandardizedScalesPanel';
 import type { ParsedNote } from '@/lib/crosswalkTypes';
@@ -281,6 +282,7 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
             <TabsTrigger value="review">Readiness Review</TabsTrigger>
             <TabsTrigger value="appeal">Appeal Assessment</TabsTrigger>
             <TabsTrigger value="evidence">Evidence Checklist</TabsTrigger>
+            <TabsTrigger value="cdi">CDI / Coding</TabsTrigger>
             {matchingCombinations.length > 0 && (
               <TabsTrigger value="code-combos">
                 Code Combinations
@@ -313,6 +315,10 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
 
           <TabsContent value="evidence">
             <EvidenceReadinessChecklist items={review.evidenceReadiness} />
+          </TabsContent>
+
+          <TabsContent value="cdi">
+            <CDIFindingsPanel auditCase={auditCase} />
           </TabsContent>
 
           {matchingCombinations.length > 0 && (
