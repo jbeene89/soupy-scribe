@@ -18,7 +18,8 @@ import {
   ArrowLeft, Brain, Loader2, CheckCircle, Clock, Download, FileText,
   ShieldAlert, XCircle, Zap, Link2, AlertTriangle, ArrowRight, Info, Eye,
 } from 'lucide-react';
-import { exportProviderCaseDetailPDF } from '@/lib/exportProviderCaseDetailPDF';
+import { exportProviderCaseDetailPDF, PROVIDER_CASE_SECTIONS } from '@/lib/exportProviderCaseDetailPDF';
+import { SectionExportMenu } from '@/components/SectionExportMenu';
 import { useState, useEffect, useMemo } from 'react';
 import { getStoredProviderReview, runProviderAnalysis } from '@/lib/providerService';
 import { getStoredPreAppealResolution, runPreAppealAnalysis } from '@/lib/preAppealService';
@@ -171,9 +172,11 @@ export function ProviderCaseDetail({ auditCase, onBack }: ProviderCaseDetailProp
           </div>
           <div className="flex items-center gap-2 mt-2">
             {liveReview && (
-              <Button variant="outline" size="sm" onClick={() => exportProviderCaseDetailPDF(auditCase, liveReview)}>
-                <Download className="h-3.5 w-3.5 mr-1.5" /> Export PDF
-              </Button>
+              <SectionExportMenu
+                sections={PROVIDER_CASE_SECTIONS}
+                buttonLabel="Export PDF"
+                onExport={(ids) => exportProviderCaseDetailPDF(auditCase, liveReview, ids)}
+              />
             )}
           </div>
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">

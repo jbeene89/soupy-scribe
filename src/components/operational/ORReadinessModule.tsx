@@ -8,7 +8,8 @@ import { cn } from '@/lib/utils';
 import type { ORReadinessEvent } from '@/lib/operationalTypes';
 import { OR_EVENT_TYPES, CLASSIFICATION_OPTIONS, estimateEventCost } from '@/lib/operationalTypes';
 import { ORReadinessForm } from './ORReadinessForm';
-import { exportORReadinessPDF } from '@/lib/exportOperationalPDF';
+import { exportORReadinessPDF, OR_READINESS_SECTIONS } from '@/lib/exportOperationalPDF';
+import { SectionExportMenu } from '@/components/SectionExportMenu';
 import { SupplyWasteSection } from './SupplyWasteSection';
 
 interface Props {
@@ -142,10 +143,11 @@ export function ORReadinessModule({ events, posture }: Props) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => exportORReadinessPDF(events, posture)}>
-            <Download className="h-3.5 w-3.5" />
-            Export PDF
-          </Button>
+          <SectionExportMenu
+            sections={OR_READINESS_SECTIONS}
+            buttonLabel="Export PDF"
+            onExport={(ids) => exportORReadinessPDF(events, posture, ids)}
+          />
           <Button size="sm" className="gap-1.5 text-xs" onClick={() => setShowForm(!showForm)}>
             <Plus className="h-3.5 w-3.5" />
             Log Event

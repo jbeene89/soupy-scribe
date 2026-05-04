@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCodeCombinations, type CodeCombination } from '@/lib/soupyEngineService';
 import { ArrowLeft, CheckCircle, XCircle, AlertTriangle, Shield, FileText, Activity, Scale, Clock, ArrowRight, ShieldAlert, Eye, Download, Info } from 'lucide-react';
-import { exportCaseReportPDF } from '@/lib/exportCaseReportPDF';
+import { exportCaseReportPDF, CASE_REPORT_SECTIONS } from '@/lib/exportCaseReportPDF';
+import { SectionExportMenu } from '@/components/SectionExportMenu';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -221,11 +222,10 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
           </div>
         </div>
         {hasAnalyses && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 shrink-0"
-            onClick={() => {
+          <SectionExportMenu
+            sections={CASE_REPORT_SECTIONS}
+            buttonLabel="PDF Report"
+            onExport={(ids) => {
               exportCaseReportPDF({
                 auditCase,
                 evidenceSuff,
@@ -235,13 +235,11 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
                 winningPacket,
                 floorEvents,
                 posture,
+                sections: ids,
               });
               toast.success('Case report PDF downloaded');
             }}
-          >
-            <Download className="h-4 w-4" />
-            PDF Report
-          </Button>
+          />
         )}
       </div>
 

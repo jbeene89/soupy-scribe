@@ -20,14 +20,31 @@ const ACTION_LABELS: Record<string, string> = {
   'educate-staff': 'Staff Education',
 };
 
-export function exportProviderCaseDetailPDF(auditCase: AuditCase, review: ProviderCaseReview) {
+export const PROVIDER_CASE_SECTIONS = [
+  { id: 'summary', label: 'Case Summary & Score Cards', description: 'Header, IDs, key scores' },
+  { id: 'doc-assessments', label: 'Documentation Assessments', description: 'Status + recommendation per category' },
+  { id: 'coding', label: 'Coding Vulnerabilities', description: 'Code-level issues + fixes' },
+  { id: 'appeal', label: 'Appeal Viability', description: 'Success rate, effort, action' },
+  { id: 'evidence', label: 'Evidence Readiness', description: 'Records present / missing' },
+  { id: 'pressure', label: 'Denial Pressure Points', description: 'Where payers will push' },
+];
+
+export function exportProviderCaseDetailPDF(
+  auditCase: AuditCase,
+  review: ProviderCaseReview,
+  sectionIds?: string[],
+) {
   const ctx = createPDFContext();
+  const allIds = PROVIDER_CASE_SECTIONS.map(s => s.id);
+  const enabled = new Set(!sectionIds || sectionIds.length === 0 ? allIds : sectionIds);
+  const has = (id: string) => enabled.has(id);
 
   // ── Banner ──
   addDocumentHeader(ctx, `Provider Readiness — ${auditCase.caseNumber}`, 'SOUPY ThinkTank — Case-Level Documentation & Coding Analysis');
   addBody(ctx, `Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`);
   addSpacer(ctx, 8);
 
+  if (has('summary')) {
   // ── Score Cards ──
   const docColor = review.documentationSufficiency === 'strong' ? 'green' : review.documentationSufficiency === 'moderate' ? 'amber' : 'red';
   const tlColor = review.timelineConsistency === 'strong' ? 'green' : review.timelineConsistency === 'moderate' ? 'amber' : 'red';
@@ -49,9 +66,10 @@ export function exportProviderCaseDetailPDF(auditCase: AuditCase, review: Provid
     ['ICD-10 Codes', auditCase.icdCodes.join(', ')],
   ]);
   addSpacer(ctx, 8);
+  }
 
   // ── Documentation Assessments ──
-  if (review.documentationAssessments.length > 0) {
+  if (has('doc-assessments') && review.documentationAssessments.length > 0) {
     addSectionHeader(ctx, 'Documentation Assessments');
     const rows = review.documentationAssessments.map(da => [
       da.category,
@@ -79,7 +97,7 @@ export function exportProviderCaseDetailPDF(auditCase: AuditCase, review: Provid
   }
 
   // ── Coding Vulnerabilities ──
-  if (review.codingVulnerabilities.length > 0) {
+  if (has('coding') && review.codingVulnerabilities.length > 0) {
     addSectionHeader(ctx, 'Coding Vulnerabilities', [185, 28, 28]);
     review.codingVulnerabilities.forEach(cv => {
       checkPage(ctx, 50);
@@ -95,6 +113,7 @@ export function exportProviderCaseDetailPDF(auditCase: AuditCase, review: Provid
   }
 
   // ── Appeal Viability ──
+  if (has('appeal')) {
   const aa = review.appealAssessment;
   addSectionHeader(ctx, 'Appeal Viability Assessment', aa.viability === 'recommended' ? [22, 163, 74] : aa.viability === 'conditional' ? [217, 119, 6] : [185, 28, 28]);
 
@@ -117,9 +136,10 @@ export function exportProviderCaseDetailPDF(auditCase: AuditCase, review: Provid
     addAlertBox(ctx, aa.missingSupport.join(' • '), 'error', 'Missing Support');
   }
   addSpacer(ctx, 6);
+  }
 
   // ── Evidence Readiness ──
-  if (review.evidenceReadiness.length > 0) {
+  if (has('evidence') && review.evidenceReadiness.length > 0) {
     addSectionHeader(ctx, 'Evidence Readiness');
     const rows = review.evidenceReadiness.map(er => [
       er.status === 'present' ? '✓' : er.status === 'missing' ? '✗' : '◐',
@@ -145,7 +165,7 @@ export function exportProviderCaseDetailPDF(auditCase: AuditCase, review: Provid
   }
 
   // ── Denial Pressure Points ──
-  if (review.denialPressurePoints.length > 0) {
+  if (has('pressure') && review.denialPressurePoints.length > 0) {
     addSectionHeader(ctx, 'Denial Pressure Points', [217, 119, 6]);
     review.denialPressurePoints.forEach(dp => addBullet(ctx, dp));
     addSpacer(ctx, 6);
