@@ -7,6 +7,8 @@ import type {
   PatientAdvocateEvent,
 } from './operationalTypes';
 import type { ImagingFinding } from './imagingTypes';
+import type { RevenueIntegrityFinding } from './revenueIntegrityTypes';
+import type { CDIFinding } from './cdiTypes';
 
 // ─── Cost assumptions (industry-average, conservative) ───
 export const COST_ASSUMPTIONS = {
@@ -26,7 +28,9 @@ export type ImpactCategory =
   | 'postop_delay'
   | 'advocate_event'
   | 'er_acute'
-  | 'imaging';
+  | 'imaging'
+  | 'revenue_integrity'
+  | 'cdi_gap';
 
 export interface ImpactEntry {
   id: string;
@@ -104,6 +108,8 @@ export interface SystemImpactInput {
   erAcuteEvents: ERAcuteEvent[];
   advocateEvents: PatientAdvocateEvent[];
   imagingFindings?: ImagingFinding[];
+  revenueIntegrityFindings?: RevenueIntegrityFinding[];
+  cdiFindings?: CDIFinding[];
 }
 
 export function buildImpactEntries(input: SystemImpactInput): ImpactEntry[] {
@@ -280,6 +286,54 @@ export function buildImpactEntries(input: SystemImpactInput): ImpactEntry[] {
         confidence: f.ai_confidence,
       },
       module_path: '/app/imaging',
+    });
+  }
+
+  for (const f of input.revenueIntegrityFindings ?? []) {
+    if (f.status === 'recovered' || f.status === 'dismissed' || f.status === 'written_off') continue;
+    const loss = Math.max(0, Math.round(f.variance_amount || 0));
+    if (loss <= 0 && f.finding_type !== 'missed_charge') continue;
+    entries.push({
+      id: `ri-${f.id}`,
+      source_id: f.id,
+      category: 'revenue_integrity',
+      category_label: 'Revenue Integrity',
+      occurred_at: f.date_of_service ?? f.created_at,
+      estimated_loss: loss,
+      description: f.description ?? `${f.finding_type.replace(/_/g, ' ')} — ${f.payer_name ?? 'payer'}`,
+      patient_id: f.patient_id ?? undefined,
+      severity: f.severity,
+      detail: {
+        finding_type: f.finding_type,
+        payer: f.payer_name ?? f.payer_code ?? undefined,
+        expected: f.expected_amount,
+        paid: f.paid_amount,
+        claim_id: f.claim_id ?? undefined,
+      },
+      module_path: '/app/revenue-integrity',
+    });
+  }
+
+  for (const f of input.cdiFindings ?? []) {
+    if (f.status === 'resolved' || f.status === 'dismissed') continue;
+    const loss = Math.round(f.estimated_revenue_impact || 0);
+    if (loss <= 0) continue;
+    entries.push({
+      id: `cdi-${f.id}`,
+      source_id: f.id,
+      category: 'cdi_gap',
+      category_label: 'CDI / Coding',
+      occurred_at: f.created_at,
+      estimated_loss: loss,
+      description: f.description,
+      case_id: f.case_id,
+      severity: f.severity === 'high' ? 'high' : f.severity === 'medium' ? 'medium' : 'low',
+      detail: {
+        finding_type: f.finding_type,
+        current_code: f.current_code ?? undefined,
+        suggested_code: f.suggested_code ?? undefined,
+      },
+      module_path: '/app/cases',
     });
   }
 
@@ -474,6 +528,8 @@ function formatCategoryShort(c: ImpactCategory): string {
     advocate_event: 'Advocate',
     er_acute: 'ER',
     imaging: 'Imaging',
+    revenue_integrity: 'RevInt',
+    cdi_gap: 'CDI',
   };
   return map[c];
 }
