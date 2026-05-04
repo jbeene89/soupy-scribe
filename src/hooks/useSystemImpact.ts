@@ -21,6 +21,8 @@ export function useSystemImpact() {
     erAcuteEvents,
     advocateEvents,
     imagingFindings,
+    revenueIntegrityFindings,
+    cdiFindings,
   } = useAdminContext();
 
   return useMemo(() => {
@@ -32,6 +34,8 @@ export function useSystemImpact() {
       erAcuteEvents,
       advocateEvents,
       imagingFindings,
+      revenueIntegrityFindings,
+      cdiFindings,
     });
     return {
       entries,
@@ -47,7 +51,7 @@ export function useSystemImpact() {
         excludeCategory?: ImpactCategory
       ) => relatedCounts(entries, f, excludeCategory),
     };
-  }, [allCases, orEvents, triageEvents, postOpEvents, erAcuteEvents, advocateEvents, imagingFindings]);
+  }, [allCases, orEvents, triageEvents, postOpEvents, erAcuteEvents, advocateEvents, imagingFindings, revenueIntegrityFindings, cdiFindings]);
 }
 
 export type { ImpactEntry, ImpactCategory };
