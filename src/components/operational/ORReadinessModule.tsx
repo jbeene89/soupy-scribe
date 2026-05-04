@@ -9,6 +9,7 @@ import type { ORReadinessEvent } from '@/lib/operationalTypes';
 import { OR_EVENT_TYPES, CLASSIFICATION_OPTIONS, estimateEventCost } from '@/lib/operationalTypes';
 import { ORReadinessForm } from './ORReadinessForm';
 import { exportORReadinessPDF } from '@/lib/exportOperationalPDF';
+import { SupplyWasteSection } from './SupplyWasteSection';
 
 interface Props {
   events: ORReadinessEvent[];
@@ -303,6 +304,9 @@ export function ORReadinessModule({ events, posture }: Props) {
           })}
         </div>
       </div>
+
+      {/* Supply Utilization Audit (frugal waste tracking) */}
+      <SupplyWasteSection posture={posture} />
     </div>
   );
 }
