@@ -39,7 +39,8 @@ function fmt$(n: number) {
 }
 
 export default function AppRevenueIntegrity() {
-  const { user } = useAuth();
+  const { session } = useAuth();
+  const userId = session?.user?.id;
   const [findings, setFindings] = useState<RevenueIntegrityFinding[]>([]);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
@@ -80,14 +81,14 @@ export default function AppRevenueIntegrity() {
   }, [findings]);
 
   const runDetection = async (rows: RemitRow[], label: string) => {
-    if (!user) {
+    if (!userId) {
       toast.error('Sign in required');
       return;
     }
     setRunning(true);
     try {
       const result = detectRevenueLeaks(rows);
-      const inserted = await persistDetectionResult(result, user.id);
+      const inserted = await persistDetectionResult(result, userId);
       toast.success(`${inserted} finding(s) detected from ${label}`);
       await refresh();
     } catch (e) {
