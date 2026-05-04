@@ -14,11 +14,30 @@ export interface AppealPacketArgs {
   verdict: CrosswalkVerdict;
   sourceFileName?: string;
   noteFileName?: string;
+  /** Optional list of section ids; omit/empty for full packet. */
+  sections?: string[];
 }
+
+export const APPEAL_PACKET_SECTIONS = [
+  { id: 'header', label: 'Header & Decision Cards', description: 'Posture cards + auditor headline' },
+  { id: 'claim', label: 'Claim Under Appeal', description: 'Payer, claim/auth #, amounts, deadline' },
+  { id: 'argument', label: 'Appeal Argument', description: 'Argument, evidence, gaps' },
+  { id: 'service', label: 'Service Validation', description: 'CPT match + modifier issues' },
+  { id: 'diagnosis', label: 'Diagnosis Support Matrix', description: 'Per-Dx support, missing, contradictions' },
+  { id: 'medical-necessity', label: 'Medical Necessity', description: 'Severity, impairment, risk, justification' },
+  { id: 'time', label: 'Time Validation', description: 'Documented vs required minutes' },
+  { id: 'med-mgmt', label: 'Medication Management', description: 'When applicable' },
+  { id: 'contradictions', label: 'Contradictions', description: 'Cross-document conflicts' },
+  { id: 'actions', label: 'Action Checklist', description: 'Prioritized fix list' },
+  { id: 'note-signals', label: 'Clinical Note Signals', description: 'Parsed note metadata' },
+];
 
 export function exportAppealPacketPDF(args: AppealPacketArgs) {
   const { claim, note, verdict } = args;
   const ctx = createPDFContext("portrait");
+  const allIds = APPEAL_PACKET_SECTIONS.map(s => s.id);
+  const enabled = new Set(!args.sections || args.sections.length === 0 ? allIds : args.sections);
+  const has = (id: string) => enabled.has(id);
 
   const payer = claim.claim_header.payer_name?.value || "Payer";
   const cpt = verdict.service_match.cpt_under_review || claim.codes.cpt_codes?.value?.[0] || "—";
@@ -26,6 +45,7 @@ export function exportAppealPacketPDF(args: AppealPacketArgs) {
 
   addDocumentHeader(ctx, "Appeal Packet", `${payer} · CPT ${cpt} · DOS ${dos}`);
 
+  if (has('header')) {
   // Posture cards
   addScoreCards(ctx, [
     { label: "Decision",    value: verdict.pre_submission_decision.decision.replace(/_/g, " "), color: decisionColor(verdict.pre_submission_decision.decision) },
@@ -37,7 +57,9 @@ export function exportAppealPacketPDF(args: AppealPacketArgs) {
 
   addAlertBox(ctx, verdict.pre_submission_decision.headline, decisionSeverity(verdict.pre_submission_decision.decision), "Auditor headline");
   addBody(ctx, verdict.pre_submission_decision.why);
+  }
 
+  if (has('claim')) {
   // Claim summary
   addSectionHeader(ctx, "Claim Under Appeal");
   addKeyValueGrid(ctx, [
@@ -52,9 +74,10 @@ export function exportAppealPacketPDF(args: AppealPacketArgs) {
     ["Denial reason",      claim.claim_header.denial_reason_text?.value || (claim.claim_header.denial_reason_codes?.value || []).join(", ") || "—"],
     ["Appeal deadline",    claim.claim_header.appeal_deadline?.value || "—"],
   ]);
+  }
 
   // Appeal argument
-  if (verdict.appeal_readiness.applicable) {
+  if (has('argument') && verdict.appeal_readiness.applicable) {
     addSectionHeader(ctx, "Appeal Argument");
     if (verdict.appeal_readiness.argument) {
       addBody(ctx, verdict.appeal_readiness.argument);
@@ -76,6 +99,7 @@ export function exportAppealPacketPDF(args: AppealPacketArgs) {
   }
 
   // Service validation
+  if (has('service')) {
   addSectionHeader(ctx, "Service Validation");
   addBody(ctx, verdict.service_match.why);
   if (verdict.service_match.modifier_issues.length > 0) {
@@ -83,9 +107,10 @@ export function exportAppealPacketPDF(args: AppealPacketArgs) {
     addTitle(ctx, "Modifier issues", 11);
     verdict.service_match.modifier_issues.forEach((m) => addBullet(ctx, m));
   }
+  }
 
   // Diagnosis matrix
-  if (verdict.diagnosis_support_matrix.length > 0) {
+  if (has('diagnosis') && verdict.diagnosis_support_matrix.length > 0) {
     addSectionHeader(ctx, "Diagnosis Support Matrix");
     verdict.diagnosis_support_matrix.forEach((dx) => {
       addTitle(ctx, `${dx.diagnosis} — ${dx.support_strength.toUpperCase()}`, 11);
@@ -106,6 +131,7 @@ export function exportAppealPacketPDF(args: AppealPacketArgs) {
   }
 
   // Medical necessity
+  if (has('medical-necessity')) {
   addSectionHeader(ctx, "Medical Necessity");
   addBody(ctx, verdict.medical_necessity.why);
   addKeyValueGrid(ctx, [
@@ -118,8 +144,10 @@ export function exportAppealPacketPDF(args: AppealPacketArgs) {
     addTitle(ctx, "Missing elements", 11);
     verdict.medical_necessity.missing_elements.forEach((m) => addBullet(ctx, m));
   }
+  }
 
   // Time
+  if (has('time')) {
   addSectionHeader(ctx, "Time Validation");
   addTable(ctx,
     [
@@ -137,9 +165,10 @@ export function exportAppealPacketPDF(args: AppealPacketArgs) {
     addTitle(ctx, "Issues", 11);
     verdict.time_support.issues.forEach((i) => addBullet(ctx, i));
   }
+  }
 
   // Med management (if applicable)
-  if (verdict.med_management_support.applies) {
+  if (has('med-mgmt') && verdict.med_management_support.applies) {
     addSectionHeader(ctx, "Medication Management Support");
     addKeyValueGrid(ctx, [
       ["Verdict",                verdict.med_management_support.verdict],
@@ -156,7 +185,7 @@ export function exportAppealPacketPDF(args: AppealPacketArgs) {
   }
 
   // Contradictions
-  if (verdict.contradictions.length > 0) {
+  if (has('contradictions') && verdict.contradictions.length > 0) {
     addSectionHeader(ctx, "Contradictions");
     verdict.contradictions.forEach((c) => {
       addAlertBox(ctx, `A: ${c.statement_a}\nB: ${c.statement_b}\n\nWhy: ${c.why}`, c.severity === "high" ? "error" : c.severity === "medium" ? "warning" : "info", `${c.type.replace(/_/g, " ")} · ${c.severity}`);
@@ -164,7 +193,7 @@ export function exportAppealPacketPDF(args: AppealPacketArgs) {
   }
 
   // Action checklist
-  if (verdict.actions.length > 0) {
+  if (has('actions') && verdict.actions.length > 0) {
     addSectionHeader(ctx, "Action Checklist");
     verdict.actions.forEach((a, i) => {
       addBullet(ctx, `[${a.priority.toUpperCase()}] ${a.action}  —  Issue: ${a.issue}`);
@@ -172,7 +201,7 @@ export function exportAppealPacketPDF(args: AppealPacketArgs) {
   }
 
   // Note signals
-  if (note) {
+  if (has('note-signals') && note) {
     addDivider(ctx);
     addSectionHeader(ctx, "Clinical Note Signals");
     addKeyValueGrid(ctx, [

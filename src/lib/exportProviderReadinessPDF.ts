@@ -10,8 +10,21 @@ import {
   type ScoreCardItem,
 } from './pdfHelpers';
 
-export function exportProviderReadinessPDF(stats: ProviderDashboardStats) {
+export const PROVIDER_READINESS_SECTIONS = [
+  { id: 'scorecards', label: 'Top-Line Score Cards', description: 'Cases reviewed, weakness, vuln, etc.' },
+  { id: 'cost', label: 'Avoidable Denial Cost', description: 'Exposure breakdown by root cause' },
+  { id: 'themes', label: 'Recurring Themes', description: 'Recurring documentation patterns' },
+  { id: 'correctable', label: 'Correctable Patterns', description: 'High-leverage fixes' },
+  { id: 'high-risk', label: 'High-Risk Behaviors', description: 'Operational risk patterns' },
+  { id: 'interventions', label: 'Recommended Interventions', description: 'Prioritized program actions' },
+  { id: 'vulnerabilities', label: 'Top Vulnerabilities', description: 'Concise risk list' },
+];
+
+export function exportProviderReadinessPDF(stats: ProviderDashboardStats, sectionIds?: string[]) {
   const ctx = createPDFContext();
+  const allIds = PROVIDER_READINESS_SECTIONS.map(s => s.id);
+  const enabled = new Set(!sectionIds || sectionIds.length === 0 ? allIds : sectionIds);
+  const has = (id: string) => enabled.has(id);
 
   // ── Banner Header ──
   addDocumentHeader(ctx, 'Provider Readiness Summary', 'SOUPY ThinkTank — Compliance & Documentation Analysis');
@@ -19,6 +32,7 @@ export function exportProviderReadinessPDF(stats: ProviderDashboardStats) {
   addSpacer(ctx, 8);
 
   // ── Score Cards (top-line metrics) ──
+  if (has('scorecards')) {
   addScoreCards(ctx, [
     { label: 'Cases Reviewed', value: String(stats.totalCasesReviewed), color: 'brand' },
     { label: 'Doc Weakness', value: String(stats.documentationWeakCases), sublabel: 'Identified', color: stats.documentationWeakCases > 0 ? 'amber' : 'green' },
@@ -26,8 +40,10 @@ export function exportProviderReadinessPDF(stats: ProviderDashboardStats) {
     { label: 'Appeals Not Rec.', value: String(stats.appealsNotWorthPursuing), sublabel: 'Cases', color: stats.appealsNotWorthPursuing > 0 ? 'red' : 'green' },
     { label: 'Education Opps', value: String(stats.staffEducationOpportunities), color: 'blue' },
   ]);
+  }
 
   // ── Avoidable Denial Cost ──
+  if (has('cost')) {
   addSectionHeader(ctx, 'Estimated Avoidable Denial Cost', [185, 28, 28]);
   addAlertBox(ctx, `Total Estimated Exposure: $${stats.estimatedAvoidableDenialCost.toLocaleString()}`, 'error', 'Financial Impact');
   addSpacer(ctx, 4);
@@ -45,9 +61,10 @@ export function exportProviderReadinessPDF(stats: ProviderDashboardStats) {
   ]);
   addBody(ctx, 'Formula: Cases Affected × Average Claim Value × Denial Probability (High: 70%, Medium: 40%, Low: 15%).');
   addSpacer(ctx, 8);
+  }
 
   // ── Recurring Themes ──
-  if (stats.recurringThemes.length > 0) {
+  if (has('themes') && stats.recurringThemes.length > 0) {
     addSectionHeader(ctx, 'Recurring Documentation Themes', [217, 119, 6]);
     stats.recurringThemes.forEach(theme => {
       checkPage(ctx, 70);
@@ -70,7 +87,7 @@ export function exportProviderReadinessPDF(stats: ProviderDashboardStats) {
   }
 
   // ── Correctable Patterns ──
-  if (stats.correctablePatterns.length > 0) {
+  if (has('correctable') && stats.correctablePatterns.length > 0) {
     addSectionHeader(ctx, 'Correctable Patterns', [22, 163, 74]);
     stats.correctablePatterns.forEach(p => {
       checkPage(ctx, 50);
@@ -86,7 +103,7 @@ export function exportProviderReadinessPDF(stats: ProviderDashboardStats) {
   }
 
   // ── High-Risk Behaviors ──
-  if (stats.highRiskBehaviors.length > 0) {
+  if (has('high-risk') && stats.highRiskBehaviors.length > 0) {
     addSectionHeader(ctx, 'High-Risk Operational Behaviors', [185, 28, 28]);
     stats.highRiskBehaviors.forEach(b => {
       checkPage(ctx, 50);
@@ -99,7 +116,7 @@ export function exportProviderReadinessPDF(stats: ProviderDashboardStats) {
   }
 
   // ── Recommended Interventions ──
-  if (stats.recommendedInterventions.length > 0) {
+  if (has('interventions') && stats.recommendedInterventions.length > 0) {
     addSectionHeader(ctx, 'Recommended Interventions');
     stats.recommendedInterventions.forEach(int => {
       checkPage(ctx, 60);
@@ -120,7 +137,7 @@ export function exportProviderReadinessPDF(stats: ProviderDashboardStats) {
   }
 
   // ── Top Vulnerabilities ──
-  if (stats.topVulnerabilities.length > 0) {
+  if (has('vulnerabilities') && stats.topVulnerabilities.length > 0) {
     addSectionHeader(ctx, 'Top Vulnerabilities', [185, 28, 28]);
     stats.topVulnerabilities.forEach(v => addBullet(ctx, v));
     addSpacer(ctx, 6);

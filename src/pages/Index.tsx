@@ -22,7 +22,8 @@ import type { AuditCase, AuditPosture, SOUPYConfig } from '@/lib/types';
 import type { AppMode } from '@/lib/providerTypes';
 import { Scale, Brain, GitCompare, BarChart3, Presentation, Layers, Database, HardDrive, Cpu, LogIn, LogOut, GraduationCap, Stethoscope, FileDown, Ghost, ShieldAlert, Target, Bed, HeartPulse, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { exportPlatformSummaryPDF } from '@/lib/exportPlatformSummary';
+import { exportPlatformSummaryPDF, PLATFORM_SUMMARY_SECTIONS } from '@/lib/exportPlatformSummary';
+import { SectionExportMenu } from '@/components/SectionExportMenu';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -325,15 +326,11 @@ const Index = () => {
                 Present
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-xs text-muted-foreground"
-              onClick={() => { exportPlatformSummaryPDF(); toast.success('PDF downloaded'); }}
-            >
-              <FileDown className="h-3.5 w-3.5" />
-              Export
-            </Button>
+            <SectionExportMenu
+              sections={PLATFORM_SUMMARY_SECTIONS}
+              buttonLabel="Export"
+              onExport={(ids) => { exportPlatformSummaryPDF(ids); toast.success('PDF downloaded'); }}
+            />
             <div className="w-px h-4 bg-border mx-0.5" />
             {/* Data source toggle */}
             <div className="flex items-center rounded-md border overflow-hidden">

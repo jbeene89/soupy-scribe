@@ -11,7 +11,8 @@ import {
   ROOT_CAUSE_LABELS, REMEDIATION_TYPE_LABELS,
   PATTERN_SEVERITY_LABELS, PATTERN_SEVERITY_COLORS,
 } from '@/lib/providerReadinessEngine';
-import { exportProviderReadinessPDF } from '@/lib/exportProviderReadinessPDF';
+import { exportProviderReadinessPDF, PROVIDER_READINESS_SECTIONS } from '@/lib/exportProviderReadinessPDF';
+import { SectionExportMenu } from '@/components/SectionExportMenu';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -91,18 +92,14 @@ export function ProviderDashboard({ dataSource = 'mock' }: ProviderDashboardProp
                     focus on prevention, not just appeals.
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 shrink-0"
-                  onClick={() => {
-                    exportProviderReadinessPDF(stats);
+                <SectionExportMenu
+                  sections={PROVIDER_READINESS_SECTIONS}
+                  buttonLabel="Export PDF"
+                  onExport={(ids) => {
+                    exportProviderReadinessPDF(stats, ids);
                     toast.success('Provider readiness PDF downloaded');
                   }}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Export PDF
-                </Button>
+                />
               </div>
             </div>
           </div>
