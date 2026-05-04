@@ -492,7 +492,7 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
     }
   };
 
-  const exportAppealPacket = () => {
+  const exportAppealPacket = (sectionIds?: string[]) => {
     if (!activeFile?.claim || !activeFile.crosswalkVerdict) return;
     try {
       exportAppealPacketPDF({
@@ -501,6 +501,7 @@ export function ClaimParserView({ onCaseCreated, onBack, initialClaim }: Props) 
         verdict: activeFile.crosswalkVerdict,
         sourceFileName: activeFile.ingested.source.fileName,
         noteFileName: activeFile.noteFileName ?? undefined,
+        sections: sectionIds,
       });
       toast.success("Appeal packet PDF generated");
     } catch (e: any) {
