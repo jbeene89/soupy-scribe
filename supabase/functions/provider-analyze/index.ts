@@ -234,7 +234,7 @@ Case Details:
 - Date of Service: ${auditCase.date_of_service}
 - Physician: ${auditCase.physician_name}
 - Clinical Summary: ${(auditCase.metadata as any)?.summary || "Not available"}
-- Source Documentation: ${auditCase.source_text?.substring(0, 4000) || "Not available"}
+- Source Documentation: ${auditCase.source_text ? prepareLongContextSync(auditCase.source_text, 50_000) : "Not available"}
 `;
 
       const readinessResult = await callAI(
