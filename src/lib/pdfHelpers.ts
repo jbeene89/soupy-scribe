@@ -110,14 +110,16 @@ export function addDocumentHeader(ctx: PDFContext, title: string, subtitle?: str
 
 /* ─── Section Header (colored left bar) ─── */
 export function addSectionHeader(ctx: PDFContext, text: string, color: RGB = COLORS.brand) {
-  checkPage(ctx, 36);
-  ctx.doc.setFillColor(...color);
-  ctx.doc.rect(ctx.margin, ctx.y - 12, 4, 18, 'F');
   ctx.doc.setFont('helvetica', 'bold');
   ctx.doc.setFontSize(14);
+  const lines = ctx.doc.splitTextToSize(text, ctx.maxWidth - 16);
+  const blockH = lines.length * 18 + 8;
+  checkPage(ctx, blockH);
+  ctx.doc.setFillColor(...color);
+  ctx.doc.rect(ctx.margin, ctx.y - 12, 4, 18, 'F');
   ctx.doc.setTextColor(...color);
-  ctx.doc.text(text, ctx.margin + 12, ctx.y);
-  ctx.y += 20;
+  ctx.doc.text(lines, ctx.margin + 12, ctx.y);
+  ctx.y += (lines.length - 1) * 18 + 20;
 }
 
 /* ─── Titles & Text ─── */
@@ -131,12 +133,13 @@ export function addTitle(ctx: PDFContext, text: string, size = 14) {
 }
 
 export function addSubtitle(ctx: PDFContext, text: string, size = 11) {
-  checkPage(ctx, size + 12);
   ctx.doc.setFont('helvetica', 'bold');
   ctx.doc.setFontSize(size);
+  const lines = ctx.doc.splitTextToSize(text, ctx.maxWidth);
+  checkPage(ctx, lines.length * (size + 3) + 6);
   ctx.doc.setTextColor(...COLORS.brandLight);
-  ctx.doc.text(text, ctx.margin, ctx.y);
-  ctx.y += size + 4;
+  ctx.doc.text(lines, ctx.margin, ctx.y);
+  ctx.y += lines.length * (size + 3) + 2;
 }
 
 export function addBody(ctx: PDFContext, text: string, size = 9.5) {
@@ -345,15 +348,22 @@ export function addFooter(ctx: PDFContext, text: string) {
 export function addKeyValueGrid(ctx: PDFContext, pairs: [string, string][]) {
   const colW = ctx.maxWidth / 2;
   for (let i = 0; i < pairs.length; i += 2) {
-    checkPage(ctx, 16);
-    // Left
+    // Compute row height based on wrapped text
+    const leftH = kvCellHeight(ctx, colW, pairs[i][1]);
+    const rightH = (i + 1 < pairs.length) ? kvCellHeight(ctx, colW, pairs[i + 1][1]) : 0;
+    const rowH = Math.max(leftH, rightH, 16);
+    checkPage(ctx, rowH);
     drawKVCell(ctx, ctx.margin, ctx.y, colW, pairs[i][0], pairs[i][1]);
-    // Right
-    if (i + 1 < pairs.length) {
-      drawKVCell(ctx, ctx.margin + colW, ctx.y, colW, pairs[i + 1][0], pairs[i + 1][1]);
-    }
-    ctx.y += 16;
+    if (i + 1 < pairs.length) drawKVCell(ctx, ctx.margin + colW, ctx.y, colW, pairs[i + 1][0], pairs[i + 1][1]);
+    ctx.y += rowH;
   }
+}
+
+function kvCellHeight(ctx: PDFContext, w: number, value: string): number {
+  ctx.doc.setFont('helvetica', 'normal');
+  ctx.doc.setFontSize(9.5);
+  const lines = ctx.doc.splitTextToSize(value, w - 8);
+  return 10 + lines.length * 12.5;
 }
 
 function drawKVCell(ctx: PDFContext, x: number, y: number, w: number, key: string, value: string) {
