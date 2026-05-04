@@ -59,7 +59,7 @@ import {
   classifyRuleDependencies, deriveCaseAuditBasis,
   AUDIT_BASIS_LABELS,
 } from '@/lib/ruleDependency';
-import { saveDecision, type AuditDecision } from '@/lib/caseService';
+import { saveDecision, runSOUPYAnalysis, type AuditDecision } from '@/lib/caseService';
 
 interface AuditDetailProps {
   auditCase: AuditCase;
@@ -86,6 +86,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
   // Pre-appeal resolution (live)
   const [preAppealResolution, setPreAppealResolution] = useState<PreAppealResolution | null>(null);
   const [runningPreAppeal, setRunningPreAppeal] = useState(false);
+  const [runningAnalysis, setRunningAnalysis] = useState(false);
 
   useEffect(() => {
     if (!isLiveCase || !hasAnalyses) return;
