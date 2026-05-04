@@ -536,7 +536,24 @@ serve(async (req) => {
       }
 
       const summary = (auditCase.metadata as any)?.summary || "Not available";
-      const sourceTextTrunc = auditCase.source_text?.substring(0, 3000) || "Not available";
+      // ── Long-context handling: priority extraction + AI summary instead of 3k truncation ──
+      const { prepared: sourceTextTrunc, manifest: longCtxManifest } = auditCase.source_text
+        ? await prepareLongContext(auditCase.source_text, LOVABLE_API_KEY)
+        : { prepared: "Not available", manifest: { strategy: "none" } };
+      console.log("Long-context manifest:", JSON.stringify(longCtxManifest));
+
+      // ── Zero-day / novel-code detection (relaxed anchor posture) ──
+      const novelCodes = detectNovelCodes(auditCase.cpt_codes || []);
+      if (novelCodes.length > 0) {
+        await supabase.from("novel_code_cases").insert({
+          case_id: caseId,
+          novel_codes: novelCodes,
+          posture: "relaxed_anchor",
+          rationale: `Unmapped/unlisted codes detected: ${novelCodes.join(", ")}. Engine routed to relaxed-anchor posture and human review.`,
+          requires_human_review: true,
+        });
+        console.log(`Novel codes detected, relaxed-anchor posture: ${novelCodes.join(", ")}`);
+      }
 
       // ── Module 9: Source Reliability Weighting ──
       const { data: sourceWeights } = await supabase
