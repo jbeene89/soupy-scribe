@@ -365,16 +365,17 @@ function drawKVCell(ctx: PDFContext, x: number, y: number, w: number, key: strin
   ctx.doc.setFontSize(9.5);
   ctx.doc.setTextColor(...COLORS.textDark);
   const valLines = ctx.doc.splitTextToSize(value, w - 8);
-  ctx.doc.text(valLines[0] || '', x + 4, y + 10);
+  ctx.doc.text(valLines, x + 4, y + 10);
 }
 
 /* ─── Table ─── */
 export interface TableColumn { header: string; width: number; align?: 'left' | 'center' | 'right'; }
 
 export function addTable(ctx: PDFContext, columns: TableColumn[], rows: string[][]) {
-  const rowH = 18;
+  const lineH = 11;
+  const rowPadV = 6;
   const headerH = 20;
-  checkPage(ctx, headerH + rowH * Math.min(rows.length, 3));
+  checkPage(ctx, headerH + 24);
 
   // Header
   ctx.doc.setFillColor(...COLORS.sectionBg);
@@ -394,6 +395,12 @@ export function addTable(ctx: PDFContext, columns: TableColumn[], rows: string[]
   ctx.doc.setFont('helvetica', 'normal');
   ctx.doc.setFontSize(9);
   rows.forEach((row, ri) => {
+    // Pre-wrap every cell to compute the row's natural height
+    const wrapped = columns.map((col, ci) =>
+      ctx.doc.splitTextToSize(row[ci] || '', col.width - 12)
+    );
+    const maxLines = Math.max(1, ...wrapped.map(w => w.length));
+    const rowH = maxLines * lineH + rowPadV * 2;
     checkPage(ctx, rowH);
     if (ri % 2 === 1) {
       ctx.doc.setFillColor(250, 250, 252);
@@ -403,8 +410,7 @@ export function addTable(ctx: PDFContext, columns: TableColumn[], rows: string[]
     let rx = ctx.margin;
     columns.forEach((col, ci) => {
       const ax = col.align === 'right' ? rx + col.width - 6 : col.align === 'center' ? rx + col.width / 2 : rx + 6;
-      const cellText = ctx.doc.splitTextToSize(row[ci] || '', col.width - 12)[0] || '';
-      ctx.doc.text(cellText, ax, ctx.y + 12, { align: col.align || 'left' });
+      ctx.doc.text(wrapped[ci], ax, ctx.y + rowPadV + 9, { align: col.align || 'left' });
       rx += col.width;
     });
     ctx.y += rowH;
