@@ -348,6 +348,54 @@ export type Database = {
           },
         ]
       }
+      cdi_findings: {
+        Row: {
+          case_id: string
+          created_at: string
+          current_code: string | null
+          description: string
+          estimated_revenue_impact: number | null
+          evidence_excerpt: string | null
+          finding_type: string
+          id: string
+          rationale: string | null
+          severity: string
+          status: string
+          suggested_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          current_code?: string | null
+          description: string
+          estimated_revenue_impact?: number | null
+          evidence_excerpt?: string | null
+          finding_type?: string
+          id?: string
+          rationale?: string | null
+          severity?: string
+          status?: string
+          suggested_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          current_code?: string | null
+          description?: string
+          estimated_revenue_impact?: number | null
+          evidence_excerpt?: string | null
+          finding_type?: string
+          id?: string
+          rationale?: string | null
+          severity?: string
+          status?: string
+          suggested_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       code_combinations: {
         Row: {
           case_id: string | null
@@ -1710,6 +1758,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      revenue_integrity_findings: {
+        Row: {
+          claim_id: string | null
+          created_at: string
+          date_of_service: string | null
+          description: string | null
+          expected_amount: number | null
+          finding_type: string
+          id: string
+          notes: string | null
+          org_id: string | null
+          owner_id: string | null
+          paid_amount: number | null
+          patient_id: string | null
+          payer_code: string | null
+          payer_name: string | null
+          severity: string
+          source_data: Json | null
+          status: string
+          updated_at: string
+          variance_amount: number | null
+        }
+        Insert: {
+          claim_id?: string | null
+          created_at?: string
+          date_of_service?: string | null
+          description?: string | null
+          expected_amount?: number | null
+          finding_type?: string
+          id?: string
+          notes?: string | null
+          org_id?: string | null
+          owner_id?: string | null
+          paid_amount?: number | null
+          patient_id?: string | null
+          payer_code?: string | null
+          payer_name?: string | null
+          severity?: string
+          source_data?: Json | null
+          status?: string
+          updated_at?: string
+          variance_amount?: number | null
+        }
+        Update: {
+          claim_id?: string | null
+          created_at?: string
+          date_of_service?: string | null
+          description?: string | null
+          expected_amount?: number | null
+          finding_type?: string
+          id?: string
+          notes?: string | null
+          org_id?: string | null
+          owner_id?: string | null
+          paid_amount?: number | null
+          patient_id?: string | null
+          payer_code?: string | null
+          payer_name?: string | null
+          severity?: string
+          source_data?: Json | null
+          status?: string
+          updated_at?: string
+          variance_amount?: number | null
+        }
+        Relationships: []
       }
       source_weights: {
         Row: {
