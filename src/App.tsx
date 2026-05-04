@@ -18,6 +18,7 @@ import AppHistory from "./pages/AppHistory";
 import AppInbox from "./pages/AppInbox";
 import AppSystemImpact from "./pages/AppSystemImpact";
 import AppImaging from "./pages/AppImaging";
+import AppRevenueIntegrity from "./pages/AppRevenueIntegrity";
 import Unsubscribe from "./pages/Unsubscribe";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="inbox" element={<AppInbox />} />
               <Route path="system-impact" element={<AppSystemImpact />} />
               <Route path="imaging" element={<AppImaging />} />
+              <Route path="revenue-integrity" element={<AppRevenueIntegrity />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
