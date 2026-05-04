@@ -68,9 +68,11 @@ export type Database = {
           evidence_package: Json | null
           failure_factors: Json | null
           id: string
+          is_quarantined: boolean
           notes: string | null
           outcome: string
           payer_code: string | null
+          quarantine_reason: string | null
           success_factors: Json | null
         }
         Insert: {
@@ -82,9 +84,11 @@ export type Database = {
           evidence_package?: Json | null
           failure_factors?: Json | null
           id?: string
+          is_quarantined?: boolean
           notes?: string | null
           outcome: string
           payer_code?: string | null
+          quarantine_reason?: string | null
           success_factors?: Json | null
         }
         Update: {
@@ -96,9 +100,11 @@ export type Database = {
           evidence_package?: Json | null
           failure_factors?: Json | null
           id?: string
+          is_quarantined?: boolean
           notes?: string | null
           outcome?: string
           payer_code?: string | null
+          quarantine_reason?: string | null
           success_factors?: Json | null
         }
         Relationships: [
@@ -1141,6 +1147,36 @@ export type Database = {
           },
         ]
       }
+      novel_code_cases: {
+        Row: {
+          case_id: string
+          created_at: string
+          id: string
+          novel_codes: string[]
+          posture: string
+          rationale: string | null
+          requires_human_review: boolean
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          id?: string
+          novel_codes?: string[]
+          posture?: string
+          rationale?: string | null
+          requires_human_review?: boolean
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          id?: string
+          novel_codes?: string[]
+          posture?: string
+          rationale?: string | null
+          requires_human_review?: boolean
+        }
+        Relationships: []
+      }
       or_readiness_events: {
         Row: {
           case_id: string | null
@@ -1343,6 +1379,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payer_anomaly_flags: {
+        Row: {
+          anomaly_type: string
+          created_at: string
+          denial_count: number
+          description: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          payer_code: string
+          severity: string
+          updated_at: string
+          window_days: number
+        }
+        Insert: {
+          anomaly_type: string
+          created_at?: string
+          denial_count?: number
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          payer_code: string
+          severity?: string
+          updated_at?: string
+          window_days?: number
+        }
+        Update: {
+          anomaly_type?: string
+          created_at?: string
+          denial_count?: number
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          payer_code?: string
+          severity?: string
+          updated_at?: string
+          window_days?: number
+        }
+        Relationships: []
       }
       payer_profiles: {
         Row: {
