@@ -59,7 +59,7 @@ import {
   classifyRuleDependencies, deriveCaseAuditBasis,
   AUDIT_BASIS_LABELS,
 } from '@/lib/ruleDependency';
-import { saveDecision, type AuditDecision } from '@/lib/caseService';
+import { saveDecision, runSOUPYAnalysis, type AuditDecision } from '@/lib/caseService';
 
 interface AuditDetailProps {
   auditCase: AuditCase;
@@ -86,6 +86,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
   // Pre-appeal resolution (live)
   const [preAppealResolution, setPreAppealResolution] = useState<PreAppealResolution | null>(null);
   const [runningPreAppeal, setRunningPreAppeal] = useState(false);
+  const [runningAnalysis, setRunningAnalysis] = useState(false);
 
   useEffect(() => {
     if (!isLiveCase || !hasAnalyses) return;
@@ -733,7 +734,34 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
               The risk score and data shown above are from initial intake screening. 
               Run the full SOUPY multi-model analysis to generate comprehensive evidence review, violation assessment, and action recommendations.
             </p>
-            <Button className="mt-4" size="sm">Run SOUPY Analysis</Button>
+            <AuthGate
+              fallback={<Button className="mt-4" size="sm" disabled>Sign in to Run Analysis</Button>}
+            >
+              <Button
+                className="mt-4"
+                size="sm"
+                disabled={runningAnalysis}
+                onClick={async () => {
+                  setRunningAnalysis(true);
+                  try {
+                    await runSOUPYAnalysis(auditCase.id);
+                    toast.success('SOUPY analysis complete. Refreshing...');
+                    // Reload to pull updated analyses
+                    setTimeout(() => window.location.reload(), 600);
+                  } catch (err: any) {
+                    toast.error(err?.message || 'Analysis failed');
+                  } finally {
+                    setRunningAnalysis(false);
+                  }
+                }}
+              >
+                {runningAnalysis ? (
+                  <><Activity className="h-4 w-4 animate-spin mr-1.5" />Running SOUPY...</>
+                ) : (
+                  'Run SOUPY Analysis'
+                )}
+              </Button>
+            </AuthGate>
           </div>
           {auditCase.riskScore && (
             <div className="mt-4 pt-4 border-t border-border">
