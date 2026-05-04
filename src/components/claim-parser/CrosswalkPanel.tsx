@@ -7,6 +7,8 @@ import {
   Loader2, AlertCircle, RefreshCw, ShieldCheck, FileSearch, Stethoscope, ClipboardList,
   Clock, AlertTriangle, ListChecks, Gavel, FileText, Pill, Brain, Download,
 } from "lucide-react";
+import { SectionExportMenu } from "@/components/SectionExportMenu";
+import { APPEAL_PACKET_SECTIONS } from "@/lib/exportAppealPacketPDF";
 import { cn } from "@/lib/utils";
 import {
   type CrosswalkVerdict, type ParsedNote, DECISION_META, strengthTone, priorityTone,
@@ -24,7 +26,7 @@ interface CrosswalkPanelProps {
   onSetNote: (note: IngestedNote) => void;
   onClearNote: () => void;
   onRun: () => void;
-  onExportAppealPacket: () => void;
+  onExportAppealPacket: (sectionIds?: string[]) => void;
 }
 
 export function CrosswalkPanel({
@@ -45,9 +47,11 @@ export function CrosswalkPanel({
           </CardTitle>
           <div className="flex gap-2">
             {showAppealButton && (
-              <Button size="sm" variant="outline" onClick={onExportAppealPacket} className="gap-1.5">
-                <Download className="h-3.5 w-3.5" /> Appeal Packet PDF
-              </Button>
+              <SectionExportMenu
+                sections={APPEAL_PACKET_SECTIONS}
+                buttonLabel="Appeal Packet PDF"
+                onExport={(ids) => onExportAppealPacket(ids)}
+              />
             )}
             <Button
               size="sm"
