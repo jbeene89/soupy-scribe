@@ -569,6 +569,35 @@ export function vendorSignalLabel(s: VendorAnomaly["signal"]) {
   } as const)[s];
 }
 
+/* ── Cross-vendor join helpers (Contracts ↔ Anomalies ↔ Deals) ── */
+
+export interface VendorCrossRef {
+  contract: VendorContract | undefined;
+  anomalies: VendorAnomaly[];
+  deals: VendorDeal[];
+  anomalyDollarsK: number;
+  dealAnnualK: number;
+  dealOneTimeK: number;
+  totalUpsideK: number; // anomaly $ + deal annual + deal one-time
+}
+
+export function getVendorCrossRef(key: VendorKey): VendorCrossRef {
+  const anomalies = VENDOR_ANOMALIES.filter(a => a.vendorKey === key);
+  const deals = VENDOR_DEALS.filter(d => d.vendorKey === key);
+  const anomalyDollarsK = anomalies.reduce((s, a) => s + a.amountK, 0);
+  const dealAnnualK = deals.reduce((s, d) => s + d.estAnnualSavingsK, 0);
+  const dealOneTimeK = deals.reduce((s, d) => s + d.oneTimeSavingsK, 0);
+  return {
+    contract: VENDOR_CONTRACTS.find(c => c.vendorKey === key),
+    anomalies,
+    deals,
+    anomalyDollarsK,
+    dealAnnualK,
+    dealOneTimeK,
+    totalUpsideK: anomalyDollarsK + dealAnnualK + dealOneTimeK,
+  };
+}
+
 /** Deterministic weekly brief generator from current data. */
 export function generateWeeklyBrief(): {
   whatChanged: string[];
