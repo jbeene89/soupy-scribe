@@ -91,6 +91,37 @@ Separates six concepts surfaced in `GovernancePanel`:
 - ROI Calculator, Pricing Section, Pilot Pipeline, Platform Enhancement Map, Landing page
 - Phase 0 **Shadow Audit** workflow for prospect conversion
 
+### Strategic Analytical Tools (`/app/strategic-tools`)
+High-signal differentiators surfaced in a single tabbed workspace:
+
+| Tool | Purpose |
+|------|---------|
+| **Audit the Auditor** | Audits payer denial letters for medical-policy misapplication, ERISA defects, and state prompt-pay violations; drafts a state-DOI complaint. Backed by `audit-the-auditor` edge function (Gemini 2.5 Flash). |
+| **Counterfactual Coding** | Identifies documentation gaps (e.g., Sepsis vs Bacteremia, AKI specificity) and quantifies the **$ delta + CMI impact** of a potential DRG shift. |
+| **Contract Leakage Detector** | Scans X12 835 remits against a reference fee schedule, flagging underpayments and silent denials by CPT. |
+| **Regulatory Clock Tracker** | Computes state-specific (30+ states) and payer-specific (ERISA, MA, Medicaid MCO) appeal deadlines and clean-claim clocks. |
+| **Denial Drift & Reviewer Fingerprinting** | Detects accelerating CARC/RARC codes (last 30d vs prior 30d) and clusters denials by boilerplate signatures to identify specific MD reviewer bias. |
+| **Appeal Letter A/B Testing** | Tracks variants of appeal letters per (payer, denial-reason) combo and records overturn outcomes. |
+| **Documentation Debt Scoring** | Per-physician documentation-debt scores with remediation pathways. |
+| **Prior-Auth / Outcome Predictor** | Per-payer outcome prediction with strength/weakness factors and remediation pathways. |
+
+### Integration Depth (`/app/ehr`)
+- **SMART-on-FHIR** launch (beyond file upload)
+- **Bulk FHIR `$export`** support
+- **HL7 v2** ADT/DFT fallback ingest (`src/lib/hl7v2Ingest.ts`)
+- **X12** 837 / 835 / 277 claim + remit parsing (`src/lib/x12Ingest.ts`)
+- Epic App Orchard / Cerner Code listing path documented
+- SSO: SAML + SCIM provisioning
+
+### AI Governance (`/ai-governance`)
+Public-facing AI trust surface:
+- Per-agent **model cards** (provider, version, eval scores, known failure modes)
+- "No PHI used for training" attestation
+- Hallucination rate / confidence calibration metrics
+- Human-in-the-loop checkpoint documentation
+- Prompt-injection defenses
+- NIST AI RMF + ISO 42001 alignment statement
+
 ### Email Infrastructure
 - Transactional templates (inbox notification, inbox reply) via React Email
 - Suppression + unsubscribe handling, queue processor, preview function
@@ -108,6 +139,11 @@ Separates six concepts surfaced in `GovernancePanel`:
 | `/` | `Landing` | Public |
 | `/auth` | `Auth` | Public |
 | `/unsubscribe` | `Unsubscribe` | Public |
+| `/trust` | `Trust` | Public |
+| `/security` | `Security` | Public |
+| `/sub-processors` | `SubProcessors` | Public |
+| `/status` | `Status` | Public |
+| `/ai-governance` | `AIGovernance` | Public |
 | `/app` | `Index` (mode gate) | Protected |
 | `/app/dashboard` | `AppDashboard` | Protected |
 | `/app/cases` | `AppCases` | Protected |
@@ -119,6 +155,8 @@ Separates six concepts surfaced in `GovernancePanel`:
 | `/app/system-impact` | `AppSystemImpact` | Protected |
 | `/app/inbox` | `AppInbox` | Protected |
 | `/app/platform` | `AppPlatform` | Protected |
+| `/app/ehr` | `AppEHR` (integration depth) | Protected |
+| `/app/strategic-tools` | `AppStrategicTools` | Protected |
 
 See [`mem://architecture/access-control`] for the public/protected split policy.
 
@@ -139,6 +177,7 @@ See [`mem://architecture/access-control`] for the public/protected split policy.
 | `note-parse-structured` | Generic structured note parser |
 | `imaging-analyze` | Imaging case analysis |
 | `imaging-ftd-review` | Imaging fitness-to-defend review |
+| `audit-the-auditor` | Payer denial-letter defect audit + DOI complaint draft |
 | `soupy-engine` | Engine health, ghost cases, gold set, calibration, payer profiles |
 | `send-transactional-email` | Outbound transactional email |
 | `process-email-queue` | Email queue worker |
@@ -167,6 +206,15 @@ Shared helpers in `supabase/functions/_shared/` (`longContext.ts`, transactional
 | `erAcuteService.ts` / `supplyService.ts` / `cdiService.ts` / `crosswalkService.ts` / `parsedClaimService.ts` / `revenueIntegrityService.ts` / `systemImpactService.ts` | Module services |
 | `defensePacketBuilder.ts` | Minimal winning packet builder |
 | `fileTextExtractor.ts` | Multi-format upload text extraction |
+| `hl7v2Ingest.ts` | HL7 v2 ADT/DFT message parser |
+| `x12Ingest.ts` | X12 837/835/277 claim + remit parser |
+| `counterfactualCoding.ts` | DRG-shift $ delta + CMI impact engine |
+| `contractLeakage.ts` | 835 vs fee-schedule underpayment detector |
+| `regulatoryClock.ts` | State + payer appeal-deadline / clean-claim clocks |
+| `denialDrift.ts` | CARC/RARC drift detection + reviewer-fingerprint clustering |
+| `appealABTest.ts` | Appeal letter variant tracking + overturn outcomes |
+| `documentationDebt.ts` | Per-physician documentation-debt scoring |
+| `priorAuthPredictor.ts` | Per-payer prior-auth outcome predictor |
 | `pdfHelpers.ts` | Standardized PDF layout helpers |
 | `exportAppealPacketPDF.ts` / `exportCaseReportPDF.ts` / `exportOperationalPDF.ts` / `exportProviderCaseDetailPDF.ts` / `exportProviderReadinessPDF.ts` / `exportPlatformSummary.ts` | PDF exports |
 
