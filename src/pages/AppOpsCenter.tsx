@@ -1045,6 +1045,7 @@ function VendorAnomalies() {
                 <div className="text-[10px] text-muted-foreground">{a.detected}</div>
               </div>
             </div>
+            <VendorSubmissions vendorKey={a.vendorKey} scope="anomaly" scopeRef={a.id} label={a.id} />
           </div>
         ))}
       </div>
