@@ -723,7 +723,14 @@ function PAPredictor() {
       </Card>
 
       <Card className="p-5 space-y-3">
-        <h3 className="font-semibold text-sm">Prediction</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Prediction</h3>
+          {result && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => copyJson(result, "Prediction")}>
+              <Copy className="h-3 w-3" />Copy JSON
+            </Button>
+          )}
+        </div>
         {!result && <p className="text-xs text-muted-foreground">Paste a narrative to see outcome prediction.</p>}
         {result && (
           <div className="space-y-3 text-xs">
