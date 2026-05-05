@@ -26,6 +26,7 @@ import Status from "./pages/Status";
 import SubProcessors from "./pages/SubProcessors";
 import Security from "./pages/Security";
 import AIGovernance from "./pages/AIGovernance";
+import AppStrategicTools from "./pages/AppStrategicTools";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="imaging" element={<AppImaging />} />
               <Route path="revenue-integrity" element={<AppRevenueIntegrity />} />
               <Route path="ehr" element={<AppEHR />} />
+              <Route path="strategic-tools" element={<AppStrategicTools />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
