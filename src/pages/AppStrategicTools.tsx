@@ -371,7 +371,17 @@ function Clocks() {
         </div>
       </Card>
       <Card className="p-5 space-y-3 lg:col-span-2">
-        <h3 className="font-semibold text-sm">Active clocks ({events.length})</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Active clocks ({events.length})</h3>
+          {events.length > 0 && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+              ["Label", "Due date", "Days remaining", "Severity", "Basis"],
+              ...events.map(ev => [ev.label, ev.dueDate.toISOString().slice(0,10), ev.daysRemaining, ev.severity, ev.basis]),
+            ], "regulatory-clocks.csv")}>
+              <Download className="h-3 w-3" />CSV
+            </Button>
+          )}
+        </div>
         <div className="space-y-2">
           {events.map((ev, i) => {
             const color =
