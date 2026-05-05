@@ -8,13 +8,17 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Gavel, Coins, Receipt, Clock, TrendingUp, AlertTriangle, Loader2 } from "lucide-react";
+import { Gavel, Coins, Receipt, Clock, TrendingUp, AlertTriangle, Loader2, FlaskConical, Bell, Stethoscope, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { parseX12, SAMPLE_835 } from "@/lib/x12Ingest";
 import { detectLeakage, defaultFeeSchedule } from "@/lib/contractLeakage";
 import { analyzeCounterfactuals } from "@/lib/counterfactualCoding";
 import { computeClocks, PAYER_TYPES, STATES, type PayerType } from "@/lib/regulatoryClock";
 import { computeDrift, detectReviewerClusters, generateDemoDenials } from "@/lib/denialDrift";
+import { generateDemoAppealData, computeWinners } from "@/lib/appealABTest";
+import { getDemoPolicyChanges, getDemoProviderMix, correlatePolicyImpact } from "@/lib/ncdLcdAlerts";
+import { generateDemoPhysicianDebt, summarizeDebt } from "@/lib/documentationDebt";
+import { predictPriorAuth, PA_PAYERS, PA_COMMON_CODES } from "@/lib/priorAuthPredictor";
 
 const SAMPLE_DENIAL_LETTER = `Dear Provider,
 
@@ -39,12 +43,16 @@ export default function AppStrategicTools() {
       </div>
 
       <Tabs defaultValue="auditor" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-9 h-auto">
           <TabsTrigger value="auditor"><Gavel className="h-3.5 w-3.5 mr-1.5" />Audit the Auditor</TabsTrigger>
           <TabsTrigger value="counterfactual"><Coins className="h-3.5 w-3.5 mr-1.5" />Counterfactual</TabsTrigger>
           <TabsTrigger value="leakage"><Receipt className="h-3.5 w-3.5 mr-1.5" />Contract Leakage</TabsTrigger>
           <TabsTrigger value="clocks"><Clock className="h-3.5 w-3.5 mr-1.5" />Regulatory Clocks</TabsTrigger>
           <TabsTrigger value="drift"><TrendingUp className="h-3.5 w-3.5 mr-1.5" />Denial Drift</TabsTrigger>
+          <TabsTrigger value="abtest"><FlaskConical className="h-3.5 w-3.5 mr-1.5" />Appeal A/B</TabsTrigger>
+          <TabsTrigger value="ncd"><Bell className="h-3.5 w-3.5 mr-1.5" />NCD/LCD Alerts</TabsTrigger>
+          <TabsTrigger value="debt"><Stethoscope className="h-3.5 w-3.5 mr-1.5" />Doc Debt</TabsTrigger>
+          <TabsTrigger value="pa"><ShieldCheck className="h-3.5 w-3.5 mr-1.5" />PA Predictor</TabsTrigger>
         </TabsList>
 
         <TabsContent value="auditor" className="mt-4"><AuditTheAuditor /></TabsContent>
@@ -52,6 +60,10 @@ export default function AppStrategicTools() {
         <TabsContent value="leakage" className="mt-4"><Leakage /></TabsContent>
         <TabsContent value="clocks" className="mt-4"><Clocks /></TabsContent>
         <TabsContent value="drift" className="mt-4"><Drift /></TabsContent>
+        <TabsContent value="abtest" className="mt-4"><AppealAB /></TabsContent>
+        <TabsContent value="ncd" className="mt-4"><NcdAlerts /></TabsContent>
+        <TabsContent value="debt" className="mt-4"><DocDebt /></TabsContent>
+        <TabsContent value="pa" className="mt-4"><PAPredictor /></TabsContent>
       </Tabs>
     </div>
   );
