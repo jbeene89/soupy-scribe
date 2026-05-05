@@ -189,6 +189,37 @@ export default function AppEHR() {
                       {result.warnings.join(' ')}
                     </div>
                   )}
+                  {(result.extensionsRecognized.length + result.extensionsUnmapped.length > 0) && (
+                    <div className="rounded-md border p-2 space-y-1.5">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Vendor extensions</p>
+                      {result.extensionsRecognized.length > 0 && (
+                        <div>
+                          <p className="text-[10px] text-emerald-600 mb-1">Recognized · {result.extensionsRecognized.length}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {result.extensionsRecognized.slice(0, 12).map((u) => (
+                              <Badge key={u} variant="outline" className="text-[10px] font-mono max-w-full truncate">{u.split('/').pop()}</Badge>
+                            ))}
+                            {result.extensionsRecognized.length > 12 && (
+                              <Badge variant="outline" className="text-[10px]">+{result.extensionsRecognized.length - 12} more</Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {result.extensionsUnmapped.length > 0 && (
+                        <div>
+                          <p className="text-[10px] text-amber-600 mb-1">Unmapped · {result.extensionsUnmapped.length} (values still extracted when present)</p>
+                          <div className="flex flex-wrap gap-1">
+                            {result.extensionsUnmapped.slice(0, 8).map((u) => (
+                              <Badge key={u} variant="outline" className="text-[10px] font-mono max-w-full truncate">{u.split('/').pop()}</Badge>
+                            ))}
+                            {result.extensionsUnmapped.length > 8 && (
+                              <Badge variant="outline" className="text-[10px]">+{result.extensionsUnmapped.length - 8} more</Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Normalized text fed to audit pipeline</p>

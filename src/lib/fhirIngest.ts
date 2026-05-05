@@ -27,6 +27,10 @@ export interface FhirIngestResult {
   patientLabel?: string;
   /** Warnings worth surfacing (truncated bundles, unknown structure, etc.). */
   warnings: string[];
+  /** URLs of extensions we recognized and surfaced (for transparency / debugging). */
+  extensionsRecognized: string[];
+  /** URLs of extensions we saw but did not specifically map (still scanned for value). */
+  extensionsUnmapped: string[];
 }
 
 const KNOWN_RESOURCE_TYPES = new Set([
@@ -35,6 +39,209 @@ const KNOWN_RESOURCE_TYPES = new Set([
   'DocumentReference', 'DiagnosticReport', 'ServiceRequest', 'Practitioner',
   'Organization', 'AllergyIntolerance', 'Immunization',
 ]);
+
+/**
+ * Extension URL → friendly label.
+ * Covers US Core (HL7), CARIN, Da Vinci PDex, plus common vendor extensions
+ * (Epic, Cerner, Athena). Lookups are case-sensitive on the canonical URL.
+ */
+const EXTENSION_LABELS: Record<string, string> = {
+  // ===== US Core (HL7) — Patient demographics & social =====
+  'http://hl7.org/fhir/us/core/StructureDefinition/us-core-race': 'US Core Race',
+  'http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity': 'US Core Ethnicity',
+  'http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex': 'US Core Birth Sex',
+  'http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity': 'Gender Identity',
+  'http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex': 'Sex (admin)',
+  'http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation': 'Tribal Affiliation',
+  'http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName': "Mother's Maiden Name",
+  'http://hl7.org/fhir/StructureDefinition/patient-birthPlace': 'Birth Place',
+  'http://hl7.org/fhir/StructureDefinition/patient-religion': 'Religion',
+  'http://hl7.org/fhir/StructureDefinition/patient-nationality': 'Nationality',
+  'http://hl7.org/fhir/StructureDefinition/iso21090-preferred': 'Preferred',
+
+  // ===== US Core — Condition (POA, asserted date) =====
+  'http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-asserted-date': 'Asserted Date',
+  'http://hl7.org/fhir/StructureDefinition/condition-assertedDate': 'Asserted Date',
+  'http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-presentOnAdmission': 'Present on Admission',
+  'http://hl7.org/fhir/StructureDefinition/condition-dueTo': 'Due To',
+
+  // ===== Encounter — Da Vinci / US Core =====
+  'http://hl7.org/fhir/StructureDefinition/encounter-modeOfArrival': 'Mode of Arrival',
+  'http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-levelOfServiceCode': 'Level of Service',
+
+  // ===== Claim / EOB — CARIN / Da Vinci =====
+  'http://hl7.org/fhir/us/davinci-pas/StructureDefinition/extension-authorizationNumber': 'Authorization Number',
+  'http://hl7.org/fhir/us/carin-bb/StructureDefinition/C4BB-AdjudicationDiscriminator': 'Adjudication Discriminator',
+  'http://hl7.org/fhir/us/carin-bb/StructureDefinition/C4BB-PayerProvider': 'Payer-Provider',
+  'http://hl7.org/fhir/us/carin-bb/StructureDefinition/C4BB-DRG': 'DRG',
+
+  // ===== Observation =====
+  'http://hl7.org/fhir/StructureDefinition/observation-bodyPosition': 'Body Position',
+
+  // ===== Epic vendor extensions (commonly seen in real bundles) =====
+  'http://open.epic.com/FHIR/StructureDefinition/extension/legal-sex': 'Epic Legal Sex',
+  'http://open.epic.com/FHIR/StructureDefinition/extension/sex-for-clinical-use': 'Sex for Clinical Use',
+  'http://open.epic.com/FHIR/StructureDefinition/extension/payer-id': 'Epic Payer ID',
+  'http://open.epic.com/FHIR/StructureDefinition/extension/calculated-pregnancy-status': 'Pregnancy Status',
+  'http://open.epic.com/FHIR/StructureDefinition/extension/accommodation-code': 'Accommodation Code',
+  'http://open.epic.com/FHIR/StructureDefinition/extension/admission-source': 'Admission Source (Epic)',
+
+  // ===== Cerner vendor extensions =====
+  'https://fhir-ehr.cerner.com/r4/StructureDefinition/encounter-readmission': 'Cerner Readmission',
+  'https://fhir-ehr.cerner.com/r4/StructureDefinition/admission-source': 'Cerner Admission Source',
+  'https://fhir-ehr.cerner.com/r4/StructureDefinition/discharge-disposition': 'Cerner Discharge Disposition',
+
+  // ===== athenahealth vendor extensions =====
+  'http://fhir.athena.io/StructureDefinition/ah-encounter-class': 'Athena Encounter Class',
+  'http://fhir.athena.io/StructureDefinition/ah-claim-batch': 'Athena Claim Batch',
+};
+
+/** Vendor URL prefixes — used to detect vendor extensions even if not in the lookup. */
+const VENDOR_PREFIXES: Array<{ prefix: string; vendor: string }> = [
+  { prefix: 'http://open.epic.com/', vendor: 'Epic' },
+  { prefix: 'https://open.epic.com/', vendor: 'Epic' },
+  { prefix: 'http://hl7.org/fhir/us/core/', vendor: 'US Core' },
+  { prefix: 'http://hl7.org/fhir/us/carin-bb/', vendor: 'CARIN BB' },
+  { prefix: 'http://hl7.org/fhir/us/davinci', vendor: 'Da Vinci' },
+  { prefix: 'https://fhir-ehr.cerner.com/', vendor: 'Cerner' },
+  { prefix: 'http://fhir.cerner.com/', vendor: 'Cerner' },
+  { prefix: 'http://fhir.athena.io/', vendor: 'athena' },
+  { prefix: 'http://meditech.com/', vendor: 'MEDITECH' },
+  { prefix: 'http://nextgen.com/', vendor: 'NextGen' },
+  { prefix: 'http://eclinicalworks.com/', vendor: 'eCW' },
+  { prefix: 'http://va.gov/', vendor: 'VA' },
+];
+
+function vendorOf(url: string): string {
+  const v = VENDOR_PREFIXES.find((p) => url.startsWith(p.prefix));
+  return v?.vendor ?? 'unknown';
+}
+
+/** Render any of the value[x] choice fields on an extension to a short string. */
+function renderExtensionValue(ext: any): string | null {
+  if (ext == null) return null;
+  if (ext.valueString != null) return String(ext.valueString);
+  if (ext.valueCode != null) return String(ext.valueCode);
+  if (ext.valueBoolean != null) return String(ext.valueBoolean);
+  if (ext.valueInteger != null) return String(ext.valueInteger);
+  if (ext.valueDecimal != null) return String(ext.valueDecimal);
+  if (ext.valueDate) return String(ext.valueDate);
+  if (ext.valueDateTime) return String(ext.valueDateTime);
+  if (ext.valueUri) return String(ext.valueUri);
+  if (ext.valueQuantity) {
+    const q = ext.valueQuantity;
+    return `${q.value ?? '?'}${q.unit ? ' ' + q.unit : ''}`;
+  }
+  if (ext.valueCoding) {
+    const c = ext.valueCoding;
+    return `${c.code || ''}${c.display ? ' (' + c.display + ')' : ''}`.trim() || null;
+  }
+  if (ext.valueCodeableConcept) {
+    const cc = ext.valueCodeableConcept;
+    if (cc.text) return cc.text;
+    const c = cc.coding?.[0];
+    if (c) return `${c.code || ''}${c.display ? ' (' + c.display + ')' : ''}`.trim() || null;
+  }
+  if (ext.valueAddress) {
+    const a = ext.valueAddress;
+    return [a.city, a.state, a.country].filter(Boolean).join(', ') || null;
+  }
+  if (ext.valueIdentifier?.value) return String(ext.valueIdentifier.value);
+  if (ext.valueReference?.display) return String(ext.valueReference.display);
+  // Nested extensions (US Core race/ethnicity pattern: ombCategory + text children)
+  if (Array.isArray(ext.extension) && ext.extension.length) {
+    const parts = ext.extension.map((child: any) => {
+      const childVal = renderExtensionValue(child);
+      const key = (child.url || '').split('/').pop();
+      return childVal ? `${key}=${childVal}` : null;
+    }).filter(Boolean);
+    if (parts.length) return parts.join('; ');
+  }
+  return null;
+}
+
+interface ExtensionScan {
+  /** Already-formatted lines to append to a section. */
+  lines: string[];
+  /** Recognized extension URLs encountered. */
+  recognized: string[];
+  /** Unmapped extension URLs encountered (still scanned, value extracted when possible). */
+  unmapped: string[];
+}
+
+/**
+ * Walk a resource for top-level + nested extensions and convert them into
+ * human-readable lines. Also scans `modifierExtension` (which clinically
+ * MUST be considered if present, per FHIR spec) and per-element extensions
+ * (e.g. `_birthDate.extension`). Recurses into common nested structures.
+ */
+function scanExtensions(resource: any): ExtensionScan {
+  const out: ExtensionScan = { lines: [], recognized: [], unmapped: [] };
+  if (!resource || typeof resource !== 'object') return out;
+
+  const visit = (obj: any, path: string) => {
+    if (obj == null || typeof obj !== 'object') return;
+
+    // Per-element extensions: any sibling key starting with "_"
+    for (const key of Object.keys(obj)) {
+      if (key.startsWith('_') && obj[key]?.extension) {
+        for (const ext of obj[key].extension) record(ext, `${path}${key}`);
+      }
+    }
+
+    // Top-level + modifier extensions on this object
+    for (const ext of obj.extension || []) record(ext, path);
+    for (const ext of obj.modifierExtension || []) {
+      record(ext, `${path}!modifier`); // marked so we know it's a MUST-consider
+    }
+
+    // Recurse into common nested clinical containers
+    const nestedKeys = [
+      'name', 'identifier', 'address', 'telecom', 'contact',
+      'communication', 'item', 'diagnosis', 'procedure', 'careTeam',
+      'supportingInfo', 'related', 'payment', 'total', 'adjudication',
+      'detail', 'subDetail', 'participant', 'hospitalization', 'location',
+      'reasonCode', 'category', 'code', 'value', 'component', 'note',
+      'content', 'context', 'event', 'period', 'class', 'serviceProvider',
+      'patient', 'subject', 'insurer', 'provider', 'payor',
+    ];
+    for (const k of nestedKeys) {
+      const v = obj[k];
+      if (Array.isArray(v)) v.forEach((it, i) => visit(it, `${path}${k}[${i}].`));
+      else if (v && typeof v === 'object') visit(v, `${path}${k}.`);
+    }
+  };
+
+  const record = (ext: any, path: string) => {
+    const url = ext?.url;
+    if (!url) return;
+    const isModifier = path.endsWith('!modifier');
+    const label = EXTENSION_LABELS[url];
+    const val = renderExtensionValue(ext);
+    if (label) {
+      out.recognized.push(url);
+      out.lines.push(`  ${isModifier ? '⚠ MODIFIER · ' : ''}${label}: ${val ?? '(structured)'}`);
+    } else {
+      out.unmapped.push(url);
+      // Still surface a useful line if we can render any value.
+      const vendor = vendorOf(url);
+      const tail = url.split('/').filter(Boolean).pop() || url;
+      if (val) {
+        out.lines.push(`  ${isModifier ? '⚠ MODIFIER · ' : ''}${vendor} · ${tail}: ${val}`);
+      }
+    }
+  };
+
+  visit(resource, '');
+  return out;
+}
+
+/** Append extension lines under a header if any were found. */
+function appendExtensions(sections: string[], scan: ExtensionScan, header = '  Extensions:') {
+  if (!scan.lines.length) return;
+  sections.push(header);
+  for (const ln of scan.lines) sections.push(ln);
+}
 
 /** Quick sniff — is this string likely a FHIR payload? */
 export function looksLikeFhir(text: string): boolean {
@@ -54,6 +261,8 @@ export function looksLikeFhir(text: string): boolean {
 export function ingestFhir(raw: string): FhirIngestResult {
   const trimmed = raw.trim();
   const warnings: string[] = [];
+  const extensionsRecognized = new Set<string>();
+  const extensionsUnmapped = new Set<string>();
   let resources: any[] = [];
   let format: FhirIngestResult['format'] = 'fhir-resource';
 
@@ -129,6 +338,10 @@ export function ingestFhir(raw: string): FhirIngestResult {
     if (id) sections.push(`Patient ID: ${id}`);
     if (dob) sections.push(`DOB: ${dob}`);
     if (sex) sections.push(`Sex: ${sex}`);
+    const scan = scanExtensions(p);
+    appendExtensions(sections, scan);
+    scan.recognized.forEach((u) => extensionsRecognized.add(u));
+    scan.unmapped.forEach((u) => extensionsUnmapped.add(u));
   }
 
   // Coverage / payer.
@@ -138,6 +351,10 @@ export function ingestFhir(raw: string): FhirIngestResult {
     if (payer) sections.push(`Payer: ${payer}`);
     if (c?.subscriberId) sections.push(`Subscriber ID: ${c.subscriberId}`);
     if (c?.period?.start) sections.push(`Effective: ${c.period.start}${c.period.end ? ' → ' + c.period.end : ''}`);
+    const scan = scanExtensions(c);
+    appendExtensions(sections, scan);
+    scan.recognized.forEach((u) => extensionsRecognized.add(u));
+    scan.unmapped.forEach((u) => extensionsUnmapped.add(u));
   }
 
   // Encounter.
@@ -155,6 +372,21 @@ export function ingestFhir(raw: string): FhirIngestResult {
     if (provider) sections.push(`Provider: ${provider}`);
     const facility = e?.serviceProvider?.display;
     if (facility) sections.push(`Facility: ${facility}`);
+    // Hospitalization sub-element carries admit source + discharge disposition,
+    // both critical for inpatient audits / DRG context.
+    if (e?.hospitalization) {
+      const h = e.hospitalization;
+      const admit = h.admitSource?.text || h.admitSource?.coding?.[0]?.display || h.admitSource?.coding?.[0]?.code;
+      const disp = h.dischargeDisposition?.text || h.dischargeDisposition?.coding?.[0]?.display || h.dischargeDisposition?.coding?.[0]?.code;
+      const reAdm = h.reAdmission?.text || h.reAdmission?.coding?.[0]?.display;
+      if (admit) sections.push(`Admit Source: ${admit}`);
+      if (disp) sections.push(`Discharge Disposition: ${disp}`);
+      if (reAdm) sections.push(`Re-admission: ${reAdm}`);
+    }
+    const scan = scanExtensions(e);
+    appendExtensions(sections, scan);
+    scan.recognized.forEach((u) => extensionsRecognized.add(u));
+    scan.unmapped.forEach((u) => extensionsUnmapped.add(u));
   }
 
   // Conditions / diagnoses.
@@ -166,6 +398,10 @@ export function ingestFhir(raw: string): FhirIngestResult {
       const onset = c?.onsetDateTime || c?.recordedDate;
       const status = c?.clinicalStatus?.coding?.[0]?.code;
       sections.push(`- ${code || '?'} — ${display || 'unspecified'}${status ? ` [${status}]` : ''}${onset ? ` (onset ${onset})` : ''}`);
+      const scan = scanExtensions(c);
+      appendExtensions(sections, scan);
+      scan.recognized.forEach((u) => extensionsRecognized.add(u));
+      scan.unmapped.forEach((u) => extensionsUnmapped.add(u));
     }
   }
 
@@ -177,6 +413,10 @@ export function ingestFhir(raw: string): FhirIngestResult {
       const display = p?.code?.text || p?.code?.coding?.[0]?.display;
       const dt = p?.performedDateTime || p?.performedPeriod?.start;
       sections.push(`- ${code || '?'} — ${display || 'unspecified'}${dt ? ` (${dt})` : ''}`);
+      const scan = scanExtensions(p);
+      appendExtensions(sections, scan);
+      scan.recognized.forEach((u) => extensionsRecognized.add(u));
+      scan.unmapped.forEach((u) => extensionsUnmapped.add(u));
     }
   }
 
@@ -197,7 +437,10 @@ export function ingestFhir(raw: string): FhirIngestResult {
       for (const d of cl?.diagnosis || []) {
         const code = d?.diagnosisCodeableConcept?.coding?.[0]?.code;
         const text = d?.diagnosisCodeableConcept?.text || d?.diagnosisCodeableConcept?.coding?.[0]?.display;
-        sections.push(`  Dx ${d?.sequence ?? ''}: ${code || '?'} — ${text || ''}`.trim());
+        // POA indicator (US Core / X12 837I crosswalk: "onAdmission" coding)
+        const poa = (d?.onAdmission?.coding?.[0]?.code) || (d?.onAdmission?.text);
+        const dxType = d?.type?.[0]?.coding?.[0]?.code || d?.type?.[0]?.text;
+        sections.push(`  Dx ${d?.sequence ?? ''}: ${code || '?'} — ${text || ''}${dxType ? ` [type=${dxType}]` : ''}${poa ? ` [POA=${poa}]` : ''}`.trim());
       }
       // Line items.
       for (const item of cl?.item || []) {
@@ -209,6 +452,10 @@ export function ingestFhir(raw: string): FhirIngestResult {
         const dxPtrs = (item?.diagnosisSequence || []).join(',');
         sections.push(`  Line ${item?.sequence ?? ''}: ${code || '?'}${mods ? `-${mods}` : ''} units=${units ?? '?'} charge=${charge ?? '?'} dxPtr=${dxPtrs || '?'} ${display || ''}`.trim());
       }
+      const scan = scanExtensions(cl);
+      appendExtensions(sections, scan);
+      scan.recognized.forEach((u) => extensionsRecognized.add(u));
+      scan.unmapped.forEach((u) => extensionsUnmapped.add(u));
     }
   }
 
@@ -236,6 +483,10 @@ export function ingestFhir(raw: string): FhirIngestResult {
           }
         }
       }
+      const scan = scanExtensions(eob);
+      appendExtensions(sections, scan);
+      scan.recognized.forEach((u) => extensionsRecognized.add(u));
+      scan.unmapped.forEach((u) => extensionsUnmapped.add(u));
     }
   }
 
@@ -248,7 +499,20 @@ export function ingestFhir(raw: string): FhirIngestResult {
       const val = o?.valueQuantity ? `${o.valueQuantity.value}${o.valueQuantity.unit ? ' ' + o.valueQuantity.unit : ''}`
                 : o?.valueString ?? o?.valueCodeableConcept?.text ?? o?.valueInteger;
       const dt = o?.effectiveDateTime || o?.issued;
-      sections.push(`- ${display || code || 'observation'}: ${val ?? '?'}${dt ? ` (${dt})` : ''}`);
+      const cat = o?.category?.[0]?.coding?.[0]?.code;
+      const interp = o?.interpretation?.[0]?.coding?.[0]?.code || o?.interpretation?.[0]?.text;
+      sections.push(`- ${display || code || 'observation'}: ${val ?? '?'}${dt ? ` (${dt})` : ''}${cat ? ` [cat=${cat}]` : ''}${interp ? ` [interp=${interp}]` : ''}`);
+      // Component values (e.g. BP systolic + diastolic, PHQ-9 sub-items).
+      for (const comp of o?.component || []) {
+        const cd = comp?.code?.text || comp?.code?.coding?.[0]?.display || comp?.code?.coding?.[0]?.code;
+        const cv = comp?.valueQuantity ? `${comp.valueQuantity.value}${comp.valueQuantity.unit ? ' ' + comp.valueQuantity.unit : ''}`
+                 : comp?.valueString ?? comp?.valueCodeableConcept?.text;
+        if (cd || cv != null) sections.push(`    · ${cd || 'component'}: ${cv ?? '?'}`);
+      }
+      const scan = scanExtensions(o);
+      if (scan.lines.length) appendExtensions(sections, scan, '    Extensions:');
+      scan.recognized.forEach((u) => extensionsRecognized.add(u));
+      scan.unmapped.forEach((u) => extensionsUnmapped.add(u));
     }
     if (byType.Observation.length > 200) warnings.push(`Truncated ${byType.Observation.length - 200} observations.`);
   }
@@ -261,6 +525,10 @@ export function ingestFhir(raw: string): FhirIngestResult {
                 || m?.medicationReference?.display;
       const dose = m?.dosageInstruction?.[0]?.text;
       sections.push(`- ${med || 'medication'}${dose ? ` — ${dose}` : ''}`);
+      const scan = scanExtensions(m);
+      if (scan.lines.length) appendExtensions(sections, scan, '    Extensions:');
+      scan.recognized.forEach((u) => extensionsRecognized.add(u));
+      scan.unmapped.forEach((u) => extensionsUnmapped.add(u));
     }
   }
 
@@ -293,6 +561,34 @@ export function ingestFhir(raw: string): FhirIngestResult {
       const t = r?.code?.text || r?.code?.coding?.[0]?.display;
       sections.push(`- ${t || 'report'} (${r?.status || '?'}) ${r?.effectiveDateTime || ''}`);
       if (r?.conclusion) sections.push(`  Conclusion: ${r.conclusion}`);
+      const scan = scanExtensions(r);
+      appendExtensions(sections, scan);
+      scan.recognized.forEach((u) => extensionsRecognized.add(u));
+      scan.unmapped.forEach((u) => extensionsUnmapped.add(u));
+    }
+  }
+
+  // ===== Sweep any remaining resource types for extensions so nothing is silently lost. =====
+  for (const [type, list] of Object.entries(byType)) {
+    if (['Patient','Coverage','Encounter','Condition','Procedure','Claim','ExplanationOfBenefit','Observation','MedicationRequest','DocumentReference','DiagnosticReport'].includes(type)) continue;
+    for (const r of list) {
+      const scan = scanExtensions(r);
+      if (!scan.lines.length) continue;
+      sections.push(`\n----- ${type} (extensions only) -----`);
+      for (const ln of scan.lines) sections.push(ln);
+      scan.recognized.forEach((u) => extensionsRecognized.add(u));
+      scan.unmapped.forEach((u) => extensionsUnmapped.add(u));
+    }
+  }
+
+  // Surface a vendor-extension footer for transparency in the parsed output.
+  if (extensionsRecognized.size + extensionsUnmapped.size > 0) {
+    sections.push(`\n----- Extensions Summary -----`);
+    if (extensionsRecognized.size) sections.push(`Recognized (${extensionsRecognized.size}): ${[...extensionsRecognized].slice(0, 25).join(', ')}${extensionsRecognized.size > 25 ? ' …' : ''}`);
+    if (extensionsUnmapped.size) {
+      const vendors = new Map<string, number>();
+      for (const u of extensionsUnmapped) vendors.set(vendorOf(u), (vendors.get(vendorOf(u)) || 0) + 1);
+      sections.push(`Unmapped (${extensionsUnmapped.size}) by vendor: ${[...vendors.entries()].map(([v, n]) => `${v}=${n}`).join(', ')}`);
     }
   }
 
@@ -303,6 +599,8 @@ export function ingestFhir(raw: string): FhirIngestResult {
     format,
     patientLabel,
     warnings,
+    extensionsRecognized: [...extensionsRecognized],
+    extensionsUnmapped: [...extensionsUnmapped],
   };
 }
 
