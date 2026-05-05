@@ -141,7 +141,8 @@ export default function AppEHR() {
       </div>
 
       <Tabs defaultValue="ingest" className="space-y-4">
-        <TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+        <TabsList className="flex flex-nowrap w-max min-w-full">
           <TabsTrigger value="ingest" className="gap-1.5"><Upload className="h-3.5 w-3.5" />Ingest & Try</TabsTrigger>
           <TabsTrigger value="standards" className="gap-1.5"><FileJson className="h-3.5 w-3.5" />Standards Lab</TabsTrigger>
           <TabsTrigger value="resources" className="gap-1.5"><FileJson className="h-3.5 w-3.5" />Resources</TabsTrigger>
@@ -149,6 +150,7 @@ export default function AppEHR() {
           <TabsTrigger value="security" className="gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Security</TabsTrigger>
           <TabsTrigger value="pilot" className="gap-1.5"><Activity className="h-3.5 w-3.5" />Pilot Path</TabsTrigger>
         </TabsList>
+        </div>
 
         {/* INGEST */}
         <TabsContent value="ingest" className="space-y-4">
@@ -442,7 +444,20 @@ export default function AppEHR() {
         {/* CONNECTORS */}
         <TabsContent value="connectors" className="space-y-3">
           <Card className="p-4">
-            <p className="text-sm font-semibold mb-1">EHR connectivity matrix</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-sm font-semibold">EHR connectivity matrix</p>
+              <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={() => {
+                const rows = [["Vendor","Method","Status","Notes"], ...CONNECTORS.map(c => [c.vendor, c.method, c.status, c.notes])];
+                const esc = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g,'""')}"` : v;
+                const csv = rows.map(r => r.map(x => esc(String(x))).join(",")).join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a"); a.href = url; a.download = "ehr-connectivity.csv"; a.click();
+                URL.revokeObjectURL(url); toast.success("Exported ehr-connectivity.csv");
+              }}>
+                <Download className="h-3 w-3" />CSV
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground mb-3">
               <span className="text-emerald-600 font-medium">Available</span> = works today against real exports ·
               <span className="text-blue-600 font-medium"> Sandbox</span> = validated against vendor sandbox ·

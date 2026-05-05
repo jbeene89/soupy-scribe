@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Gavel, Coins, Receipt, Clock, TrendingUp, AlertTriangle, Loader2, FlaskConical, Bell, Stethoscope, ShieldCheck } from "lucide-react";
+import { Gavel, Coins, Receipt, Clock, TrendingUp, AlertTriangle, Loader2, FlaskConical, Bell, Stethoscope, ShieldCheck, Download, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { parseX12, SAMPLE_835 } from "@/lib/x12Ingest";
 import { detectLeakage, defaultFeeSchedule } from "@/lib/contractLeakage";
@@ -32,6 +32,25 @@ ACME Health Plan`;
 
 const SAMPLE_NOTE = `73 y/o male admitted for shortness of breath, lower extremity edema, and weight gain. History of CHF, HTN, T2DM, BMI 42. Creatinine on admission 2.1, baseline 1.0. SpO2 88% on RA, started on 4L NC. Blood cultures drawn for fever 101.4F. Nutrition consult notes weight loss 12lbs over 3 months. Plan: diuresis, monitor renal function, antibiotics pending cultures. Procedure: 99285 ED visit + 71046 chest x-ray, right knee 27447 scheduled.`;
 
+function downloadCsv(rows: (string | number)[][], filename: string) {
+  const esc = (v: string | number) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = rows.map(r => r.map(esc).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  toast.success(`Exported ${filename}`);
+}
+
+function copyJson(obj: any, label = "JSON") {
+  navigator.clipboard.writeText(JSON.stringify(obj, null, 2));
+  toast.success(`${label} copied`);
+}
+
 export default function AppStrategicTools() {
   return (
     <div className="space-y-6">
@@ -43,17 +62,19 @@ export default function AppStrategicTools() {
       </div>
 
       <Tabs defaultValue="auditor" className="w-full">
-        <TabsList className="grid w-full grid-cols-9 h-auto">
-          <TabsTrigger value="auditor"><Gavel className="h-3.5 w-3.5 mr-1.5" />Audit the Auditor</TabsTrigger>
-          <TabsTrigger value="counterfactual"><Coins className="h-3.5 w-3.5 mr-1.5" />Counterfactual</TabsTrigger>
-          <TabsTrigger value="leakage"><Receipt className="h-3.5 w-3.5 mr-1.5" />Contract Leakage</TabsTrigger>
-          <TabsTrigger value="clocks"><Clock className="h-3.5 w-3.5 mr-1.5" />Regulatory Clocks</TabsTrigger>
-          <TabsTrigger value="drift"><TrendingUp className="h-3.5 w-3.5 mr-1.5" />Denial Drift</TabsTrigger>
-          <TabsTrigger value="abtest"><FlaskConical className="h-3.5 w-3.5 mr-1.5" />Appeal A/B</TabsTrigger>
-          <TabsTrigger value="ncd"><Bell className="h-3.5 w-3.5 mr-1.5" />NCD/LCD Alerts</TabsTrigger>
-          <TabsTrigger value="debt"><Stethoscope className="h-3.5 w-3.5 mr-1.5" />Doc Debt</TabsTrigger>
-          <TabsTrigger value="pa"><ShieldCheck className="h-3.5 w-3.5 mr-1.5" />PA Predictor</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-auto flex-nowrap gap-1 w-max min-w-full">
+            <TabsTrigger value="auditor" className="whitespace-nowrap"><Gavel className="h-3.5 w-3.5 mr-1.5 shrink-0" />Audit the Auditor</TabsTrigger>
+            <TabsTrigger value="counterfactual" className="whitespace-nowrap"><Coins className="h-3.5 w-3.5 mr-1.5 shrink-0" />Counterfactual</TabsTrigger>
+            <TabsTrigger value="leakage" className="whitespace-nowrap"><Receipt className="h-3.5 w-3.5 mr-1.5 shrink-0" />Contract Leakage</TabsTrigger>
+            <TabsTrigger value="clocks" className="whitespace-nowrap"><Clock className="h-3.5 w-3.5 mr-1.5 shrink-0" />Regulatory Clocks</TabsTrigger>
+            <TabsTrigger value="drift" className="whitespace-nowrap"><TrendingUp className="h-3.5 w-3.5 mr-1.5 shrink-0" />Denial Drift</TabsTrigger>
+            <TabsTrigger value="abtest" className="whitespace-nowrap"><FlaskConical className="h-3.5 w-3.5 mr-1.5 shrink-0" />Appeal A/B</TabsTrigger>
+            <TabsTrigger value="ncd" className="whitespace-nowrap"><Bell className="h-3.5 w-3.5 mr-1.5 shrink-0" />NCD/LCD Alerts</TabsTrigger>
+            <TabsTrigger value="debt" className="whitespace-nowrap"><Stethoscope className="h-3.5 w-3.5 mr-1.5 shrink-0" />Doc Debt</TabsTrigger>
+            <TabsTrigger value="pa" className="whitespace-nowrap"><ShieldCheck className="h-3.5 w-3.5 mr-1.5 shrink-0" />PA Predictor</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="auditor" className="mt-4"><AuditTheAuditor /></TabsContent>
         <TabsContent value="counterfactual" className="mt-4"><Counterfactual /></TabsContent>
@@ -111,7 +132,14 @@ function AuditTheAuditor() {
       </Card>
 
       <Card className="p-5 space-y-3">
-        <h3 className="font-semibold text-sm">Audit results</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Audit results</h3>
+          {audit && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => copyJson(audit, "Audit")}>
+              <Copy className="h-3 w-3" />Copy JSON
+            </Button>
+          )}
+        </div>
         {!audit && <p className="text-xs text-muted-foreground">Results will appear here. Defects, regulatory exposure, and an optional state-DOI complaint draft.</p>}
         {audit && (
           <div className="space-y-3 text-xs">
@@ -183,7 +211,17 @@ function Counterfactual() {
       </Card>
 
       <Card className="p-5 space-y-3">
-        <h3 className="font-semibold text-sm">Counterfactual opportunities</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Counterfactual opportunities</h3>
+          {result && result.opportunities.some(o => o.matched) && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+              ["Category", "Suggestion", "Rationale", "DRG shift", "CMI delta", "$ impact"],
+              ...result.opportunities.filter(o => o.matched).map(o => [o.category, o.suggestion, o.rationale, o.drgShift || "", o.cmiDelta || "", o.estimatedDollarImpact]),
+            ], "counterfactual-opportunities.csv")}>
+              <Download className="h-3 w-3" />CSV
+            </Button>
+          )}
+        </div>
         {!result && <p className="text-xs text-muted-foreground">Paste a note to see ranked documentation opportunities.</p>}
         {result && (
           <>
@@ -247,7 +285,17 @@ function Leakage() {
       </Card>
 
       <Card className="p-5 space-y-3">
-        <h3 className="font-semibold text-sm">Leakage report</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Leakage report</h3>
+          {report && report.leakage.findings.length > 0 && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+              ["Code", "Modifier", "Patient", "Charged", "Paid", "Expected", "Underpayment", "Underpayment %", "Severity", "Adjustments"],
+              ...report.leakage.findings.map(f => [f.code, f.modifier || "", f.patient, f.charged, f.paid, f.expected, f.underpayment, f.underpaymentPct, f.severity, f.adjustments.join("; ")]),
+            ], "contract-leakage.csv")}>
+              <Download className="h-3 w-3" />CSV
+            </Button>
+          )}
+        </div>
         {!report && <p className="text-xs text-muted-foreground">Paste an 835 to see contract leakage analysis.</p>}
         {report && (
           <div className="space-y-3 text-xs">
@@ -323,7 +371,17 @@ function Clocks() {
         </div>
       </Card>
       <Card className="p-5 space-y-3 lg:col-span-2">
-        <h3 className="font-semibold text-sm">Active clocks ({events.length})</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Active clocks ({events.length})</h3>
+          {events.length > 0 && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+              ["Label", "Due date", "Days remaining", "Severity", "Basis"],
+              ...events.map(ev => [ev.label, ev.dueDate.toISOString().slice(0,10), ev.daysRemaining, ev.severity, ev.basis]),
+            ], "regulatory-clocks.csv")}>
+              <Download className="h-3 w-3" />CSV
+            </Button>
+          )}
+        </div>
         <div className="space-y-2">
           {events.map((ev, i) => {
             const color =
@@ -358,7 +416,15 @@ function Drift() {
   return (
     <div className="space-y-4">
       <Card className="p-5">
-        <h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp className="h-4 w-4" />Denial reason drift (last 30d vs prior 30d)</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp className="h-4 w-4" />Denial reason drift (last 30d vs prior 30d)</h3>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+            ["Payer", "CARC", "Last 30d", "Prior 30d", "Change %", "Trend"],
+            ...drift.map(d => [d.payer, d.reasonCode, d.totalLast30, d.totalPrev30, d.changePct, d.trend]),
+          ], "denial-drift.csv")}>
+            <Download className="h-3 w-3" />CSV
+          </Button>
+        </div>
         <p className="text-xs text-muted-foreground mt-1">Reasons accelerating per payer. Surface emerging denial patterns before your RCM team notices.</p>
         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
           {accelerating.slice(0, 8).map((d, i) => (
@@ -381,7 +447,17 @@ function Drift() {
       </Card>
 
       <Card className="p-5">
-        <h3 className="font-semibold text-sm">Reviewer fingerprint clusters</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-sm">Reviewer fingerprint clusters</h3>
+          {clusters.length > 0 && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+              ["Payer", "Reviewer", "Fingerprint", "Denials", "Est overturn %", "Top reasons"],
+              ...clusters.map(c => [c.payer, c.reviewerHint, c.fingerprint, c.count, c.overturnRateEstimate, c.topReasonCodes.map(r => `${r.code}x${r.count}`).join("; ")]),
+            ], "reviewer-fingerprints.csv")}>
+              <Download className="h-3 w-3" />CSV
+            </Button>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground mt-1">Denials grouped by letter boilerplate signature. Same fingerprint + same reviewer suggests templated denials — typically higher overturn rate.</p>
         <div className="mt-3 space-y-2">
           {clusters.map((c, i) => (
@@ -433,7 +509,15 @@ function AppealAB() {
         </div>
       </Card>
       <Card className="p-5">
-        <h3 className="font-semibold text-sm">All variants</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">All variants</h3>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+            ["Payer", "CARC", "Variant", "Attempts", "Overturned", "Overturn %", "Avg days"],
+            ...variants.map(v => [v.payer, v.reasonCode, v.name, v.attempts, v.overturned, Math.round((v.overturned / v.attempts) * 100), v.avgDaysToDecision]),
+          ], "appeal-ab-variants.csv")}>
+            <Download className="h-3 w-3" />CSV
+          </Button>
+        </div>
         <div className="mt-3 max-h-[400px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead className="text-[10px] text-muted-foreground uppercase">
@@ -473,7 +557,15 @@ function NcdAlerts() {
   return (
     <div className="space-y-4">
       <Card className="p-5">
-        <h3 className="font-semibold text-sm flex items-center gap-2"><Bell className="h-4 w-4" />Recent CMS coverage changes affecting your code mix</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-sm flex items-center gap-2"><Bell className="h-4 w-4" />Recent CMS coverage changes affecting your code mix</h3>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+            ["Policy", "Number", "Title", "Effective", "Retroactive", "Codes", "Affected volume", "Monthly impact"],
+            ...correlated.map(({ change, affectedVolume, estimatedMonthlyImpact }) => [change.policyType, change.policyNumber, change.title, change.effectiveDate, change.retroactive ? "yes" : "no", change.affectedCodes.join("; "), affectedVolume, estimatedMonthlyImpact]),
+          ], "ncd-lcd-impact.csv")}>
+            <Download className="h-3 w-3" />CSV
+          </Button>
+        </div>
         <p className="text-xs text-muted-foreground mt-1">NCD, LCD, and MAC article changes correlated with provider monthly volumes. Retroactive changes flagged for recoupment risk.</p>
         <div className="mt-3 space-y-2">
           {correlated.map(({ change, affectedVolume, estimatedMonthlyImpact }) => {
@@ -540,7 +632,15 @@ function DocDebt() {
       </Card>
 
       <Card className="p-5">
-        <h3 className="font-semibold text-sm">By physician</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">By physician</h3>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+            ["Physician", "Specialty", "Cases/mo", "12mo debt", "CMI opportunity", "Top misses", "Trend"],
+            ...records.map(r => [r.physicianName, r.specialty, r.monthlyCases, r.cumulativeDebt, r.cmiOpportunity.toFixed(2), r.topMissedCategories.join("; "), r.trend]),
+          ], "documentation-debt.csv")}>
+            <Download className="h-3 w-3" />CSV
+          </Button>
+        </div>
         <div className="mt-3 max-h-[480px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead className="text-[10px] text-muted-foreground uppercase">
@@ -623,7 +723,14 @@ function PAPredictor() {
       </Card>
 
       <Card className="p-5 space-y-3">
-        <h3 className="font-semibold text-sm">Prediction</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Prediction</h3>
+          {result && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => copyJson(result, "Prediction")}>
+              <Copy className="h-3 w-3" />Copy JSON
+            </Button>
+          )}
+        </div>
         {!result && <p className="text-xs text-muted-foreground">Paste a narrative to see outcome prediction.</p>}
         {result && (
           <div className="space-y-3 text-xs">
