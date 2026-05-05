@@ -860,6 +860,7 @@ function VendorRoi() {
                         {pinned ? <><PinOff className="h-3 w-3" />Unpin</> : <><Pin className="h-3 w-3" />Pin to top</>}
                       </Button>
                     </div>
+                    <VendorSubmissions vendorKey={r.vendorKey} scope="roi" scopeRef={r.id} label={r.id} />
                   </div>
                 )}
               </div>
