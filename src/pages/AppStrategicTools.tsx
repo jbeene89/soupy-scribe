@@ -132,7 +132,14 @@ function AuditTheAuditor() {
       </Card>
 
       <Card className="p-5 space-y-3">
-        <h3 className="font-semibold text-sm">Audit results</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Audit results</h3>
+          {audit && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => copyJson(audit, "Audit")}>
+              <Copy className="h-3 w-3" />Copy JSON
+            </Button>
+          )}
+        </div>
         {!audit && <p className="text-xs text-muted-foreground">Results will appear here. Defects, regulatory exposure, and an optional state-DOI complaint draft.</p>}
         {audit && (
           <div className="space-y-3 text-xs">
@@ -204,7 +211,17 @@ function Counterfactual() {
       </Card>
 
       <Card className="p-5 space-y-3">
-        <h3 className="font-semibold text-sm">Counterfactual opportunities</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Counterfactual opportunities</h3>
+          {result && result.opportunities.some(o => o.matched) && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+              ["Category", "Suggestion", "Rationale", "DRG shift", "CMI delta", "$ impact"],
+              ...result.opportunities.filter(o => o.matched).map(o => [o.category, o.suggestion, o.rationale, o.drgShift || "", o.cmiDelta || "", o.estimatedDollarImpact]),
+            ], "counterfactual-opportunities.csv")}>
+              <Download className="h-3 w-3" />CSV
+            </Button>
+          )}
+        </div>
         {!result && <p className="text-xs text-muted-foreground">Paste a note to see ranked documentation opportunities.</p>}
         {result && (
           <>
@@ -268,7 +285,17 @@ function Leakage() {
       </Card>
 
       <Card className="p-5 space-y-3">
-        <h3 className="font-semibold text-sm">Leakage report</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Leakage report</h3>
+          {report && report.leakage.findings.length > 0 && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+              ["Code", "Modifier", "Patient", "Charged", "Paid", "Expected", "Underpayment", "Underpayment %", "Severity", "Adjustments"],
+              ...report.leakage.findings.map(f => [f.code, f.modifier || "", f.patient, f.charged, f.paid, f.expected, f.underpayment, f.underpaymentPct, f.severity, f.adjustments.join("; ")]),
+            ], "contract-leakage.csv")}>
+              <Download className="h-3 w-3" />CSV
+            </Button>
+          )}
+        </div>
         {!report && <p className="text-xs text-muted-foreground">Paste an 835 to see contract leakage analysis.</p>}
         {report && (
           <div className="space-y-3 text-xs">
