@@ -2106,6 +2106,51 @@ export type Database = {
           },
         ]
       }
+      vendor_submissions: {
+        Row: {
+          attachments: Json
+          body: string
+          created_at: string
+          entry_type: string
+          id: string
+          occurred_at: string
+          owner_id: string
+          scope: string
+          scope_ref: string | null
+          title: string | null
+          updated_at: string
+          vendor_key: string
+        }
+        Insert: {
+          attachments?: Json
+          body?: string
+          created_at?: string
+          entry_type?: string
+          id?: string
+          occurred_at?: string
+          owner_id: string
+          scope: string
+          scope_ref?: string | null
+          title?: string | null
+          updated_at?: string
+          vendor_key: string
+        }
+        Update: {
+          attachments?: Json
+          body?: string
+          created_at?: string
+          entry_type?: string
+          id?: string
+          occurred_at?: string
+          owner_id?: string
+          scope?: string
+          scope_ref?: string | null
+          title?: string | null
+          updated_at?: string
+          vendor_key?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
