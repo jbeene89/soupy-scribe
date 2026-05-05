@@ -19,6 +19,7 @@ import AppInbox from "./pages/AppInbox";
 import AppSystemImpact from "./pages/AppSystemImpact";
 import AppImaging from "./pages/AppImaging";
 import AppRevenueIntegrity from "./pages/AppRevenueIntegrity";
+import AppEHR from "./pages/AppEHR";
 import Unsubscribe from "./pages/Unsubscribe";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="system-impact" element={<AppSystemImpact />} />
               <Route path="imaging" element={<AppImaging />} />
               <Route path="revenue-integrity" element={<AppRevenueIntegrity />} />
+              <Route path="ehr" element={<AppEHR />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
