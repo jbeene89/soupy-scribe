@@ -542,13 +542,11 @@ const SIGNAL_PROFILE: Record<string, { effortDays: number; leverage: number; eff
 const CONF_WEIGHT = { high: 1.0, medium: 0.65, low: 0.35 } as const;
 
 function VendorRoi() {
-  const [wDollars, setWDollars] = useState(50);
-  const [wConfidence, setWConfidence] = useState(25);
-  const [wEffort, setWEffort] = useState(15);
-  const [wLeverage, setWLeverage] = useState(10);
-  const [pursued, setPursued] = useState<Set<string>>(new Set());
+  const [weights, setWeights] = useLocalState<RoiWeights>("opsc.vendor.roi.weights", DEFAULT_WEIGHTS);
+  const [pursued, setPursued] = useLocalState<Record<string, PursueEntry>>("opsc.vendor.pursued", {});
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  const sumWeights = wDollars + wConfidence + wEffort + wLeverage || 1;
+  const sumWeights = weights.dollars + weights.confidence + weights.effort + weights.leverage || 1;
   const maxAmount = Math.max(...VENDOR_ANOMALIES.map(a => a.amountK));
   const maxEffort = Math.max(...Object.values(SIGNAL_PROFILE).map(p => p.effortDays));
 
