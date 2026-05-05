@@ -471,3 +471,234 @@ function RunbookCol({ title, items }: { title: string; items: string[] }) {
     </div>
   );
 }
+
+/* ── Vendor Watch ── */
+function Vendors() {
+  const [tab, setTab] = useState<"contracts" | "anomalies" | "plays" | "bench">("contracts");
+  const totalRecovery = VENDOR_ANOMALIES.reduce((s, a) => s + a.amountK, 0);
+  const critical = VENDOR_CONTRACTS.filter(v => v.risk === "critical").length;
+  const trapDays = Math.min(...VENDOR_CONTRACTS.filter(v => v.noticeRequiredDays > v.autoRenewDays).map(v => v.autoRenewDays));
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Stat label="Vendors monitored" value={VENDOR_CONTRACTS.length} />
+        <Stat label="Critical risk" value={critical} tone={critical ? "red" : "muted"} />
+        <Stat label="Recoverable (open)" value={`$${totalRecovery}K`} tone="emerald" />
+        <Stat label="Nearest renew trap" value={isFinite(trapDays) ? `${trapDays}d` : "—"} tone={trapDays <= 30 ? "red" : "amber"} />
+      </div>
+
+      <div className="overflow-x-auto -mx-1 px-1">
+        <div className="inline-flex gap-1 border rounded-md p-1 bg-muted/30">
+          {([
+            { k: "contracts", label: "Contracts" },
+            { k: "anomalies", label: "Billing anomalies" },
+            { k: "plays",     label: "Recovery plays" },
+            { k: "bench",     label: "Market benchmarks" },
+          ] as const).map(t => (
+            <Button key={t.k} size="sm" variant={tab === t.k ? "default" : "ghost"} className="h-7 text-xs whitespace-nowrap" onClick={() => setTab(t.k)}>
+              {t.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {tab === "contracts" && <VendorContracts />}
+      {tab === "anomalies" && <VendorAnomalies />}
+      {tab === "plays" && <VendorPlays />}
+      {tab === "bench" && <VendorBench />}
+    </div>
+  );
+}
+
+function VendorContracts() {
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="font-semibold text-sm flex items-center gap-2"><ShieldAlert className="h-4 w-4" />Vendor contracts — variance & renewal traps</h3>
+          <p className="text-xs text-muted-foreground mt-1">Effective rate vs contracted rate, with auto-renew vs notice-window math.</p>
+        </div>
+        <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+          ["Vendor", "Category", "Spend $K/yr", "Contracted", "Effective", "Variance %", "Auto-renew (d)", "Notice req (d)", "Risk", "Est recovery $K"],
+          ...VENDOR_CONTRACTS.map(v => [v.vendor, v.category, v.spendAnnualK, v.contractedRate, v.effectiveRate, v.variancePct, v.autoRenewDays, v.noticeRequiredDays, v.risk, v.estRecoveryK]),
+        ], "vendor-contracts.csv")}>
+          <Download className="h-3 w-3" />CSV
+        </Button>
+      </div>
+      <div className="space-y-2">
+        {VENDOR_CONTRACTS.map(v => {
+          const trap = v.noticeRequiredDays > v.autoRenewDays;
+          return (
+            <div key={v.vendor} className={`border rounded-md p-3 ${v.risk === "critical" ? "border-red-500/50 bg-red-500/5" : v.risk === "high" ? "border-orange-500/40 bg-orange-500/5" : ""}`}>
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm">{v.vendor}</span>
+                    <Badge variant="outline" className="text-[10px]">{v.category}</Badge>
+                    <Badge variant="outline" className={`text-[10px] uppercase ${vendorRiskClass(v.risk)}`}>{v.risk}</Badge>
+                    {trap && <Badge variant="destructive" className="text-[10px] gap-1"><AlertTriangle className="h-3 w-3" />Renew trap</Badge>}
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-[11px]">
+                    <div><div className="text-[10px] uppercase text-muted-foreground">Contracted</div><div>{v.contractedRate}</div></div>
+                    <div><div className="text-[10px] uppercase text-muted-foreground">Effective</div><div className={v.variancePct < 0 ? "text-red-500" : ""}>{v.effectiveRate}</div></div>
+                    <div><div className="text-[10px] uppercase text-muted-foreground">Variance</div><div className={v.variancePct < 0 ? "text-red-500 font-semibold" : ""}>{v.variancePct}%</div></div>
+                    <div><div className="text-[10px] uppercase text-muted-foreground">Renew / notice</div><div>{v.autoRenewDays}d / {v.noticeRequiredDays}d</div></div>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-[10px] uppercase text-muted-foreground">Spend / Recovery</div>
+                  <div className="text-sm font-semibold">${v.spendAnnualK}K<span className="text-muted-foreground font-normal">/yr</span></div>
+                  {v.estRecoveryK > 0 && <div className="text-xs text-emerald-500 font-semibold">+${v.estRecoveryK}K recoverable</div>}
+                </div>
+              </div>
+              <ul className="mt-2 text-[11px] space-y-0.5 list-disc list-inside text-muted-foreground">
+                {v.flags.map((f, i) => <li key={i}>{f}</li>)}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function VendorAnomalies() {
+  const [signal, setSignal] = useState<"all" | (typeof VENDOR_ANOMALIES)[number]["signal"]>("all");
+  const filtered = useMemo(() => signal === "all" ? VENDOR_ANOMALIES : VENDOR_ANOMALIES.filter(a => a.signal === signal), [signal]);
+  const signals = Array.from(new Set(VENDOR_ANOMALIES.map(a => a.signal)));
+  const total = filtered.reduce((s, a) => s + a.amountK, 0);
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+        <div>
+          <h3 className="font-semibold text-sm flex items-center gap-2"><Search className="h-4 w-4" />Billing anomalies — vendors trying to pull a fast one</h3>
+          <p className="text-xs text-muted-foreground mt-1">Pattern detection across invoices, MSAs, and remittances. Each finding has citable evidence.</p>
+        </div>
+        <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+          ["ID", "Vendor", "Detected", "Signal", "Pattern", "Amount $K", "Confidence", "Evidence"],
+          ...VENDOR_ANOMALIES.map(a => [a.id, a.vendor, a.detected, a.signal, a.pattern, a.amountK, a.confidence, a.evidence]),
+        ], "vendor-anomalies.csv")}>
+          <Download className="h-3 w-3" />CSV
+        </Button>
+      </div>
+
+      <div className="flex gap-1 flex-wrap mb-3">
+        <Button size="sm" variant={signal === "all" ? "default" : "outline"} className="h-7 text-xs" onClick={() => setSignal("all")}>All · ${VENDOR_ANOMALIES.reduce((s, a) => s + a.amountK, 0)}K</Button>
+        {signals.map(s => (
+          <Button key={s} size="sm" variant={signal === s ? "default" : "outline"} className="h-7 text-xs" onClick={() => setSignal(s)}>
+            {vendorSignalLabel(s)}
+          </Button>
+        ))}
+      </div>
+      <div className="text-[11px] text-muted-foreground mb-2">{filtered.length} finding(s) · ${total}K exposure shown</div>
+
+      <div className="space-y-2">
+        {filtered.map(a => (
+          <div key={a.id} className="border rounded-md p-3 text-xs">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-[10px] text-muted-foreground">{a.id}</span>
+                  <span className="font-semibold">{a.vendor}</span>
+                  <Badge variant="outline" className="text-[10px]">{vendorSignalLabel(a.signal)}</Badge>
+                  <Badge variant={a.confidence === "high" ? "default" : "secondary"} className="text-[10px]">{a.confidence} conf</Badge>
+                </div>
+                <div className="mt-1">{a.pattern}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">Evidence: {a.evidence}</div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="text-[10px] uppercase text-muted-foreground">Recoverable</div>
+                <div className="text-sm font-semibold text-emerald-500">${a.amountK}K</div>
+                <div className="text-[10px] text-muted-foreground">{a.detected}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function VendorPlays() {
+  return (
+    <div className="space-y-3">
+      {VENDOR_PLAYS.map(p => (
+        <Card key={p.title} className="p-4 text-xs space-y-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="font-semibold text-sm">{p.title}</div>
+            <div className="flex gap-1 flex-wrap">
+              {p.appliesTo.map(s => <Badge key={s} variant="outline" className="text-[10px]">{vendorSignalLabel(s)}</Badge>)}
+            </div>
+          </div>
+          <ol className="list-decimal list-inside space-y-0.5 text-muted-foreground">
+            {p.steps.map((s, i) => <li key={i}>{s}</li>)}
+          </ol>
+          <div className="border-l-2 border-emerald-500/60 pl-2 text-[11px]">
+            <span className="text-[10px] uppercase text-emerald-500">Leverage</span>
+            <div>{p.leverage}</div>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => {
+              const text = `${p.title}\n\nLeverage: ${p.leverage}\n\nSteps:\n${p.steps.map((s, i) => `${i + 1}. ${s}`).join("\n")}`;
+              navigator.clipboard.writeText(text); toast.success("Play copied");
+            }}>
+              <Copy className="h-3 w-3" />Copy play
+            </Button>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function VendorBench() {
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="font-semibold text-sm">Market benchmarks</h3>
+          <p className="text-xs text-muted-foreground mt-1">Where we sit vs the market on each vendor category. Use in QBRs and re-negotiations.</p>
+        </div>
+        <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+          ["Category", "Metric", "P25", "Median", "P75", "Our position", "Note"],
+          ...VENDOR_BENCHMARKS.map(b => [b.category, b.metric, b.marketP25, b.marketMedian, b.marketP75, b.ourPosition, b.note]),
+        ], "vendor-benchmarks.csv")}>
+          <Download className="h-3 w-3" />CSV
+        </Button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="text-[10px] uppercase text-muted-foreground">
+            <tr>
+              <th className="text-left py-1.5">Category</th>
+              <th className="text-left">Metric</th>
+              <th className="text-right">P25</th>
+              <th className="text-right">Median</th>
+              <th className="text-right">P75</th>
+              <th className="text-left">Our position</th>
+            </tr>
+          </thead>
+          <tbody>
+            {VENDOR_BENCHMARKS.map(b => (
+              <tr key={b.category} className="border-t align-top">
+                <td className="py-1.5 font-medium">{b.category}</td>
+                <td>{b.metric}</td>
+                <td className="text-right">{b.marketP25}</td>
+                <td className="text-right">{b.marketMedian}</td>
+                <td className="text-right">{b.marketP75}</td>
+                <td>
+                  <Badge variant="outline" className={`text-[10px] ${b.ourPosition === "above market" ? "text-red-500 border-red-500/40 bg-red-500/5" : b.ourPosition === "below market" ? "text-emerald-500 border-emerald-500/40 bg-emerald-500/5" : "text-muted-foreground"}`}>
+                    {b.ourPosition}
+                  </Badge>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">{b.note}</div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
