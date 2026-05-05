@@ -968,6 +968,7 @@ function VendorContracts() {
               <ul className="mt-2 text-[11px] space-y-0.5 list-disc list-inside text-muted-foreground">
                 {v.flags.map((f, i) => <li key={i}>{f}</li>)}
               </ul>
+              <VendorSubmissions vendorKey={v.vendorKey} scope="contract" label={v.vendor} />
             </div>
           );
         })}
