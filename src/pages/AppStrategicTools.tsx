@@ -32,6 +32,25 @@ ACME Health Plan`;
 
 const SAMPLE_NOTE = `73 y/o male admitted for shortness of breath, lower extremity edema, and weight gain. History of CHF, HTN, T2DM, BMI 42. Creatinine on admission 2.1, baseline 1.0. SpO2 88% on RA, started on 4L NC. Blood cultures drawn for fever 101.4F. Nutrition consult notes weight loss 12lbs over 3 months. Plan: diuresis, monitor renal function, antibiotics pending cultures. Procedure: 99285 ED visit + 71046 chest x-ray, right knee 27447 scheduled.`;
 
+function downloadCsv(rows: (string | number)[][], filename: string) {
+  const esc = (v: string | number) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = rows.map(r => r.map(esc).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  toast.success(`Exported ${filename}`);
+}
+
+function copyJson(obj: any, label = "JSON") {
+  navigator.clipboard.writeText(JSON.stringify(obj, null, 2));
+  toast.success(`${label} copied`);
+}
+
 export default function AppStrategicTools() {
   return (
     <div className="space-y-6">
