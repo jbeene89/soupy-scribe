@@ -632,7 +632,15 @@ function DocDebt() {
       </Card>
 
       <Card className="p-5">
-        <h3 className="font-semibold text-sm">By physician</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">By physician</h3>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+            ["Physician", "Specialty", "Cases/mo", "12mo debt", "CMI opportunity", "Top misses", "Trend"],
+            ...records.map(r => [r.physicianName, r.specialty, r.monthlyCases, r.cumulativeDebt, r.cmiOpportunity.toFixed(2), r.topMissedCategories.join("; "), r.trend]),
+          ], "documentation-debt.csv")}>
+            <Download className="h-3 w-3" />CSV
+          </Button>
+        </div>
         <div className="mt-3 max-h-[480px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead className="text-[10px] text-muted-foreground uppercase">
