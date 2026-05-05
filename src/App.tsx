@@ -27,6 +27,7 @@ import SubProcessors from "./pages/SubProcessors";
 import Security from "./pages/Security";
 import AIGovernance from "./pages/AIGovernance";
 import AppStrategicTools from "./pages/AppStrategicTools";
+import AppOpsCenter from "./pages/AppOpsCenter";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
               <Route path="revenue-integrity" element={<AppRevenueIntegrity />} />
               <Route path="ehr" element={<AppEHR />} />
               <Route path="strategic-tools" element={<AppStrategicTools />} />
+              <Route path="ops-center" element={<AppOpsCenter />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
