@@ -509,7 +509,15 @@ function AppealAB() {
         </div>
       </Card>
       <Card className="p-5">
-        <h3 className="font-semibold text-sm">All variants</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">All variants</h3>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+            ["Payer", "CARC", "Variant", "Attempts", "Overturned", "Overturn %", "Avg days"],
+            ...variants.map(v => [v.payer, v.reasonCode, v.name, v.attempts, v.overturned, Math.round((v.overturned / v.attempts) * 100), v.avgDaysToDecision]),
+          ], "appeal-ab-variants.csv")}>
+            <Download className="h-3 w-3" />CSV
+          </Button>
+        </div>
         <div className="mt-3 max-h-[400px] overflow-y-auto">
           <table className="w-full text-xs">
             <thead className="text-[10px] text-muted-foreground uppercase">
