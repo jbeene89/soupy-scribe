@@ -37,6 +37,7 @@ import {
   ScanSearch,
   Database as DatabaseIcon,
   Sparkles,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -55,6 +56,7 @@ const PAYER_NAV = [
 
 const EXPERIMENTAL_NAV = [
   { title: 'Strategic Tools', path: '/app/strategic-tools', icon: Sparkles },
+  { title: 'Ops Center', path: '/app/ops-center', icon: Activity },
   { title: 'OR Readiness', path: '/app/or-readiness', icon: ShieldAlert },
   { title: 'Triage Accuracy', path: '/app/triage', icon: Target },
   { title: 'Post-Op Flow', path: '/app/postop', icon: Bed },
