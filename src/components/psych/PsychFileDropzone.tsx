@@ -23,7 +23,7 @@ type State =
 export function PsychFileDropzone({
   onTextExtracted,
   label = 'Drop a session note, superbill, or claim PDF here',
-  sublabel = 'PDF, Word (.docx), or text file · up to 20MB',
+  sublabel = 'PDF, Word, text, or FHIR (.json/.ndjson) · up to 20MB',
 }: PsychFileDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>({ kind: 'idle' });
@@ -86,7 +86,7 @@ export function PsychFileDropzone({
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.tsv,.rtf,.json,.xml,.hl7,.png,.jpg,.jpeg,.webp,.tif,.tiff,.dcm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/dicom,text/*,image/*"
+          accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.tsv,.rtf,.json,.ndjson,.xml,.hl7,.png,.jpg,.jpeg,.webp,.tif,.tiff,.dcm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/dicom,text/*,image/*"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) handleFile(file);

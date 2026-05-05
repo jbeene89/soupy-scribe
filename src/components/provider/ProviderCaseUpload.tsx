@@ -210,7 +210,7 @@ export function ProviderCaseUpload({ onCaseCreated }: ProviderCaseUploadProps) {
                   type="file"
                   multiple
                   className="hidden"
-                  accept=".pdf,.docx,.txt,.md,.csv,.tsv,.rtf,.json,.xml,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/*"
+                  accept=".pdf,.docx,.txt,.md,.csv,.tsv,.rtf,.json,.ndjson,.xml,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/*"
                   onChange={(e) => {
                     if (e.target.files?.length) handleFiles(e.target.files);
                     e.target.value = '';
@@ -219,7 +219,7 @@ export function ProviderCaseUpload({ onCaseCreated }: ProviderCaseUploadProps) {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Upload className="h-3.5 w-3.5" />
-                    Attach PDF, DOCX, XLSX, or TXT — text is auto-extracted
+                    Attach PDF, DOCX, XLSX, TXT, or FHIR (.json/.ndjson) — auto-extracted
                   </div>
                   <Button
                     type="button"
