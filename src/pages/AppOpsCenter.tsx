@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
+import { useLocalState } from "@/hooks/useLocalState";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Activity, ClipboardList, FileBarChart, Eye, TrendingDown, HeartPulse, Siren, Microscope, Download, Copy, AlertTriangle, ShieldAlert, Search, Calculator } from "lucide-react";
+import { Activity, ClipboardList, FileBarChart, Eye, TrendingDown, HeartPulse, Siren, Microscope, Download, Copy, AlertTriangle, ShieldAlert, Search, Calculator, Handshake, ChevronDown, ChevronRight, NotebookPen, RotateCcw, Pin, PinOff } from "lucide-react";
 import { toast } from "sonner";
 import {
   PAYER_SCORECARDS, NOC_ALERTS, SERVICE_LINES, MYSTERY_SHOPPER,
@@ -11,6 +12,7 @@ import {
   gradeColor, ragClass, severityClass,
   VENDOR_CONTRACTS, VENDOR_ANOMALIES, VENDOR_PLAYS, VENDOR_BENCHMARKS,
   vendorRiskClass, vendorSignalLabel,
+  VENDOR_DEALS, dealTypeLabel,
 } from "@/lib/opsCenterData";
 
 function downloadCsv(rows: (string | number)[][], filename: string) {
