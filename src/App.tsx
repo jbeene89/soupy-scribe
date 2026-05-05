@@ -21,6 +21,7 @@ import AppImaging from "./pages/AppImaging";
 import AppRevenueIntegrity from "./pages/AppRevenueIntegrity";
 import AppEHR from "./pages/AppEHR";
 import Unsubscribe from "./pages/Unsubscribe";
+import Trust from "./pages/Trust";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
+            <Route path="/trust" element={<Trust />} />
 
             {/* Protected admin routes */}
             <Route path="/app" element={
