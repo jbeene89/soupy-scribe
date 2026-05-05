@@ -183,6 +183,239 @@ export function severityClass(s: Severity) {
   return "bg-muted text-muted-foreground border-border";
 }
 
+/* ───────────────────────── Vendor Watch ─────────────────────────
+ * Adapted from retail vendor scorecards + IT/MSP procurement audits.
+ * Catches price creep, shadow fees, contract drift, auto-renewal traps,
+ * unearned rebates, and outright overbilling on RCM/clearinghouse/
+ * coding/EHR/SaaS vendors.
+ */
+
+export type VendorRisk = "low" | "watch" | "high" | "critical";
+
+export interface VendorContract {
+  vendor: string;
+  category: string;            // e.g. Clearinghouse, Coding, RCM, EHR, SaaS
+  spendAnnualK: number;        // $K/yr
+  contractedRate: string;      // human-readable rate basis
+  effectiveRate: string;       // what we are actually paying
+  variancePct: number;         // negative = overbilled
+  autoRenewDays: number;       // days until silent auto-renew window closes
+  noticeRequiredDays: number;  // notice period to terminate
+  risk: VendorRisk;
+  flags: string[];             // specific findings
+  estRecoveryK: number;        // $K recoverable if pursued
+}
+
+export const VENDOR_CONTRACTS: VendorContract[] = [
+  {
+    vendor: "ClearMD Clearinghouse", category: "Clearinghouse",
+    spendAnnualK: 184, contractedRate: "$0.32 / claim",
+    effectiveRate: "$0.41 / claim (+rejection re-fee)",
+    variancePct: -28, autoRenewDays: 41, noticeRequiredDays: 90,
+    risk: "critical",
+    flags: [
+      "Re-submission fee not in MSA — billed on every 277CA reject",
+      "Tier-volume discount triggered Q3 but not applied",
+      "Notice window (90d) exceeds auto-renew window (41d) — trap",
+    ],
+    estRecoveryK: 38,
+  },
+  {
+    vendor: "CodeRight Outsourced Coding", category: "Coding",
+    spendAnnualK: 612, contractedRate: "$2.10 / chart, SLA 24h",
+    effectiveRate: "$2.31 / chart, SLA 31h actual",
+    variancePct: -10, autoRenewDays: 88, noticeRequiredDays: 60,
+    risk: "high",
+    flags: [
+      "10% above contracted unit rate — invoice line 'complexity adj' undefined in SOW",
+      "SLA missed 4 of last 6 months — credits owed not issued",
+      "DRG accuracy below 95% threshold — not measured by vendor",
+    ],
+    estRecoveryK: 62,
+  },
+  {
+    vendor: "RevCycle Partners (extended BO)", category: "RCM",
+    spendAnnualK: 940, contractedRate: "4.5% net collections",
+    effectiveRate: "4.5% gross collections",
+    variancePct: -7, autoRenewDays: 122, noticeRequiredDays: 120,
+    risk: "high",
+    flags: [
+      "Billing on gross instead of net — refunds/take-backs not deducted",
+      "Charging on payer credits applied to OTHER claims",
+      "Shadow 'lockbox handling' fee — not in pricing exhibit",
+    ],
+    estRecoveryK: 71,
+  },
+  {
+    vendor: "ChartScribe AI Documentation", category: "SaaS",
+    spendAnnualK: 96, contractedRate: "$1,200 / provider / yr",
+    effectiveRate: "$1,380 / provider / yr (auto CPI)",
+    variancePct: -15, autoRenewDays: 19, noticeRequiredDays: 30,
+    risk: "critical",
+    flags: [
+      "CPI escalator silently applied above MSA cap of 5%",
+      "Renewal window closes in 19d but notice requires 30d — locks in auto-renew",
+      "Inactive seats not credited (37 of 80 seats unused last 60d)",
+    ],
+    estRecoveryK: 22,
+  },
+  {
+    vendor: "EHR Vendor — Add-on Modules", category: "EHR",
+    spendAnnualK: 1480, contractedRate: "Bundled enterprise license",
+    effectiveRate: "Bundle + per-API-call overages",
+    variancePct: -4, autoRenewDays: 210, noticeRequiredDays: 180,
+    risk: "watch",
+    flags: [
+      "FHIR API overages billed despite enterprise bundle",
+      "Sandbox env counted toward production seat limit",
+    ],
+    estRecoveryK: 28,
+  },
+  {
+    vendor: "Denial Mgmt Boutique", category: "Appeals",
+    spendAnnualK: 220, contractedRate: "20% of overturn $",
+    effectiveRate: "20% of overturn + 'research' hourly",
+    variancePct: -12, autoRenewDays: 64, noticeRequiredDays: 45,
+    risk: "high",
+    flags: [
+      "Hourly research fee billed on cases that auto-overturn",
+      "Charging on appeals we filed internally and assigned for tracking only",
+    ],
+    estRecoveryK: 18,
+  },
+  {
+    vendor: "Transcription Co.", category: "Ancillary",
+    spendAnnualK: 74, contractedRate: "$0.09 / line",
+    effectiveRate: "$0.09 / line",
+    variancePct: 0, autoRenewDays: 175, noticeRequiredDays: 60,
+    risk: "low",
+    flags: ["Clean — last audit Q4 2025"],
+    estRecoveryK: 0,
+  },
+];
+
+export interface VendorAnomaly {
+  id: string;
+  vendor: string;
+  detected: string;       // ISO date
+  pattern: string;        // what was observed
+  signal: "price-creep" | "shadow-fee" | "rebate-miss" | "sla-credit-miss" | "duplicate" | "scope-creep" | "auto-renew-trap";
+  amountK: number;
+  confidence: "high" | "medium" | "low";
+  evidence: string;
+}
+
+export const VENDOR_ANOMALIES: VendorAnomaly[] = [
+  { id: "VA-401", vendor: "ClearMD Clearinghouse", detected: "2026-05-04", pattern: "Per-claim rate drifted from $0.32 → $0.39 over 6 invoices without amendment", signal: "price-creep",     amountK: 11, confidence: "high",   evidence: "Invoices #4471–4476 vs MSA §3.1 pricing exhibit" },
+  { id: "VA-402", vendor: "ClearMD Clearinghouse", detected: "2026-05-03", pattern: "Re-submission fee billed on payer-side 277CA rejects", signal: "shadow-fee",      amountK:  9, confidence: "high",   evidence: "Invoice line 'RSF' not present in MSA fee schedule" },
+  { id: "VA-403", vendor: "CodeRight Coding",       detected: "2026-05-02", pattern: "Volume tier 3 (>15K charts/mo) hit Q3, 8% rebate not credited", signal: "rebate-miss",     amountK: 41, confidence: "high",   evidence: "Volume report Q3 + MSA exhibit B" },
+  { id: "VA-404", vendor: "CodeRight Coding",       detected: "2026-05-01", pattern: "SLA missed (31h vs 24h) for 4 months — 5% credit/mo not issued", signal: "sla-credit-miss", amountK: 24, confidence: "high",   evidence: "Vendor's own monthly SLA reports" },
+  { id: "VA-405", vendor: "RevCycle Partners",      detected: "2026-04-30", pattern: "Commission charged on gross including refunded $/take-backs",   signal: "scope-creep",     amountK: 52, confidence: "high",   evidence: "Remit-vs-commission reconciliation, Mar–Apr" },
+  { id: "VA-406", vendor: "RevCycle Partners",      detected: "2026-04-29", pattern: "Same encounter commissioned twice (re-billed after correction)", signal: "duplicate",       amountK:  7, confidence: "medium", evidence: "Encounters E-22817, E-22833 — two commission lines" },
+  { id: "VA-407", vendor: "ChartScribe AI",         detected: "2026-04-28", pattern: "CPI uplift +9% applied; MSA caps at +5%",                       signal: "price-creep",     amountK:  6, confidence: "high",   evidence: "Renewal quote vs MSA §4.3" },
+  { id: "VA-408", vendor: "ChartScribe AI",         detected: "2026-04-28", pattern: "Notice (30d) > auto-renew window (19d remaining) — trap",      signal: "auto-renew-trap", amountK: 16, confidence: "high",   evidence: "Calendar math, executed MSA dates" },
+  { id: "VA-409", vendor: "EHR Vendor",             detected: "2026-04-26", pattern: "FHIR API overages billed despite enterprise-bundle clause",    signal: "shadow-fee",      amountK: 14, confidence: "medium", evidence: "Enterprise bundle §2.7 vs invoice 'API meter'" },
+  { id: "VA-410", vendor: "Denial Mgmt Boutique",   detected: "2026-04-25", pattern: "'Research' hours billed on auto-overturn cases (no work product)", signal: "scope-creep",     amountK:  8, confidence: "medium", evidence: "Vendor work-product log shows zero deliverables on flagged cases" },
+];
+
+export interface VendorPlay {
+  title: string;
+  appliesTo: VendorAnomaly["signal"][];
+  steps: string[];
+  leverage: string;
+}
+
+export const VENDOR_PLAYS: VendorPlay[] = [
+  {
+    title: "Recover overbilling — formal notice + offset",
+    appliesTo: ["price-creep", "shadow-fee", "duplicate"],
+    steps: [
+      "Pull executed MSA + active pricing exhibit (versioned).",
+      "Compute variance: invoiced − contracted × volume, by month.",
+      "Send dispute letter citing specific MSA section and dollar exposure.",
+      "Withhold disputed amount from next remit; request signed credit memo.",
+    ],
+    leverage: "Most vendor MSAs allow good-faith dispute withholding for 30–60 days without breach.",
+  },
+  {
+    title: "Trigger SLA credits owed",
+    appliesTo: ["sla-credit-miss"],
+    steps: [
+      "Use vendor's OWN monthly SLA report as evidence.",
+      "Apply credit formula from MSA exhibit (typically 5–10% per missed metric).",
+      "Demand back-credits for full lookback period (often 12mo).",
+    ],
+    leverage: "Vendors rarely self-issue credits; written demand backed by their own report = high success.",
+  },
+  {
+    title: "Claim earned rebate / volume discount",
+    appliesTo: ["rebate-miss"],
+    steps: [
+      "Pull volume report; confirm tier crossed and date.",
+      "Re-invoice retroactively from tier-crossing date per MSA exhibit B.",
+      "Add to next QBR agenda for repeat enforcement.",
+    ],
+    leverage: "Volume rebates are objective math — vendor cannot dispute if MSA language is clean.",
+  },
+  {
+    title: "Break the auto-renew trap",
+    appliesTo: ["auto-renew-trap"],
+    steps: [
+      "Send conditional non-renewal notice TODAY (preserve optionality).",
+      "Open re-negotiation in parallel with notice on file.",
+      "Demand notice window be aligned to renewal window in next amendment.",
+    ],
+    leverage: "Notice on file forces vendor to compete or concede; can be withdrawn if terms improve.",
+  },
+  {
+    title: "Right-size scope creep",
+    appliesTo: ["scope-creep"],
+    steps: [
+      "Define commissionable base in writing (net cash, post-take-back).",
+      "Demand monthly reconciliation report from vendor.",
+      "Cap out-of-scope work product at named SOW deliverables only.",
+    ],
+    leverage: "Scope creep is the single biggest vendor leak — once defined in writing, it stops.",
+  },
+];
+
+export interface VendorMarketBenchmark {
+  category: string;
+  metric: string;
+  marketP25: string;
+  marketMedian: string;
+  marketP75: string;
+  ourPosition: "above market" | "at market" | "below market";
+  note: string;
+}
+
+export const VENDOR_BENCHMARKS: VendorMarketBenchmark[] = [
+  { category: "Clearinghouse", metric: "Per-claim",          marketP25: "$0.18", marketMedian: "$0.27", marketP75: "$0.34", ourPosition: "above market", note: "Renegotiate at next renewal — 2 quotes in hand from comparable peers." },
+  { category: "Coding",        metric: "Per-chart (E/M)",    marketP25: "$1.65", marketMedian: "$1.95", marketP75: "$2.25", ourPosition: "above market", note: "Tier discount + SLA credits will close the gap; deeper cut needs RFP." },
+  { category: "RCM (extended)",metric: "% net collections",  marketP25: "3.5%",  marketMedian: "4.2%",  marketP75: "5.0%",  ourPosition: "at market",    note: "Rate is fair — fight is the gross-vs-net basis, not the rate." },
+  { category: "Doc AI SaaS",   metric: "Per-provider/yr",    marketP25: "$960",  marketMedian: "$1,200",marketP75: "$1,500",ourPosition: "above market", note: "Inactive-seat true-up + CPI cap should pull us to median." },
+  { category: "Appeals firm",  metric: "% of overturn $",    marketP25: "15%",   marketMedian: "20%",   marketP75: "25%",   ourPosition: "at market",    note: "Contingency rate fair; eliminate hourly add-on." },
+];
+
+export function vendorRiskClass(r: VendorRisk) {
+  if (r === "critical") return "bg-red-500/15 text-red-500 border-red-500/50";
+  if (r === "high")     return "bg-orange-500/15 text-orange-500 border-orange-500/40";
+  if (r === "watch")    return "bg-amber-500/15 text-amber-500 border-amber-500/40";
+  return "bg-emerald-500/15 text-emerald-500 border-emerald-500/40";
+}
+
+export function vendorSignalLabel(s: VendorAnomaly["signal"]) {
+  return ({
+    "price-creep": "Price creep",
+    "shadow-fee": "Shadow fee",
+    "rebate-miss": "Unearned rebate",
+    "sla-credit-miss": "SLA credit owed",
+    "duplicate": "Duplicate billing",
+    "scope-creep": "Scope creep",
+    "auto-renew-trap": "Auto-renew trap",
+  } as const)[s];
+}
+
 /** Deterministic weekly brief generator from current data. */
 export function generateWeeklyBrief(): {
   whatChanged: string[];
