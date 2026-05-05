@@ -78,12 +78,14 @@ const SECTIONS: Section[] = [
     items: [
       { name: 'FHIR R4 ingest (Patient, Encounter, Claim, EOB, Condition, DocumentReference)', status: 'available', detail: 'JSON and NDJSON. Vendor extensions auto-detected (Epic, Cerner, Athena, US Core, CARIN, Da Vinci).' },
       { name: 'Bulk FHIR ($export)', status: 'in_progress' },
-      { name: 'SMART-on-FHIR launch', status: 'roadmap', detail: 'Targeted for first Epic App Orchard / Oracle Health Code engagement.' },
-      { name: 'HL7 v2 ADT/DFT fallback', status: 'roadmap' },
-      { name: 'X12 837 / 835 / 277 claims & remits', status: 'roadmap' },
+      { name: 'SMART-on-FHIR launch', status: 'in_progress', detail: 'OAuth2 client built atop the working FHIR normalizer. Production unlocks with Epic App Orchard / Oracle Health Code listing.' },
+      { name: 'HL7 v2.x ADT / DFT / ORM / ORU', status: 'available', detail: 'Pipe-delimited v2 messages parsed inline (MSH, PID, PV1, DG1, PR1, FT1). Visible in /app/ehr → Standards Lab.' },
+      { name: 'X12 EDI 837 / 835 / 277', status: 'available', detail: 'Claim, remit (with CARC/RARC adjustment reasons via CAS), and claim status parsed inline. Feeds the appeal-defense module directly.' },
       { name: 'CSV / PDF / DOCX / TXT upload', status: 'available' },
       { name: 'SAML 2.0 SSO', status: 'available', detail: 'Native via Lovable Cloud — Okta, Azure AD / Entra ID, OneLogin, any SAML IdP.' },
-      { name: 'SCIM provisioning', status: 'roadmap' },
+      { name: 'SCIM 2.0 provisioning', status: 'roadmap', detail: 'JIT user creation + role/group sync from IdP. Targeted alongside first enterprise contract.' },
+      { name: 'Epic App Orchard listing', status: 'roadmap', detail: '6–18 month process; pilot path is designed to deliver provable ROI before this step is required.' },
+      { name: 'Oracle Health (Cerner) Code listing', status: 'roadmap', detail: 'Sandbox-validated; production listing follows first paying customer.' },
     ],
   },
   {

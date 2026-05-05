@@ -7,6 +7,8 @@ import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import { ingestFhir, looksLikeFhir } from './fhirIngest';
+import { parseHl7v2, isHl7v2 } from './hl7v2Ingest';
+import { parseX12, isX12 } from './x12Ingest';
 
 // Configure pdf.js worker (Vite-friendly: use the bundled worker)
 // We use the legacy build for max compatibility.
@@ -59,9 +61,38 @@ export async function extractTextFromFile(file: File): Promise<ExtractionResult>
     name.endsWith('.json') ||
     name.endsWith('.xml') ||
     name.endsWith('.hl7') ||
+    name.endsWith('.edi') ||
+    name.endsWith('.x12') ||
+    name.endsWith('.835') ||
+    name.endsWith('.837') ||
+    name.endsWith('.277') ||
     name.endsWith('.rtf')
   ) {
     const text = await file.text();
+    // HL7 v2 detection — pipe-delimited messages starting with "MSH|"
+    if (isHl7v2(text)) {
+      try {
+        const r = parseHl7v2(text);
+        if (r) {
+          return {
+            text: `[HL7 v2 ${r.messageType} · ${r.segmentsParsed} segments]\n` + r.normalizedSummary,
+            warning: r.warnings.length ? r.warnings.join(' · ') : undefined,
+          };
+        }
+      } catch { /* fall through */ }
+    }
+    // X12 EDI detection — ISA segment header
+    if (isX12(text)) {
+      try {
+        const r = parseX12(text);
+        if (r) {
+          return {
+            text: `[X12 ${r.transactionType} · ${r.claims.length} claims]\n` + r.normalizedSummary,
+            warning: r.warnings.length ? r.warnings.join(' · ') : undefined,
+          };
+        }
+      } catch { /* fall through */ }
+    }
     // FHIR detection — JSON or NDJSON FHIR payloads get normalized into
     // a structured plain-text summary the existing pipelines can read.
     if ((name.endsWith('.json') || name.endsWith('.ndjson')) && looksLikeFhir(text)) {

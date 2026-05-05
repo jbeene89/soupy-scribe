@@ -12,6 +12,8 @@ import {
 import { toast } from 'sonner';
 import { ingestFhir, looksLikeFhir, type FhirIngestResult } from '@/lib/fhirIngest';
 import { downloadSyntheticFhirBundle, getSyntheticFhirBundleJson } from '@/lib/fhirSampleBundle';
+import { parseHl7v2, isHl7v2, SAMPLE_ADT_A01, type Hl7v2IngestResult } from '@/lib/hl7v2Ingest';
+import { parseX12, isX12, SAMPLE_835, type X12IngestResult } from '@/lib/x12Ingest';
 
 type ConnectorStatus = 'available' | 'sandbox' | 'roadmap';
 
@@ -30,9 +32,11 @@ const CONNECTORS: Connector[] = [
   { vendor: 'MEDITECH Expanse', method: 'FHIR R4 Bulk Export', status: 'available', notes: 'Bulk export NDJSON ingestion supported.' },
   { vendor: 'eClinicalWorks', method: 'FHIR R4 / CCDA', status: 'sandbox', notes: 'FHIR Bundles supported; CCDA conversion roadmap.' },
   { vendor: 'NextGen', method: 'FHIR R4', status: 'sandbox', notes: 'Bundle ingest works; live OAuth roadmap.' },
-  { vendor: 'Generic HL7 v2', method: 'ADT/ORM/ORU messages', status: 'roadmap', notes: 'Pipe-delimited HL7 v2 → FHIR converter on roadmap.' },
+  { vendor: 'Generic HL7 v2', method: 'ADT / DFT / ORM / ORU messages', status: 'available', notes: 'Pipe-delimited v2 parsed inline. ADT (admit/discharge) and DFT (charges) tested today; ORM/ORU normalized into the same internal shape.' },
   { vendor: 'CCDA / C-CDA', method: 'XML Continuity-of-Care', status: 'roadmap', notes: 'C-CDA → FHIR conversion roadmap.' },
-  { vendor: 'X12 837 / 835', method: 'EDI claims & remits', status: 'available', notes: 'Already supported via the Claim Parser module.' },
+  { vendor: 'X12 837 / 835 / 277', method: 'EDI claims, remits, status', status: 'available', notes: '837 (claim), 835 (remit with CARC/RARC adjustment reasons), and 277 (claim status) parsed inline. CAS-segment denial reasons feed the appeal-defense module directly.' },
+  { vendor: 'SAML 2.0 SSO', method: 'Okta / Azure AD / Entra ID / OneLogin', status: 'available', notes: 'Native SAML SSO via Lovable Cloud. Configure metadata URL + email domains; allowlisted IdPs sign in directly.' },
+  { vendor: 'SCIM 2.0 provisioning', method: 'Automated user lifecycle', status: 'roadmap', notes: 'JIT user creation + role/group sync from IdP. Targeted alongside first enterprise contract.' },
 ];
 
 const SUPPORTED_RESOURCES = [
@@ -66,6 +70,36 @@ export default function AppEHR() {
   const [result, setResult] = useState<FhirIngestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Standards Lab state (HL7 v2 + X12)
+  const [hl7Input, setHl7Input] = useState('');
+  const [hl7Result, setHl7Result] = useState<Hl7v2IngestResult | null>(null);
+  const [hl7Error, setHl7Error] = useState<string | null>(null);
+  const [x12Input, setX12Input] = useState('');
+  const [x12Result, setX12Result] = useState<X12IngestResult | null>(null);
+  const [x12Error, setX12Error] = useState<string | null>(null);
+
+  const tryHl7 = (text: string) => {
+    setHl7Error(null); setHl7Result(null);
+    if (!isHl7v2(text)) { setHl7Error('Does not look like an HL7 v2 message — should start with "MSH|"'); return; }
+    try {
+      const r = parseHl7v2(text);
+      if (!r) { setHl7Error('Parser returned no result'); return; }
+      setHl7Result(r);
+      toast.success(`Parsed ${r.messageType}`, { description: `${r.segmentsParsed} segments` });
+    } catch (e: any) { setHl7Error(e?.message || 'HL7 parse failed'); }
+  };
+
+  const tryX12 = (text: string) => {
+    setX12Error(null); setX12Result(null);
+    if (!isX12(text)) { setX12Error('Does not look like an X12 EDI payload — should start with "ISA*"'); return; }
+    try {
+      const r = parseX12(text);
+      if (!r) { setX12Error('Parser returned no result'); return; }
+      setX12Result(r);
+      toast.success(`Parsed X12 ${r.transactionType}`, { description: `${r.claims.length} claims` });
+    } catch (e: any) { setX12Error(e?.message || 'X12 parse failed'); }
+  };
 
   const tryIngest = (text: string) => {
     setError(null);
@@ -109,6 +143,7 @@ export default function AppEHR() {
       <Tabs defaultValue="ingest" className="space-y-4">
         <TabsList>
           <TabsTrigger value="ingest" className="gap-1.5"><Upload className="h-3.5 w-3.5" />Ingest & Try</TabsTrigger>
+          <TabsTrigger value="standards" className="gap-1.5"><FileJson className="h-3.5 w-3.5" />Standards Lab</TabsTrigger>
           <TabsTrigger value="resources" className="gap-1.5"><FileJson className="h-3.5 w-3.5" />Resources</TabsTrigger>
           <TabsTrigger value="connectors" className="gap-1.5"><Plug className="h-3.5 w-3.5" />Connectors</TabsTrigger>
           <TabsTrigger value="security" className="gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Security</TabsTrigger>
@@ -238,6 +273,142 @@ export default function AppEHR() {
               )}
             </Card>
           </div>
+        </TabsContent>
+
+        {/* STANDARDS LAB — HL7 v2 + X12 */}
+        <TabsContent value="standards" className="space-y-4">
+          <Card className="p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold">Why this tab exists</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-3xl">
+                Most US hospitals still emit HL7 v2 alongside (or instead of) FHIR, and every claim/remit moves as X12 EDI.
+                Both parsers run in your browser. Paste a message, see the structured output the audit pipeline consumes.
+              </p>
+            </div>
+          </Card>
+
+          <div className="grid lg:grid-cols-2 gap-4">
+            {/* HL7 v2 */}
+            <Card className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold">HL7 v2.x — ADT / DFT / ORM / ORU</p>
+                  <p className="text-xs text-muted-foreground">Pipe-delimited messages. MSH, PID, PV1, DG1, PR1, FT1.</p>
+                </div>
+                <Button size="sm" variant="ghost" className="gap-1.5"
+                  onClick={() => { setHl7Input(SAMPLE_ADT_A01); tryHl7(SAMPLE_ADT_A01); }}>
+                  Load ADT^A01
+                </Button>
+              </div>
+              <Textarea
+                value={hl7Input}
+                onChange={(e) => setHl7Input(e.target.value)}
+                placeholder="MSH|^~\&|EPIC|UFHEALTH|SOUPY|AUDIT|..."
+                className="font-mono text-[11px] min-h-[180px]"
+              />
+              <div className="flex justify-end">
+                <Button size="sm" disabled={!hl7Input.trim()} onClick={() => tryHl7(hl7Input)} className="gap-1.5">
+                  Parse <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {hl7Error && (
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive flex items-start gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />{hl7Error}
+                </div>
+              )}
+              {hl7Result && (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    <Badge variant="outline" className="text-[10px] font-mono">{hl7Result.messageType}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{hl7Result.segmentsParsed} segments</Badge>
+                    {hl7Result.patient.mrn && <Badge variant="secondary" className="text-[10px]">MRN {hl7Result.patient.mrn}</Badge>}
+                    {hl7Result.diagnoses.length > 0 && <Badge variant="outline" className="text-[10px]">{hl7Result.diagnoses.length} dx</Badge>}
+                    {hl7Result.charges.length > 0 && <Badge variant="outline" className="text-[10px]">{hl7Result.charges.length} charges</Badge>}
+                  </div>
+                  {hl7Result.warnings.length > 0 && (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-[11px] text-amber-700 dark:text-amber-400">
+                      {hl7Result.warnings.join(' · ')}
+                    </div>
+                  )}
+                  <pre className="text-[10px] bg-muted/40 rounded-md p-2 max-h-[280px] overflow-auto font-mono whitespace-pre-wrap">
+                    {hl7Result.normalizedSummary}
+                  </pre>
+                </div>
+              )}
+            </Card>
+
+            {/* X12 EDI */}
+            <Card className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold">X12 EDI — 837 / 835 / 277</p>
+                  <p className="text-xs text-muted-foreground">Claim, remit, and status. CAS adjustment reasons feed appeal defense.</p>
+                </div>
+                <Button size="sm" variant="ghost" className="gap-1.5"
+                  onClick={() => { setX12Input(SAMPLE_835); tryX12(SAMPLE_835); }}>
+                  Load 835 sample
+                </Button>
+              </div>
+              <Textarea
+                value={x12Input}
+                onChange={(e) => setX12Input(e.target.value)}
+                placeholder="ISA*00*          *00*          *ZZ*PAYER..."
+                className="font-mono text-[11px] min-h-[180px]"
+              />
+              <div className="flex justify-end">
+                <Button size="sm" disabled={!x12Input.trim()} onClick={() => tryX12(x12Input)} className="gap-1.5">
+                  Parse <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {x12Error && (
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive flex items-start gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />{x12Error}
+                </div>
+              )}
+              {x12Result && (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    <Badge variant="outline" className="text-[10px] font-mono">X12 {x12Result.transactionType}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{x12Result.segmentsParsed} segments</Badge>
+                    <Badge variant="outline" className="text-[10px]">{x12Result.claims.length} claims</Badge>
+                  </div>
+                  {x12Result.warnings.length > 0 && (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-[11px] text-amber-700 dark:text-amber-400">
+                      {x12Result.warnings.join(' · ')}
+                    </div>
+                  )}
+                  <pre className="text-[10px] bg-muted/40 rounded-md p-2 max-h-[280px] overflow-auto font-mono whitespace-pre-wrap">
+                    {x12Result.normalizedSummary}
+                  </pre>
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* SMART-on-FHIR + SSO posture */}
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Network className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">SMART on FHIR · Bulk FHIR · SSO</p>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div className="rounded-md border p-3">
+                <p className="text-xs font-semibold mb-1">SMART on FHIR launch</p>
+                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40 mb-2">Roadmap</Badge>
+                <p className="text-[11px] text-muted-foreground">OAuth2 against the customer's EHR for per-encounter pull. Built atop the same FHIR normalizer running today against file uploads — same downstream pipeline, different transport.</p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs font-semibold mb-1">Bulk FHIR ($export)</p>
+                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] mb-2">Available — file-based</Badge>
+                <p className="text-[11px] text-muted-foreground">NDJSON outputs from Epic, Cerner, MEDITECH bulk export ingest directly. Async polling client (Bulk Data API) is on roadmap for live pull.</p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs font-semibold mb-1">SAML SSO + SCIM</p>
+                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] mb-2">SAML available</Badge>
+                <p className="text-[11px] text-muted-foreground">Native SAML 2.0 via Lovable Cloud (Okta, Azure AD/Entra, OneLogin). SCIM 2.0 user provisioning targeted with first enterprise contract.</p>
+              </div>
+            </div>
+          </Card>
         </TabsContent>
 
         {/* RESOURCES */}
