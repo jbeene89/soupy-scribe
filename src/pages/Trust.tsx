@@ -243,6 +243,13 @@ export default function Trust() {
           This page reflects current posture and is updated as controls advance. Statements regarding planned attestations
           (SOC 2, HITRUST, ISO 42001) are forward-looking and not a guarantee of certification by any specific date.
         </p>
+
+        <div className="flex flex-wrap justify-center gap-6 text-xs font-mono uppercase tracking-wider pt-2">
+          <Link to="/status" className="text-muted-foreground hover:text-foreground transition-colors">Status</Link>
+          <Link to="/sub-processors" className="text-muted-foreground hover:text-foreground transition-colors">Sub-processors</Link>
+          <Link to="/security" className="text-muted-foreground hover:text-foreground transition-colors">Vulnerability Disclosure</Link>
+          <a href="/.well-known/security.txt" className="text-muted-foreground hover:text-foreground transition-colors">security.txt</a>
+        </div>
       </section>
     </div>
   );
