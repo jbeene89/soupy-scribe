@@ -80,7 +80,7 @@ export function VendorSubmissions({
       const { error } = await supabase.from("vendor_submissions").insert([{
         owner_id: user.id, vendor_key: vendorKey, scope, scope_ref: scopeRef ?? null,
         entry_type: entryType, title: title.trim() || null, body: body.trim(),
-        attachments: attachments as unknown as object,
+        attachments: attachments as unknown as never,
       }]);
       if (error) throw error;
       toast.success("Submission saved");
