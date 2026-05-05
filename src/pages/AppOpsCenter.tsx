@@ -3,12 +3,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Activity, ClipboardList, FileBarChart, Eye, TrendingDown, HeartPulse, Siren, Microscope, Download, Copy, AlertTriangle } from "lucide-react";
+import { Activity, ClipboardList, FileBarChart, Eye, TrendingDown, HeartPulse, Siren, Microscope, Download, Copy, AlertTriangle, ShieldAlert, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   PAYER_SCORECARDS, NOC_ALERTS, SERVICE_LINES, MYSTERY_SHOPPER,
   SHRINKAGE, RUNBOOKS, LOST_APPEAL_RCAS, generateWeeklyBrief,
   gradeColor, ragClass, severityClass,
+  VENDOR_CONTRACTS, VENDOR_ANOMALIES, VENDOR_PLAYS, VENDOR_BENCHMARKS,
+  vendorRiskClass, vendorSignalLabel,
 } from "@/lib/opsCenterData";
 
 function downloadCsv(rows: (string | number)[][], filename: string) {
@@ -45,6 +47,7 @@ export default function AppOpsCenter() {
             <TabsTrigger value="lines" className="whitespace-nowrap"><HeartPulse className="h-3.5 w-3.5 mr-1.5 shrink-0" />Service Lines</TabsTrigger>
             <TabsTrigger value="runbooks" className="whitespace-nowrap"><Activity className="h-3.5 w-3.5 mr-1.5 shrink-0" />Sev Runbooks</TabsTrigger>
             <TabsTrigger value="rca" className="whitespace-nowrap"><Microscope className="h-3.5 w-3.5 mr-1.5 shrink-0" />Lost-Appeal RCA</TabsTrigger>
+            <TabsTrigger value="vendors" className="whitespace-nowrap"><ShieldAlert className="h-3.5 w-3.5 mr-1.5 shrink-0" />Vendor Watch</TabsTrigger>
           </TabsList>
         </div>
 
@@ -56,6 +59,7 @@ export default function AppOpsCenter() {
         <TabsContent value="lines" className="mt-4"><Lines /></TabsContent>
         <TabsContent value="runbooks" className="mt-4"><Runbooks /></TabsContent>
         <TabsContent value="rca" className="mt-4"><Rca /></TabsContent>
+        <TabsContent value="vendors" className="mt-4"><Vendors /></TabsContent>
       </Tabs>
     </div>
   );
