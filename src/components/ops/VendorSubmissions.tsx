@@ -37,7 +37,8 @@ const BUCKET = "vendor-submissions";
 export function VendorSubmissions({
   vendorKey, scope, scopeRef, label,
 }: { vendorKey: string; scope: VendorScope; scopeRef?: string; label?: string }) {
-  const { user } = useAuth();
+  const { session } = useAuth();
+  const user = session?.user ?? null;
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,11 +77,11 @@ export function VendorSubmissions({
         if (up.error) throw up.error;
         attachments.push({ path, name: f.name, size: f.size, mime: f.type || "application/octet-stream" });
       }
-      const { error } = await supabase.from("vendor_submissions").insert({
+      const { error } = await supabase.from("vendor_submissions").insert([{
         owner_id: user.id, vendor_key: vendorKey, scope, scope_ref: scopeRef ?? null,
         entry_type: entryType, title: title.trim() || null, body: body.trim(),
         attachments: attachments as unknown as object,
-      });
+      }]);
       if (error) throw error;
       toast.success("Submission saved");
       setBody(""); setTitle(""); setPendingFiles([]);
