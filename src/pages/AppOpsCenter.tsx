@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
+import { useLocalState } from "@/hooks/useLocalState";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Activity, ClipboardList, FileBarChart, Eye, TrendingDown, HeartPulse, Siren, Microscope, Download, Copy, AlertTriangle, ShieldAlert, Search, Calculator } from "lucide-react";
+import { Activity, ClipboardList, FileBarChart, Eye, TrendingDown, HeartPulse, Siren, Microscope, Download, Copy, AlertTriangle, ShieldAlert, Search, Calculator, Handshake, ChevronDown, ChevronRight, NotebookPen, RotateCcw, Pin, PinOff } from "lucide-react";
 import { toast } from "sonner";
 import {
   PAYER_SCORECARDS, NOC_ALERTS, SERVICE_LINES, MYSTERY_SHOPPER,
@@ -11,6 +12,7 @@ import {
   gradeColor, ragClass, severityClass,
   VENDOR_CONTRACTS, VENDOR_ANOMALIES, VENDOR_PLAYS, VENDOR_BENCHMARKS,
   vendorRiskClass, vendorSignalLabel,
+  VENDOR_DEALS, dealTypeLabel,
 } from "@/lib/opsCenterData";
 
 function downloadCsv(rows: (string | number)[][], filename: string) {
@@ -368,6 +370,145 @@ function Lines() {
   );
 }
 
+/* ── Deals: negotiation & savings opportunities ── */
+interface DealEntry { active: boolean; note: string; pinned: boolean; updatedAt: string; }
+
+function VendorDeals() {
+  const [deals, setDeals] = useLocalState<Record<string, DealEntry>>("opsc.vendor.deals", {});
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [sort, setSort] = useLocalState<"savings" | "speed" | "window">("opsc.vendor.deals.sort", "savings");
+
+  const ranked = useMemo(() => {
+    const copy = [...VENDOR_DEALS];
+    copy.sort((a, b) => {
+      const pa = deals[a.id]?.pinned ? 1 : 0;
+      const pb = deals[b.id]?.pinned ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      if (sort === "speed") return a.effortDays - b.effortDays;
+      if (sort === "window") return a.triggerWindowDays - b.triggerWindowDays;
+      return (b.estAnnualSavingsK + b.oneTimeSavingsK) - (a.estAnnualSavingsK + a.oneTimeSavingsK);
+    });
+    return copy;
+  }, [deals, sort]);
+
+  const totalAnnual = VENDOR_DEALS.reduce((s, d) => s + d.estAnnualSavingsK, 0);
+  const totalOneTime = VENDOR_DEALS.reduce((s, d) => s + d.oneTimeSavingsK, 0);
+  const activeDeals = ranked.filter(d => deals[d.id]?.active);
+  const activeAnnual = activeDeals.reduce((s, d) => s + d.estAnnualSavingsK, 0);
+
+  function patchDeal(id: string, p: Partial<DealEntry>) {
+    setDeals(prev => ({ ...prev, [id]: { active: false, note: "", pinned: false, ...prev[id], ...p, updatedAt: new Date().toISOString() } }));
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Handshake className="h-4 w-4" />
+            <h3 className="font-semibold text-sm">Deals — negotiation & savings opportunities</h3>
+            <Badge variant="outline" className="text-[10px]">saved locally</Badge>
+          </div>
+          <div className="flex gap-1">
+            {(["savings", "speed", "window"] as const).map(s => (
+              <Button key={s} size="sm" variant={sort === s ? "default" : "outline"} className="h-7 text-xs" onClick={() => setSort(s)}>
+                {s === "savings" ? "By $" : s === "speed" ? "By speed" : "By window"}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <Stat label="Total annual savings" value={`$${totalAnnual}K`} tone="emerald" />
+          <Stat label="One-time recovery" value={`$${totalOneTime}K`} tone="emerald" />
+          <Stat label="Deals identified" value={VENDOR_DEALS.length} />
+          <Stat label="Active pipeline" value={`${activeDeals.length} · $${activeAnnual}K/yr`} tone={activeDeals.length ? "emerald" : "muted"} />
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-sm">Opportunity pipeline</h3>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+            ["ID", "Vendor", "Category", "Type", "Thesis", "Annual $K", "One-time $K", "Effort (d)", "Window (d)", "Confidence", "Next step", "Active", "Note"],
+            ...ranked.map(d => {
+              const e = deals[d.id];
+              return [d.id, d.vendor, d.category, dealTypeLabel(d.type), d.thesis, d.estAnnualSavingsK, d.oneTimeSavingsK, d.effortDays, d.triggerWindowDays, d.confidence, d.nextStep, e?.active ? "yes" : "", e?.note ?? ""];
+            }),
+          ], "vendor-deals.csv")}>
+            <Download className="h-3 w-3" />CSV
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {ranked.map(d => {
+            const e = deals[d.id];
+            const isOpen = openId === d.id;
+            const total = d.estAnnualSavingsK + d.oneTimeSavingsK;
+            const urgent = d.triggerWindowDays <= 30;
+            return (
+              <div key={d.id} className={`border rounded-md text-xs ${e?.active ? "border-emerald-500/50 bg-emerald-500/5" : e?.pinned ? "border-primary/40" : urgent ? "border-amber-500/40" : ""}`}>
+                <button onClick={() => setOpenId(isOpen ? null : d.id)} className="w-full text-left p-3 hover:bg-muted/50">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isOpen ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
+                    {e?.pinned && <Pin className="h-3 w-3 text-primary" />}
+                    <span className="font-semibold truncate">{d.vendor}</span>
+                    <Badge variant="outline" className="text-[10px]">{d.category}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{dealTypeLabel(d.type)}</Badge>
+                    <Badge variant={d.confidence === "high" ? "default" : "secondary"} className="text-[10px]">{d.confidence}</Badge>
+                    {urgent && <Badge variant="destructive" className="text-[10px]">window {d.triggerWindowDays}d</Badge>}
+                    {e?.note && <Badge variant="outline" className="text-[10px] gap-1"><NotebookPen className="h-3 w-3" />note</Badge>}
+                    <span className="ml-auto text-emerald-500 font-semibold">${d.estAnnualSavingsK}K/yr</span>
+                    {d.oneTimeSavingsK > 0 && <span className="text-[10px] text-emerald-500">+${d.oneTimeSavingsK}K once</span>}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{d.thesis}</div>
+                  <div className="mt-1.5 h-1 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, (total / 200) * 100)}%` }} />
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="border-t p-3 space-y-2 bg-background/50">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
+                      <div><div className="text-[10px] uppercase text-muted-foreground">Annual savings</div><div className="text-emerald-500 font-semibold">${d.estAnnualSavingsK}K</div></div>
+                      <div><div className="text-[10px] uppercase text-muted-foreground">One-time</div><div className="text-emerald-500">${d.oneTimeSavingsK}K</div></div>
+                      <div><div className="text-[10px] uppercase text-muted-foreground">Effort</div><div>{d.effortDays}d</div></div>
+                      <div><div className="text-[10px] uppercase text-muted-foreground">Leverage window</div><div className={urgent ? "text-amber-500 font-semibold" : ""}>{d.triggerWindowDays}d</div></div>
+                    </div>
+                    <div><div className="text-[10px] uppercase text-muted-foreground">Evidence</div><div>{d.evidence}</div></div>
+                    <div className="border-l-2 border-primary/60 pl-2"><div className="text-[10px] uppercase text-primary">Next step</div><div>{d.nextStep}</div></div>
+                    <div>
+                      <div className="text-[10px] uppercase text-muted-foreground mb-1">Notes (saved)</div>
+                      <textarea
+                        value={e?.note ?? ""}
+                        onChange={(ev) => patchDeal(d.id, { note: ev.target.value })}
+                        placeholder="Briefed CFO 5/4. RFP issued; responses due 5/20…"
+                        className="w-full min-h-[60px] rounded border bg-background p-2 text-xs"
+                      />
+                      {e?.updatedAt && <div className="text-[10px] text-muted-foreground mt-1">Updated {new Date(e.updatedAt).toLocaleString()}</div>}
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button size="sm" variant={e?.active ? "default" : "outline"} className="h-7 text-xs" onClick={() => patchDeal(d.id, { active: !(e?.active ?? false) })}>
+                        {e?.active ? "In pipeline ✓" : "Add to pipeline"}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => patchDeal(d.id, { pinned: !(e?.pinned ?? false) })}>
+                        {e?.pinned ? <><PinOff className="h-3 w-3" />Unpin</> : <><Pin className="h-3 w-3" />Pin</>}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => {
+                        const text = `${d.vendor} — ${dealTypeLabel(d.type)}\n\nThesis: ${d.thesis}\nAnnual: $${d.estAnnualSavingsK}K · One-time: $${d.oneTimeSavingsK}K\nWindow: ${d.triggerWindowDays}d · Effort: ${d.effortDays}d · Confidence: ${d.confidence}\nEvidence: ${d.evidence}\nNext step: ${d.nextStep}`;
+                        navigator.clipboard.writeText(text); toast.success("Deal copied");
+                      }}>
+                        <Copy className="h-3 w-3" />Copy
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function Runbooks() {
   return (
     <div className="space-y-3">
@@ -474,17 +615,19 @@ function RunbookCol({ title, items }: { title: string; items: string[] }) {
 
 /* ── Vendor Watch ── */
 function Vendors() {
-  const [tab, setTab] = useState<"roi" | "contracts" | "anomalies" | "plays" | "bench">("roi");
+  const [tab, setTab] = useLocalState<"roi" | "deals" | "contracts" | "anomalies" | "plays" | "bench">("opsc.vendor.tab", "roi");
+  const [pursued] = useLocalState<Record<string, PursueEntry>>("opsc.vendor.pursued", {});
   const totalRecovery = VENDOR_ANOMALIES.reduce((s, a) => s + a.amountK, 0);
   const critical = VENDOR_CONTRACTS.filter(v => v.risk === "critical").length;
   const trapDays = Math.min(...VENDOR_CONTRACTS.filter(v => v.noticeRequiredDays > v.autoRenewDays).map(v => v.autoRenewDays));
+  const pursuedCount = Object.values(pursued).filter(p => p.active).length;
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Stat label="Vendors monitored" value={VENDOR_CONTRACTS.length} />
         <Stat label="Critical risk" value={critical} tone={critical ? "red" : "muted"} />
-        <Stat label="Recoverable (open)" value={`$${totalRecovery}K`} tone="emerald" />
+        <Stat label={pursuedCount ? `Pursuing (${pursuedCount})` : "Recoverable (open)"} value={`$${totalRecovery}K`} tone="emerald" />
         <Stat label="Nearest renew trap" value={isFinite(trapDays) ? `${trapDays}d` : "—"} tone={trapDays <= 30 ? "red" : "amber"} />
       </div>
 
@@ -492,6 +635,7 @@ function Vendors() {
         <div className="inline-flex gap-1 border rounded-md p-1 bg-muted/30">
           {([
             { k: "roi",       label: "ROI prioritizer" },
+            { k: "deals",     label: "Deals" },
             { k: "contracts", label: "Contracts" },
             { k: "anomalies", label: "Billing anomalies" },
             { k: "plays",     label: "Recovery plays" },
@@ -505,6 +649,7 @@ function Vendors() {
       </div>
 
       {tab === "roi" && <VendorRoi />}
+      {tab === "deals" && <VendorDeals />}
       {tab === "contracts" && <VendorContracts />}
       {tab === "anomalies" && <VendorAnomalies />}
       {tab === "plays" && <VendorPlays />}
@@ -512,6 +657,11 @@ function Vendors() {
     </div>
   );
 }
+
+/* ── persistence shapes ── */
+interface PursueEntry { active: boolean; note: string; pinned: boolean; updatedAt: string; }
+interface RoiWeights { dollars: number; confidence: number; effort: number; leverage: number; }
+const DEFAULT_WEIGHTS: RoiWeights = { dollars: 50, confidence: 25, effort: 15, leverage: 10 };
 
 /* ── ROI prioritizer ──
  * Score = recoverable$ × confidence × effortInverse × leverage
@@ -531,13 +681,11 @@ const SIGNAL_PROFILE: Record<string, { effortDays: number; leverage: number; eff
 const CONF_WEIGHT = { high: 1.0, medium: 0.65, low: 0.35 } as const;
 
 function VendorRoi() {
-  const [wDollars, setWDollars] = useState(50);
-  const [wConfidence, setWConfidence] = useState(25);
-  const [wEffort, setWEffort] = useState(15);
-  const [wLeverage, setWLeverage] = useState(10);
-  const [pursued, setPursued] = useState<Set<string>>(new Set());
+  const [weights, setWeights] = useLocalState<RoiWeights>("opsc.vendor.roi.weights", DEFAULT_WEIGHTS);
+  const [pursued, setPursued] = useLocalState<Record<string, PursueEntry>>("opsc.vendor.pursued", {});
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  const sumWeights = wDollars + wConfidence + wEffort + wLeverage || 1;
+  const sumWeights = weights.dollars + weights.confidence + weights.effort + weights.leverage || 1;
   const maxAmount = Math.max(...VENDOR_ANOMALIES.map(a => a.amountK));
   const maxEffort = Math.max(...Object.values(SIGNAL_PROFILE).map(p => p.effortDays));
 
@@ -548,56 +696,70 @@ function VendorRoi() {
       const dollarsNorm = a.amountK / maxAmount;
       const effortNorm = 1 - (profile.effortDays / maxEffort) * 0.85; // higher effort → lower score
       const score =
-        ((wDollars / sumWeights) * dollarsNorm +
-          (wConfidence / sumWeights) * conf +
-          (wEffort / sumWeights) * effortNorm +
-          (wLeverage / sumWeights) * profile.leverage) * 100;
+        ((weights.dollars / sumWeights) * dollarsNorm +
+          (weights.confidence / sumWeights) * conf +
+          (weights.effort / sumWeights) * effortNorm +
+          (weights.leverage / sumWeights) * profile.leverage) * 100;
       const expectedRecovery = a.amountK * conf * profile.leverage;
       return { ...a, profile, score: Math.round(score), expectedRecovery: Math.round(expectedRecovery) };
-    }).sort((x, y) => y.score - x.score);
-  }, [wDollars, wConfidence, wEffort, wLeverage, sumWeights, maxAmount, maxEffort]);
+    }).sort((x, y) => {
+      const px = pursued[x.id]?.pinned ? 1 : 0;
+      const py = pursued[y.id]?.pinned ? 1 : 0;
+      if (px !== py) return py - px;
+      return y.score - x.score;
+    });
+  }, [weights, sumWeights, maxAmount, maxEffort, pursued]);
 
   const top5 = ranked.slice(0, 5);
   const top5Dollars = top5.reduce((s, r) => s + r.expectedRecovery, 0);
   const allDollars = ranked.reduce((s, r) => s + r.expectedRecovery, 0);
   const top5Effort = top5.reduce((s, r) => s + r.profile.effortDays, 0);
 
-  function toggle(id: string) {
-    setPursued(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+  function patchEntry(id: string, p: Partial<PursueEntry>) {
+    setPursued(prev => ({
+      ...prev,
+      [id]: { active: false, note: "", pinned: false, ...prev[id], ...p, updatedAt: new Date().toISOString() },
+    }));
   }
+  const togglePursue = (id: string) => patchEntry(id, { active: !(pursued[id]?.active ?? false) });
+  const togglePin = (id: string) => patchEntry(id, { pinned: !(pursued[id]?.pinned ?? false) });
+  const setNote = (id: string, note: string) => patchEntry(id, { note });
 
-  const pursuedRows = ranked.filter(r => pursued.has(r.id));
+  const pursuedRows = ranked.filter(r => pursued[r.id]?.active);
   const pursuedDollars = pursuedRows.reduce((s, r) => s + r.expectedRecovery, 0);
   const pursuedEffort = pursuedRows.reduce((s, r) => s + r.profile.effortDays, 0);
+  const pursuedCount = pursuedRows.length;
 
   return (
     <div className="space-y-4">
       <Card className="p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Calculator className="h-4 w-4" />
-          <h3 className="font-semibold text-sm">ROI prioritizer — what to pursue first</h3>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Calculator className="h-4 w-4" />
+            <h3 className="font-semibold text-sm">ROI prioritizer — what to pursue first</h3>
+            <Badge variant="outline" className="text-[10px]">saved locally</Badge>
+          </div>
+          <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setWeights(DEFAULT_WEIGHTS)}>
+            <RotateCcw className="h-3 w-3" />Reset weights
+          </Button>
         </div>
         <p className="text-xs text-muted-foreground">
           Ranks every billing anomaly by a weighted score: recoverable dollars × confidence × effort × leverage.
-          Tune weights to match your team's posture (e.g. heavy on quick-wins vs deep-dollar plays).
+          Sliders, pursue list, pins, and notes persist across sessions on this device.
         </p>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-          <Slider label="$ recoverable" value={wDollars} onChange={setWDollars} />
-          <Slider label="Confidence" value={wConfidence} onChange={setWConfidence} />
-          <Slider label="Low effort" value={wEffort} onChange={setWEffort} />
-          <Slider label="Leverage" value={wLeverage} onChange={setWLeverage} />
+          <Slider label="$ recoverable" value={weights.dollars}    onChange={(n) => setWeights({ ...weights, dollars: n })} />
+          <Slider label="Confidence"    value={weights.confidence} onChange={(n) => setWeights({ ...weights, confidence: n })} />
+          <Slider label="Low effort"    value={weights.effort}     onChange={(n) => setWeights({ ...weights, effort: n })} />
+          <Slider label="Leverage"      value={weights.leverage}   onChange={(n) => setWeights({ ...weights, leverage: n })} />
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Stat label="Top-5 expected recovery" value={`$${top5Dollars}K`} tone="emerald" />
           <Stat label="Top-5 effort (cum days)" value={`${top5Effort}d`} />
           <Stat label="Total expected (all)" value={`$${allDollars}K`} />
-          <Stat label="Pursuing now" value={`${pursued.size} · $${pursuedDollars}K / ${pursuedEffort}d`} tone={pursued.size ? "emerald" : "muted"} />
+          <Stat label="Pursuing now" value={`${pursuedCount} · $${pursuedDollars}K / ${pursuedEffort}d`} tone={pursuedCount ? "emerald" : "muted"} />
         </div>
       </Card>
 
@@ -605,11 +767,14 @@ function VendorRoi() {
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <div>
             <h3 className="font-semibold text-sm">Ranked findings</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Tap a row to add it to your pursue list. Expected $ already discounts by confidence and leverage.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Click to expand. Pin to lock to top. Pursue + add notes — all persisted.</p>
           </div>
           <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
-            ["Rank", "ID", "Vendor", "Signal", "Gross $K", "Confidence", "Effort (d)", "Leverage", "Expected $K", "Score"],
-            ...ranked.map((r, i) => [i + 1, r.id, r.vendor, vendorSignalLabel(r.signal), r.amountK, r.confidence, r.profile.effortDays, r.profile.leverage, r.expectedRecovery, r.score]),
+            ["Rank", "ID", "Vendor", "Signal", "Gross $K", "Confidence", "Effort (d)", "Leverage", "Expected $K", "Score", "Pursuing", "Pinned", "Note"],
+            ...ranked.map((r, i) => {
+              const p = pursued[r.id];
+              return [i + 1, r.id, r.vendor, vendorSignalLabel(r.signal), r.amountK, r.confidence, r.profile.effortDays, r.profile.leverage, r.expectedRecovery, r.score, p?.active ? "yes" : "", p?.pinned ? "yes" : "", p?.note ?? ""];
+            }),
           ], "vendor-roi-ranked.csv")}>
             <Download className="h-3 w-3" />CSV
           </Button>
@@ -617,34 +782,95 @@ function VendorRoi() {
 
         <div className="space-y-1.5">
           {ranked.map((r, i) => {
-            const active = pursued.has(r.id);
+            const entry = pursued[r.id];
+            const active = entry?.active ?? false;
+            const pinned = entry?.pinned ?? false;
+            const isOpen = openId === r.id;
             return (
-              <button
-                key={r.id}
-                onClick={() => toggle(r.id)}
-                className={`w-full text-left border rounded-md p-2.5 text-xs hover:bg-muted/50 transition-colors ${active ? "border-emerald-500/50 bg-emerald-500/5" : ""}`}
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono text-[10px] w-6 text-muted-foreground">#{i + 1}</span>
-                  <Badge variant="outline" className="text-[10px] font-mono">{r.score}</Badge>
-                  <span className="font-semibold truncate">{r.vendor}</span>
-                  <Badge variant="outline" className="text-[10px]">{vendorSignalLabel(r.signal)}</Badge>
-                  <Badge variant={r.confidence === "high" ? "default" : "secondary"} className="text-[10px]">{r.confidence}</Badge>
-                  <Badge variant="outline" className={`text-[10px] ${r.profile.effortLabel === "quick" ? "text-emerald-500 border-emerald-500/40" : r.profile.effortLabel === "heavy" ? "text-amber-500 border-amber-500/40" : ""}`}>
-                    {r.profile.effortLabel} · {r.profile.effortDays}d
-                  </Badge>
-                  <span className="ml-auto text-emerald-500 font-semibold">${r.expectedRecovery}K exp</span>
-                  <span className="text-[10px] text-muted-foreground">of ${r.amountK}K</span>
-                </div>
-                <div className="mt-1 text-[11px] text-muted-foreground">{r.pattern}</div>
-                <div className="mt-1.5 h-1 rounded-full bg-muted overflow-hidden">
-                  <div className={`h-full ${i < 3 ? "bg-emerald-500" : i < 6 ? "bg-amber-500" : "bg-muted-foreground/40"}`} style={{ width: `${r.score}%` }} />
-                </div>
-              </button>
+              <div key={r.id} className={`border rounded-md text-xs transition-colors ${active ? "border-emerald-500/50 bg-emerald-500/5" : pinned ? "border-primary/40" : ""}`}>
+                <button onClick={() => setOpenId(isOpen ? null : r.id)} className="w-full text-left p-2.5 hover:bg-muted/50">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isOpen ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
+                    <span className="font-mono text-[10px] w-6 text-muted-foreground">#{i + 1}</span>
+                    <Badge variant="outline" className="text-[10px] font-mono">{r.score}</Badge>
+                    {pinned && <Pin className="h-3 w-3 text-primary" />}
+                    <span className="font-semibold truncate">{r.vendor}</span>
+                    <Badge variant="outline" className="text-[10px]">{vendorSignalLabel(r.signal)}</Badge>
+                    <Badge variant={r.confidence === "high" ? "default" : "secondary"} className="text-[10px]">{r.confidence}</Badge>
+                    <Badge variant="outline" className={`text-[10px] ${r.profile.effortLabel === "quick" ? "text-emerald-500 border-emerald-500/40" : r.profile.effortLabel === "heavy" ? "text-amber-500 border-amber-500/40" : ""}`}>
+                      {r.profile.effortLabel} · {r.profile.effortDays}d
+                    </Badge>
+                    {entry?.note && <Badge variant="outline" className="text-[10px] gap-1"><NotebookPen className="h-3 w-3" />note</Badge>}
+                    <span className="ml-auto text-emerald-500 font-semibold">${r.expectedRecovery}K exp</span>
+                    <span className="text-[10px] text-muted-foreground">of ${r.amountK}K</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{r.pattern}</div>
+                  <div className="mt-1.5 h-1 rounded-full bg-muted overflow-hidden">
+                    <div className={`h-full ${i < 3 ? "bg-emerald-500" : i < 6 ? "bg-amber-500" : "bg-muted-foreground/40"}`} style={{ width: `${r.score}%` }} />
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="border-t p-3 space-y-2 bg-background/50">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
+                      <div><div className="text-[10px] uppercase text-muted-foreground">Detected</div><div>{r.detected}</div></div>
+                      <div><div className="text-[10px] uppercase text-muted-foreground">Gross</div><div>${r.amountK}K</div></div>
+                      <div><div className="text-[10px] uppercase text-muted-foreground">Conf weight</div><div>{CONF_WEIGHT[r.confidence]}</div></div>
+                      <div><div className="text-[10px] uppercase text-muted-foreground">Leverage</div><div>{r.profile.leverage}</div></div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase text-muted-foreground">Evidence</div>
+                      <div>{r.evidence}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase text-muted-foreground mb-1">Notes (saved)</div>
+                      <textarea
+                        value={entry?.note ?? ""}
+                        onChange={(e) => setNote(r.id, e.target.value)}
+                        placeholder="Counsel reviewed; sent dispute draft 5/4. Awaiting credit memo…"
+                        className="w-full min-h-[60px] rounded border bg-background p-2 text-xs"
+                      />
+                      {entry?.updatedAt && <div className="text-[10px] text-muted-foreground mt-1">Updated {new Date(entry.updatedAt).toLocaleString()}</div>}
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button size="sm" variant={active ? "default" : "outline"} className="h-7 text-xs" onClick={() => togglePursue(r.id)}>
+                        {active ? "Pursuing ✓" : "Add to pursue list"}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => togglePin(r.id)}>
+                        {pinned ? <><PinOff className="h-3 w-3" />Unpin</> : <><Pin className="h-3 w-3" />Pin to top</>}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
       </Card>
+
+      {pursuedCount > 0 && (
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-sm">Pursue list ({pursuedCount}) · ${pursuedDollars}K · {pursuedEffort}d</h3>
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+              ["ID", "Vendor", "Signal", "Expected $K", "Effort (d)", "Note"],
+              ...pursuedRows.map(r => [r.id, r.vendor, vendorSignalLabel(r.signal), r.expectedRecovery, r.profile.effortDays, pursued[r.id]?.note ?? ""]),
+            ], "vendor-pursue-list.csv")}>
+              <Download className="h-3 w-3" />Pursue CSV
+            </Button>
+          </div>
+          <ul className="text-xs space-y-1">
+            {pursuedRows.map(r => (
+              <li key={r.id} className="flex items-center gap-2 border rounded p-1.5">
+                <span className="font-mono text-[10px] text-muted-foreground">{r.id}</span>
+                <span className="font-medium truncate">{r.vendor}</span>
+                <Badge variant="outline" className="text-[10px]">{vendorSignalLabel(r.signal)}</Badge>
+                <span className="ml-auto text-emerald-500 font-semibold">${r.expectedRecovery}K</span>
+                <span className="text-[10px] text-muted-foreground">{r.profile.effortDays}d</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
     </div>
   );
 }

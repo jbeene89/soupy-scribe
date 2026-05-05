@@ -397,6 +397,121 @@ export const VENDOR_BENCHMARKS: VendorMarketBenchmark[] = [
   { category: "Appeals firm",  metric: "% of overturn $",    marketP25: "15%",   marketMedian: "20%",   marketP75: "25%",   ourPosition: "at market",    note: "Contingency rate fair; eliminate hourly add-on." },
 ];
 
+/* ───────── Deals — negotiation & savings opportunities ───────── */
+
+export type DealType =
+  | "rfp-leverage"        // competing quote in hand
+  | "consolidation"       // collapse multiple vendors
+  | "bundle-unbundle"     // unbundle SaaS suite or bundle to discount
+  | "term-extension"      // longer commit for lower rate
+  | "rate-reset"          // benchmark-driven rate cut
+  | "early-renewal"       // renew now to lock pre-CPI
+  | "alt-vendor"          // switch vendor entirely
+  | "vol-commit";         // commit volume for tiered discount
+
+export interface VendorDeal {
+  id: string;
+  vendor: string;
+  category: string;
+  type: DealType;
+  thesis: string;             // one-liner
+  estAnnualSavingsK: number;
+  oneTimeSavingsK: number;
+  effortDays: number;
+  confidence: "high" | "medium" | "low";
+  triggerWindowDays: number;  // when leverage is best
+  evidence: string;
+  nextStep: string;
+}
+
+export const VENDOR_DEALS: VendorDeal[] = [
+  {
+    id: "DEAL-501", vendor: "ClearMD Clearinghouse", category: "Clearinghouse",
+    type: "rfp-leverage",
+    thesis: "Two peer quotes at $0.24/$0.26 per claim vs our $0.32 contracted / $0.41 effective.",
+    estAnnualSavingsK: 52, oneTimeSavingsK: 38, effortDays: 14, confidence: "high", triggerWindowDays: 41,
+    evidence: "Quote pack from Availity + Waystar (2026 Q1)",
+    nextStep: "Issue RFP letter; CC current vendor with 60d non-renewal placeholder.",
+  },
+  {
+    id: "DEAL-502", vendor: "CodeRight Coding", category: "Coding",
+    type: "vol-commit",
+    thesis: "Q3 hit Tier 3 (>15K charts/mo). Lock 18mo commit at Tier 3 rate (-12%) + monthly SLA reconciliation.",
+    estAnnualSavingsK: 73, oneTimeSavingsK: 41, effortDays: 10, confidence: "high", triggerWindowDays: 88,
+    evidence: "MSA exhibit B tier table; Q3 volume report",
+    nextStep: "Counter-offer: 18mo @ Tier 3 with auto-step at Tier 4 trigger.",
+  },
+  {
+    id: "DEAL-503", vendor: "RevCycle Partners", category: "RCM",
+    type: "rate-reset",
+    thesis: "Market median is 4.2% NET; we pay 4.5% on GROSS (effective ~4.8% net).",
+    estAnnualSavingsK: 48, oneTimeSavingsK: 71, effortDays: 30, confidence: "medium", triggerWindowDays: 122,
+    evidence: "Benchmark median + remit reconciliation",
+    nextStep: "Re-paper to 4.2% NET with explicit refund/take-back offset.",
+  },
+  {
+    id: "DEAL-504", vendor: "ChartScribe AI", category: "SaaS",
+    type: "early-renewal",
+    thesis: "Renew NOW pre-CPI; trade 2yr commit for cap on uplift + inactive-seat true-up.",
+    estAnnualSavingsK: 18, oneTimeSavingsK: 22, effortDays: 5, confidence: "high", triggerWindowDays: 19,
+    evidence: "MSA §4.3 CPI clause + seat utilization report",
+    nextStep: "Send conditional 30d non-renewal to preserve optionality.",
+  },
+  {
+    id: "DEAL-505", vendor: "ChartScribe AI", category: "SaaS",
+    type: "consolidation",
+    thesis: "Replace with EHR-bundled ambient module already paid for in enterprise license.",
+    estAnnualSavingsK: 96, oneTimeSavingsK: 0, effortDays: 60, confidence: "medium", triggerWindowDays: 19,
+    evidence: "EHR enterprise bundle §2.7 covers ambient AI",
+    nextStep: "Pilot EHR module with 10 providers; sunset ChartScribe at renewal.",
+  },
+  {
+    id: "DEAL-506", vendor: "EHR Vendor", category: "EHR",
+    type: "bundle-unbundle",
+    thesis: "Drop unused add-on modules (3 of 11), redirect spend to FHIR overage cap amendment.",
+    estAnnualSavingsK: 184, oneTimeSavingsK: 14, effortDays: 45, confidence: "medium", triggerWindowDays: 210,
+    evidence: "Module utilization report; overage invoices",
+    nextStep: "Build module-by-module use case before next mid-year true-up.",
+  },
+  {
+    id: "DEAL-507", vendor: "Denial Mgmt Boutique", category: "Appeals",
+    type: "alt-vendor",
+    thesis: "Switch to flat 18% contingency vendor with no hourly add-on; same overturn rate.",
+    estAnnualSavingsK: 26, oneTimeSavingsK: 18, effortDays: 21, confidence: "medium", triggerWindowDays: 64,
+    evidence: "Reference checks: 3 peer systems, 18 mo data",
+    nextStep: "Run 60d parallel on 50 cases; compare overturn $ net of fees.",
+  },
+  {
+    id: "DEAL-508", vendor: "Multi-vendor (3)", category: "Ancillary",
+    type: "consolidation",
+    thesis: "Three transcription/translation/captioning vendors → one bundled MSA.",
+    estAnnualSavingsK: 31, oneTimeSavingsK: 0, effortDays: 30, confidence: "medium", triggerWindowDays: 90,
+    evidence: "Combined spend $148K/yr across 3 MSAs",
+    nextStep: "RFP single MSA with carve-outs by service line.",
+  },
+  {
+    id: "DEAL-509", vendor: "Cloud Compute (Edge AI)", category: "Infra",
+    type: "term-extension",
+    thesis: "3yr reserved-instance commit on baseline workload; on-demand for burst.",
+    estAnnualSavingsK: 42, oneTimeSavingsK: 0, effortDays: 7, confidence: "high", triggerWindowDays: 365,
+    evidence: "12mo utilization shows 70% baseline / 30% burst",
+    nextStep: "Approve RI purchase via finance; document burst-budget guardrail.",
+  },
+];
+
+export function dealTypeLabel(t: DealType) {
+  return ({
+    "rfp-leverage": "RFP leverage",
+    "consolidation": "Consolidation",
+    "bundle-unbundle": "Un/bundle",
+    "term-extension": "Term extension",
+    "rate-reset": "Rate reset",
+    "early-renewal": "Early renewal",
+    "alt-vendor": "Alt vendor",
+    "vol-commit": "Volume commit",
+  } as const)[t];
+}
+
 export function vendorRiskClass(r: VendorRisk) {
   if (r === "critical") return "bg-red-500/15 text-red-500 border-red-500/50";
   if (r === "high")     return "bg-orange-500/15 text-orange-500 border-orange-500/40";
