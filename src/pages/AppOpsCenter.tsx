@@ -456,6 +456,14 @@ function VendorDeals() {
                     <Badge variant="outline" className="text-[10px]">{dealTypeLabel(d.type)}</Badge>
                     <Badge variant={d.confidence === "high" ? "default" : "secondary"} className="text-[10px]">{d.confidence}</Badge>
                     {urgent && <Badge variant="destructive" className="text-[10px]">window {d.triggerWindowDays}d</Badge>}
+                    {(() => {
+                      const x = getVendorCrossRef(d.vendorKey);
+                      return x.anomalies.length > 0 ? (
+                        <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/40 text-amber-500">
+                          <Search className="h-3 w-3" />{x.anomalies.length} anomaly · ${x.anomalyDollarsK}K
+                        </Badge>
+                      ) : null;
+                    })()}
                     {e?.note && <Badge variant="outline" className="text-[10px] gap-1"><NotebookPen className="h-3 w-3" />note</Badge>}
                     <span className="ml-auto text-emerald-500 font-semibold">${d.estAnnualSavingsK}K/yr</span>
                     {d.oneTimeSavingsK > 0 && <span className="text-[10px] text-emerald-500">+${d.oneTimeSavingsK}K once</span>}
