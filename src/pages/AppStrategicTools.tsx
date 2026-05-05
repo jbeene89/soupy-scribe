@@ -557,7 +557,15 @@ function NcdAlerts() {
   return (
     <div className="space-y-4">
       <Card className="p-5">
-        <h3 className="font-semibold text-sm flex items-center gap-2"><Bell className="h-4 w-4" />Recent CMS coverage changes affecting your code mix</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-sm flex items-center gap-2"><Bell className="h-4 w-4" />Recent CMS coverage changes affecting your code mix</h3>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+            ["Policy", "Number", "Title", "Effective", "Retroactive", "Codes", "Affected volume", "Monthly impact"],
+            ...correlated.map(({ change, affectedVolume, estimatedMonthlyImpact }) => [change.policyType, change.policyNumber, change.title, change.effectiveDate, change.retroactive ? "yes" : "no", change.affectedCodes.join("; "), affectedVolume, estimatedMonthlyImpact]),
+          ], "ncd-lcd-impact.csv")}>
+            <Download className="h-3 w-3" />CSV
+          </Button>
+        </div>
         <p className="text-xs text-muted-foreground mt-1">NCD, LCD, and MAC article changes correlated with provider monthly volumes. Retroactive changes flagged for recoupment risk.</p>
         <div className="mt-3 space-y-2">
           {correlated.map(({ change, affectedVolume, estimatedMonthlyImpact }) => {
