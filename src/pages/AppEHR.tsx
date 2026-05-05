@@ -12,6 +12,8 @@ import {
 import { toast } from 'sonner';
 import { ingestFhir, looksLikeFhir, type FhirIngestResult } from '@/lib/fhirIngest';
 import { downloadSyntheticFhirBundle, getSyntheticFhirBundleJson } from '@/lib/fhirSampleBundle';
+import { parseHl7v2, isHl7v2, SAMPLE_ADT_A01, type Hl7v2IngestResult } from '@/lib/hl7v2Ingest';
+import { parseX12, isX12, SAMPLE_835, type X12IngestResult } from '@/lib/x12Ingest';
 
 type ConnectorStatus = 'available' | 'sandbox' | 'roadmap';
 
@@ -30,9 +32,11 @@ const CONNECTORS: Connector[] = [
   { vendor: 'MEDITECH Expanse', method: 'FHIR R4 Bulk Export', status: 'available', notes: 'Bulk export NDJSON ingestion supported.' },
   { vendor: 'eClinicalWorks', method: 'FHIR R4 / CCDA', status: 'sandbox', notes: 'FHIR Bundles supported; CCDA conversion roadmap.' },
   { vendor: 'NextGen', method: 'FHIR R4', status: 'sandbox', notes: 'Bundle ingest works; live OAuth roadmap.' },
-  { vendor: 'Generic HL7 v2', method: 'ADT/ORM/ORU messages', status: 'roadmap', notes: 'Pipe-delimited HL7 v2 → FHIR converter on roadmap.' },
+  { vendor: 'Generic HL7 v2', method: 'ADT / DFT / ORM / ORU messages', status: 'available', notes: 'Pipe-delimited v2 parsed inline. ADT (admit/discharge) and DFT (charges) tested today; ORM/ORU normalized into the same internal shape.' },
   { vendor: 'CCDA / C-CDA', method: 'XML Continuity-of-Care', status: 'roadmap', notes: 'C-CDA → FHIR conversion roadmap.' },
-  { vendor: 'X12 837 / 835', method: 'EDI claims & remits', status: 'available', notes: 'Already supported via the Claim Parser module.' },
+  { vendor: 'X12 837 / 835 / 277', method: 'EDI claims, remits, status', status: 'available', notes: '837 (claim), 835 (remit with CARC/RARC adjustment reasons), and 277 (claim status) parsed inline. CAS-segment denial reasons feed the appeal-defense module directly.' },
+  { vendor: 'SAML 2.0 SSO', method: 'Okta / Azure AD / Entra ID / OneLogin', status: 'available', notes: 'Native SAML SSO via Lovable Cloud. Configure metadata URL + email domains; allowlisted IdPs sign in directly.' },
+  { vendor: 'SCIM 2.0 provisioning', method: 'Automated user lifecycle', status: 'roadmap', notes: 'JIT user creation + role/group sync from IdP. Targeted alongside first enterprise contract.' },
 ];
 
 const SUPPORTED_RESOURCES = [
@@ -66,6 +70,36 @@ export default function AppEHR() {
   const [result, setResult] = useState<FhirIngestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Standards Lab state (HL7 v2 + X12)
+  const [hl7Input, setHl7Input] = useState('');
+  const [hl7Result, setHl7Result] = useState<Hl7v2IngestResult | null>(null);
+  const [hl7Error, setHl7Error] = useState<string | null>(null);
+  const [x12Input, setX12Input] = useState('');
+  const [x12Result, setX12Result] = useState<X12IngestResult | null>(null);
+  const [x12Error, setX12Error] = useState<string | null>(null);
+
+  const tryHl7 = (text: string) => {
+    setHl7Error(null); setHl7Result(null);
+    if (!isHl7v2(text)) { setHl7Error('Does not look like an HL7 v2 message — should start with "MSH|"'); return; }
+    try {
+      const r = parseHl7v2(text);
+      if (!r) { setHl7Error('Parser returned no result'); return; }
+      setHl7Result(r);
+      toast.success(`Parsed ${r.messageType}`, { description: `${r.segmentsParsed} segments` });
+    } catch (e: any) { setHl7Error(e?.message || 'HL7 parse failed'); }
+  };
+
+  const tryX12 = (text: string) => {
+    setX12Error(null); setX12Result(null);
+    if (!isX12(text)) { setX12Error('Does not look like an X12 EDI payload — should start with "ISA*"'); return; }
+    try {
+      const r = parseX12(text);
+      if (!r) { setX12Error('Parser returned no result'); return; }
+      setX12Result(r);
+      toast.success(`Parsed X12 ${r.transactionType}`, { description: `${r.claims.length} claims` });
+    } catch (e: any) { setX12Error(e?.message || 'X12 parse failed'); }
+  };
 
   const tryIngest = (text: string) => {
     setError(null);
@@ -109,6 +143,7 @@ export default function AppEHR() {
       <Tabs defaultValue="ingest" className="space-y-4">
         <TabsList>
           <TabsTrigger value="ingest" className="gap-1.5"><Upload className="h-3.5 w-3.5" />Ingest & Try</TabsTrigger>
+          <TabsTrigger value="standards" className="gap-1.5"><FileJson className="h-3.5 w-3.5" />Standards Lab</TabsTrigger>
           <TabsTrigger value="resources" className="gap-1.5"><FileJson className="h-3.5 w-3.5" />Resources</TabsTrigger>
           <TabsTrigger value="connectors" className="gap-1.5"><Plug className="h-3.5 w-3.5" />Connectors</TabsTrigger>
           <TabsTrigger value="security" className="gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Security</TabsTrigger>
