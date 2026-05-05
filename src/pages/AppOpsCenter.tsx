@@ -13,6 +13,7 @@ import {
   VENDOR_CONTRACTS, VENDOR_ANOMALIES, VENDOR_PLAYS, VENDOR_BENCHMARKS,
   vendorRiskClass, vendorSignalLabel,
   VENDOR_DEALS, dealTypeLabel,
+  getVendorCrossRef,
 } from "@/lib/opsCenterData";
 
 function downloadCsv(rows: (string | number)[][], filename: string) {
@@ -617,17 +618,27 @@ function RunbookCol({ title, items }: { title: string; items: string[] }) {
 function Vendors() {
   const [tab, setTab] = useLocalState<"roi" | "deals" | "contracts" | "anomalies" | "plays" | "bench">("opsc.vendor.tab", "roi");
   const [pursued] = useLocalState<Record<string, PursueEntry>>("opsc.vendor.pursued", {});
+  const [deals] = useLocalState<Record<string, DealEntry>>("opsc.vendor.deals", {});
   const totalRecovery = VENDOR_ANOMALIES.reduce((s, a) => s + a.amountK, 0);
   const critical = VENDOR_CONTRACTS.filter(v => v.risk === "critical").length;
   const trapDays = Math.min(...VENDOR_CONTRACTS.filter(v => v.noticeRequiredDays > v.autoRenewDays).map(v => v.autoRenewDays));
-  const pursuedCount = Object.values(pursued).filter(p => p.active).length;
+  const pursuedAnomalies = VENDOR_ANOMALIES.filter(a => pursued[a.id]?.active);
+  const activeDeals = VENDOR_DEALS.filter(d => deals[d.id]?.active);
+  const pursuedDollarsK = pursuedAnomalies.reduce((s, a) => s + a.amountK, 0);
+  const activeDealAnnualK = activeDeals.reduce((s, d) => s + d.estAnnualSavingsK, 0);
+  const pipelineCount = pursuedAnomalies.length + activeDeals.length;
+  const pipelineDollarsK = pursuedDollarsK + activeDealAnnualK;
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Stat label="Vendors monitored" value={VENDOR_CONTRACTS.length} />
         <Stat label="Critical risk" value={critical} tone={critical ? "red" : "muted"} />
-        <Stat label={pursuedCount ? `Pursuing (${pursuedCount})` : "Recoverable (open)"} value={`$${totalRecovery}K`} tone="emerald" />
+        <Stat
+          label={pipelineCount ? `In pipeline (${pipelineCount}: ${pursuedAnomalies.length} anom + ${activeDeals.length} deals)` : "Recoverable (open)"}
+          value={pipelineCount ? `$${pipelineDollarsK}K` : `$${totalRecovery}K`}
+          tone="emerald"
+        />
         <Stat label="Nearest renew trap" value={isFinite(trapDays) ? `${trapDays}d` : "—"} tone={trapDays <= 30 ? "red" : "amber"} />
       </div>
 
