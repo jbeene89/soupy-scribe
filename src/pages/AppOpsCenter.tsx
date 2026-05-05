@@ -15,6 +15,7 @@ import {
   VENDOR_DEALS, dealTypeLabel,
   getVendorCrossRef,
 } from "@/lib/opsCenterData";
+import { VendorSubmissions } from "@/components/ops/VendorSubmissions";
 
 function downloadCsv(rows: (string | number)[][], filename: string) {
   const esc = (v: string | number) => {
@@ -507,6 +508,7 @@ function VendorDeals() {
                         <Copy className="h-3 w-3" />Copy
                       </Button>
                     </div>
+                    <VendorSubmissions vendorKey={d.vendorKey} scope="deal" scopeRef={d.id} label={d.id} />
                   </div>
                 )}
               </div>
@@ -858,6 +860,7 @@ function VendorRoi() {
                         {pinned ? <><PinOff className="h-3 w-3" />Unpin</> : <><Pin className="h-3 w-3" />Pin to top</>}
                       </Button>
                     </div>
+                    <VendorSubmissions vendorKey={r.vendorKey} scope="roi" scopeRef={r.id} label={r.id} />
                   </div>
                 )}
               </div>
@@ -965,6 +968,7 @@ function VendorContracts() {
               <ul className="mt-2 text-[11px] space-y-0.5 list-disc list-inside text-muted-foreground">
                 {v.flags.map((f, i) => <li key={i}>{f}</li>)}
               </ul>
+              <VendorSubmissions vendorKey={v.vendorKey} scope="contract" label={v.vendor} />
             </div>
           );
         })}
@@ -1041,6 +1045,7 @@ function VendorAnomalies() {
                 <div className="text-[10px] text-muted-foreground">{a.detected}</div>
               </div>
             </div>
+            <VendorSubmissions vendorKey={a.vendorKey} scope="anomaly" scopeRef={a.id} label={a.id} />
           </div>
         ))}
       </div>
