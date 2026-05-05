@@ -370,6 +370,145 @@ function Lines() {
   );
 }
 
+/* ── Deals: negotiation & savings opportunities ── */
+interface DealEntry { active: boolean; note: string; pinned: boolean; updatedAt: string; }
+
+function VendorDeals() {
+  const [deals, setDeals] = useLocalState<Record<string, DealEntry>>("opsc.vendor.deals", {});
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [sort, setSort] = useLocalState<"savings" | "speed" | "window">("opsc.vendor.deals.sort", "savings");
+
+  const ranked = useMemo(() => {
+    const copy = [...VENDOR_DEALS];
+    copy.sort((a, b) => {
+      const pa = deals[a.id]?.pinned ? 1 : 0;
+      const pb = deals[b.id]?.pinned ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      if (sort === "speed") return a.effortDays - b.effortDays;
+      if (sort === "window") return a.triggerWindowDays - b.triggerWindowDays;
+      return (b.estAnnualSavingsK + b.oneTimeSavingsK) - (a.estAnnualSavingsK + a.oneTimeSavingsK);
+    });
+    return copy;
+  }, [deals, sort]);
+
+  const totalAnnual = VENDOR_DEALS.reduce((s, d) => s + d.estAnnualSavingsK, 0);
+  const totalOneTime = VENDOR_DEALS.reduce((s, d) => s + d.oneTimeSavingsK, 0);
+  const activeDeals = ranked.filter(d => deals[d.id]?.active);
+  const activeAnnual = activeDeals.reduce((s, d) => s + d.estAnnualSavingsK, 0);
+
+  function patchDeal(id: string, p: Partial<DealEntry>) {
+    setDeals(prev => ({ ...prev, [id]: { active: false, note: "", pinned: false, ...prev[id], ...p, updatedAt: new Date().toISOString() } }));
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Handshake className="h-4 w-4" />
+            <h3 className="font-semibold text-sm">Deals — negotiation & savings opportunities</h3>
+            <Badge variant="outline" className="text-[10px]">saved locally</Badge>
+          </div>
+          <div className="flex gap-1">
+            {(["savings", "speed", "window"] as const).map(s => (
+              <Button key={s} size="sm" variant={sort === s ? "default" : "outline"} className="h-7 text-xs" onClick={() => setSort(s)}>
+                {s === "savings" ? "By $" : s === "speed" ? "By speed" : "By window"}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <Stat label="Total annual savings" value={`$${totalAnnual}K`} tone="emerald" />
+          <Stat label="One-time recovery" value={`$${totalOneTime}K`} tone="emerald" />
+          <Stat label="Deals identified" value={VENDOR_DEALS.length} />
+          <Stat label="Active pipeline" value={`${activeDeals.length} · $${activeAnnual}K/yr`} tone={activeDeals.length ? "emerald" : "muted"} />
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-sm">Opportunity pipeline</h3>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+            ["ID", "Vendor", "Category", "Type", "Thesis", "Annual $K", "One-time $K", "Effort (d)", "Window (d)", "Confidence", "Next step", "Active", "Note"],
+            ...ranked.map(d => {
+              const e = deals[d.id];
+              return [d.id, d.vendor, d.category, dealTypeLabel(d.type), d.thesis, d.estAnnualSavingsK, d.oneTimeSavingsK, d.effortDays, d.triggerWindowDays, d.confidence, d.nextStep, e?.active ? "yes" : "", e?.note ?? ""];
+            }),
+          ], "vendor-deals.csv")}>
+            <Download className="h-3 w-3" />CSV
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {ranked.map(d => {
+            const e = deals[d.id];
+            const isOpen = openId === d.id;
+            const total = d.estAnnualSavingsK + d.oneTimeSavingsK;
+            const urgent = d.triggerWindowDays <= 30;
+            return (
+              <div key={d.id} className={`border rounded-md text-xs ${e?.active ? "border-emerald-500/50 bg-emerald-500/5" : e?.pinned ? "border-primary/40" : urgent ? "border-amber-500/40" : ""}`}>
+                <button onClick={() => setOpenId(isOpen ? null : d.id)} className="w-full text-left p-3 hover:bg-muted/50">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isOpen ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
+                    {e?.pinned && <Pin className="h-3 w-3 text-primary" />}
+                    <span className="font-semibold truncate">{d.vendor}</span>
+                    <Badge variant="outline" className="text-[10px]">{d.category}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{dealTypeLabel(d.type)}</Badge>
+                    <Badge variant={d.confidence === "high" ? "default" : "secondary"} className="text-[10px]">{d.confidence}</Badge>
+                    {urgent && <Badge variant="destructive" className="text-[10px]">window {d.triggerWindowDays}d</Badge>}
+                    {e?.note && <Badge variant="outline" className="text-[10px] gap-1"><NotebookPen className="h-3 w-3" />note</Badge>}
+                    <span className="ml-auto text-emerald-500 font-semibold">${d.estAnnualSavingsK}K/yr</span>
+                    {d.oneTimeSavingsK > 0 && <span className="text-[10px] text-emerald-500">+${d.oneTimeSavingsK}K once</span>}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{d.thesis}</div>
+                  <div className="mt-1.5 h-1 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, (total / 200) * 100)}%` }} />
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="border-t p-3 space-y-2 bg-background/50">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px]">
+                      <div><div className="text-[10px] uppercase text-muted-foreground">Annual savings</div><div className="text-emerald-500 font-semibold">${d.estAnnualSavingsK}K</div></div>
+                      <div><div className="text-[10px] uppercase text-muted-foreground">One-time</div><div className="text-emerald-500">${d.oneTimeSavingsK}K</div></div>
+                      <div><div className="text-[10px] uppercase text-muted-foreground">Effort</div><div>{d.effortDays}d</div></div>
+                      <div><div className="text-[10px] uppercase text-muted-foreground">Leverage window</div><div className={urgent ? "text-amber-500 font-semibold" : ""}>{d.triggerWindowDays}d</div></div>
+                    </div>
+                    <div><div className="text-[10px] uppercase text-muted-foreground">Evidence</div><div>{d.evidence}</div></div>
+                    <div className="border-l-2 border-primary/60 pl-2"><div className="text-[10px] uppercase text-primary">Next step</div><div>{d.nextStep}</div></div>
+                    <div>
+                      <div className="text-[10px] uppercase text-muted-foreground mb-1">Notes (saved)</div>
+                      <textarea
+                        value={e?.note ?? ""}
+                        onChange={(ev) => patchDeal(d.id, { note: ev.target.value })}
+                        placeholder="Briefed CFO 5/4. RFP issued; responses due 5/20…"
+                        className="w-full min-h-[60px] rounded border bg-background p-2 text-xs"
+                      />
+                      {e?.updatedAt && <div className="text-[10px] text-muted-foreground mt-1">Updated {new Date(e.updatedAt).toLocaleString()}</div>}
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button size="sm" variant={e?.active ? "default" : "outline"} className="h-7 text-xs" onClick={() => patchDeal(d.id, { active: !(e?.active ?? false) })}>
+                        {e?.active ? "In pipeline ✓" : "Add to pipeline"}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => patchDeal(d.id, { pinned: !(e?.pinned ?? false) })}>
+                        {e?.pinned ? <><PinOff className="h-3 w-3" />Unpin</> : <><Pin className="h-3 w-3" />Pin</>}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => {
+                        const text = `${d.vendor} — ${dealTypeLabel(d.type)}\n\nThesis: ${d.thesis}\nAnnual: $${d.estAnnualSavingsK}K · One-time: $${d.oneTimeSavingsK}K\nWindow: ${d.triggerWindowDays}d · Effort: ${d.effortDays}d · Confidence: ${d.confidence}\nEvidence: ${d.evidence}\nNext step: ${d.nextStep}`;
+                        navigator.clipboard.writeText(text); toast.success("Deal copied");
+                      }}>
+                        <Copy className="h-3 w-3" />Copy
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function Runbooks() {
   return (
     <div className="space-y-3">
