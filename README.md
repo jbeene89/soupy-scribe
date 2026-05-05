@@ -279,6 +279,14 @@ App runs at `http://localhost:8080`. Demo cases load by default; toggle to **Liv
 
 Versioned record of major shipped features. Routes are app-relative; module paths are repo-relative.
 
+### v0.10.1 — 2026-05-05 (Vendor Watch — persistence + Deals)
+
+- **Persistent prioritization** ([`src/hooks/useLocalState.ts`](src/hooks/useLocalState.ts)) — ROI sliders, pursue list, pinned items, per-finding notes, active sub-tab, and Deals pipeline state all persist via `localStorage`. Keys namespaced under `opsc.vendor.*`.
+- **Drill-down expanders** on every ranked finding and every deal — show evidence, weights applied, leverage, and a saved notes textarea.
+- **Pin-to-top** support for both findings and deals — pinned items always sort above score/savings rank.
+- **Pursue list panel** with cumulative $ and effort-day totals, plus dedicated CSV export.
+- **Deals sub-tab** ([`VENDOR_DEALS`](src/lib/opsCenterData.ts)) — 9 negotiation/savings opportunities across 8 deal types: RFP leverage, consolidation, un/bundle, term extension, rate reset, early renewal, alt vendor, volume commit. Each carries thesis, annual + one-time $, effort days, leverage window (with urgent badge ≤30d), evidence, and next step. Sortable by $, speed, or window. Pipeline tracking with notes + copy-to-clipboard.
+
 ### v0.10.0 — 2026-05-05 (Ops Center + Vendor Watch)
 
 **Ops Center** — cross-pollinated playbooks workspace at [`/app/ops-center`](src/pages/AppOpsCenter.tsx). Synthetic deterministic data in [`src/lib/opsCenterData.ts`](src/lib/opsCenterData.ts).
