@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Activity, ClipboardList, FileBarChart, Eye, TrendingDown, HeartPulse, Siren, Microscope, Download, Copy, AlertTriangle, ShieldAlert, Search } from "lucide-react";
+import { Activity, ClipboardList, FileBarChart, Eye, TrendingDown, HeartPulse, Siren, Microscope, Download, Copy, AlertTriangle, ShieldAlert, Search, Calculator } from "lucide-react";
 import { toast } from "sonner";
 import {
   PAYER_SCORECARDS, NOC_ALERTS, SERVICE_LINES, MYSTERY_SHOPPER,
@@ -474,7 +474,7 @@ function RunbookCol({ title, items }: { title: string; items: string[] }) {
 
 /* ── Vendor Watch ── */
 function Vendors() {
-  const [tab, setTab] = useState<"contracts" | "anomalies" | "plays" | "bench">("contracts");
+  const [tab, setTab] = useState<"roi" | "contracts" | "anomalies" | "plays" | "bench">("roi");
   const totalRecovery = VENDOR_ANOMALIES.reduce((s, a) => s + a.amountK, 0);
   const critical = VENDOR_CONTRACTS.filter(v => v.risk === "critical").length;
   const trapDays = Math.min(...VENDOR_CONTRACTS.filter(v => v.noticeRequiredDays > v.autoRenewDays).map(v => v.autoRenewDays));
@@ -491,6 +491,7 @@ function Vendors() {
       <div className="overflow-x-auto -mx-1 px-1">
         <div className="inline-flex gap-1 border rounded-md p-1 bg-muted/30">
           {([
+            { k: "roi",       label: "ROI prioritizer" },
             { k: "contracts", label: "Contracts" },
             { k: "anomalies", label: "Billing anomalies" },
             { k: "plays",     label: "Recovery plays" },
@@ -503,10 +504,163 @@ function Vendors() {
         </div>
       </div>
 
+      {tab === "roi" && <VendorRoi />}
       {tab === "contracts" && <VendorContracts />}
       {tab === "anomalies" && <VendorAnomalies />}
       {tab === "plays" && <VendorPlays />}
       {tab === "bench" && <VendorBench />}
+    </div>
+  );
+}
+
+/* ── ROI prioritizer ──
+ * Score = recoverable$ × confidence × effortInverse × leverage
+ * Confidence: high=1.0, medium=0.65, low=0.35
+ * Effort: derived from signal type (auto-renew-trap = quick, scope-creep = slow)
+ * Leverage: derived from signal type (rebate-miss/sla-credit-miss = high)
+ */
+const SIGNAL_PROFILE: Record<string, { effortDays: number; leverage: number; effortLabel: "quick" | "moderate" | "heavy" }> = {
+  "rebate-miss":      { effortDays: 5,  leverage: 1.0, effortLabel: "quick" },
+  "sla-credit-miss":  { effortDays: 7,  leverage: 1.0, effortLabel: "quick" },
+  "auto-renew-trap":  { effortDays: 3,  leverage: 0.9, effortLabel: "quick" },
+  "duplicate":        { effortDays: 10, leverage: 0.95, effortLabel: "moderate" },
+  "shadow-fee":       { effortDays: 14, leverage: 0.8, effortLabel: "moderate" },
+  "price-creep":      { effortDays: 21, leverage: 0.75, effortLabel: "moderate" },
+  "scope-creep":      { effortDays: 35, leverage: 0.6, effortLabel: "heavy" },
+};
+const CONF_WEIGHT = { high: 1.0, medium: 0.65, low: 0.35 } as const;
+
+function VendorRoi() {
+  const [wDollars, setWDollars] = useState(50);
+  const [wConfidence, setWConfidence] = useState(25);
+  const [wEffort, setWEffort] = useState(15);
+  const [wLeverage, setWLeverage] = useState(10);
+  const [pursued, setPursued] = useState<Set<string>>(new Set());
+
+  const sumWeights = wDollars + wConfidence + wEffort + wLeverage || 1;
+  const maxAmount = Math.max(...VENDOR_ANOMALIES.map(a => a.amountK));
+  const maxEffort = Math.max(...Object.values(SIGNAL_PROFILE).map(p => p.effortDays));
+
+  const ranked = useMemo(() => {
+    return VENDOR_ANOMALIES.map(a => {
+      const profile = SIGNAL_PROFILE[a.signal] ?? { effortDays: 20, leverage: 0.7, effortLabel: "moderate" as const };
+      const conf = CONF_WEIGHT[a.confidence];
+      const dollarsNorm = a.amountK / maxAmount;
+      const effortNorm = 1 - (profile.effortDays / maxEffort) * 0.85; // higher effort → lower score
+      const score =
+        ((wDollars / sumWeights) * dollarsNorm +
+          (wConfidence / sumWeights) * conf +
+          (wEffort / sumWeights) * effortNorm +
+          (wLeverage / sumWeights) * profile.leverage) * 100;
+      const expectedRecovery = a.amountK * conf * profile.leverage;
+      return { ...a, profile, score: Math.round(score), expectedRecovery: Math.round(expectedRecovery) };
+    }).sort((x, y) => y.score - x.score);
+  }, [wDollars, wConfidence, wEffort, wLeverage, sumWeights, maxAmount, maxEffort]);
+
+  const top5 = ranked.slice(0, 5);
+  const top5Dollars = top5.reduce((s, r) => s + r.expectedRecovery, 0);
+  const allDollars = ranked.reduce((s, r) => s + r.expectedRecovery, 0);
+  const top5Effort = top5.reduce((s, r) => s + r.profile.effortDays, 0);
+
+  function toggle(id: string) {
+    setPursued(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const pursuedRows = ranked.filter(r => pursued.has(r.id));
+  const pursuedDollars = pursuedRows.reduce((s, r) => s + r.expectedRecovery, 0);
+  const pursuedEffort = pursuedRows.reduce((s, r) => s + r.profile.effortDays, 0);
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Calculator className="h-4 w-4" />
+          <h3 className="font-semibold text-sm">ROI prioritizer — what to pursue first</h3>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Ranks every billing anomaly by a weighted score: recoverable dollars × confidence × effort × leverage.
+          Tune weights to match your team's posture (e.g. heavy on quick-wins vs deep-dollar plays).
+        </p>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <Slider label="$ recoverable" value={wDollars} onChange={setWDollars} />
+          <Slider label="Confidence" value={wConfidence} onChange={setWConfidence} />
+          <Slider label="Low effort" value={wEffort} onChange={setWEffort} />
+          <Slider label="Leverage" value={wLeverage} onChange={setWLeverage} />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <Stat label="Top-5 expected recovery" value={`$${top5Dollars}K`} tone="emerald" />
+          <Stat label="Top-5 effort (cum days)" value={`${top5Effort}d`} />
+          <Stat label="Total expected (all)" value={`$${allDollars}K`} />
+          <Stat label="Pursuing now" value={`${pursued.size} · $${pursuedDollars}K / ${pursuedEffort}d`} tone={pursued.size ? "emerald" : "muted"} />
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <div>
+            <h3 className="font-semibold text-sm">Ranked findings</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Tap a row to add it to your pursue list. Expected $ already discounts by confidence and leverage.</p>
+          </div>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+            ["Rank", "ID", "Vendor", "Signal", "Gross $K", "Confidence", "Effort (d)", "Leverage", "Expected $K", "Score"],
+            ...ranked.map((r, i) => [i + 1, r.id, r.vendor, vendorSignalLabel(r.signal), r.amountK, r.confidence, r.profile.effortDays, r.profile.leverage, r.expectedRecovery, r.score]),
+          ], "vendor-roi-ranked.csv")}>
+            <Download className="h-3 w-3" />CSV
+          </Button>
+        </div>
+
+        <div className="space-y-1.5">
+          {ranked.map((r, i) => {
+            const active = pursued.has(r.id);
+            return (
+              <button
+                key={r.id}
+                onClick={() => toggle(r.id)}
+                className={`w-full text-left border rounded-md p-2.5 text-xs hover:bg-muted/50 transition-colors ${active ? "border-emerald-500/50 bg-emerald-500/5" : ""}`}
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-[10px] w-6 text-muted-foreground">#{i + 1}</span>
+                  <Badge variant="outline" className="text-[10px] font-mono">{r.score}</Badge>
+                  <span className="font-semibold truncate">{r.vendor}</span>
+                  <Badge variant="outline" className="text-[10px]">{vendorSignalLabel(r.signal)}</Badge>
+                  <Badge variant={r.confidence === "high" ? "default" : "secondary"} className="text-[10px]">{r.confidence}</Badge>
+                  <Badge variant="outline" className={`text-[10px] ${r.profile.effortLabel === "quick" ? "text-emerald-500 border-emerald-500/40" : r.profile.effortLabel === "heavy" ? "text-amber-500 border-amber-500/40" : ""}`}>
+                    {r.profile.effortLabel} · {r.profile.effortDays}d
+                  </Badge>
+                  <span className="ml-auto text-emerald-500 font-semibold">${r.expectedRecovery}K exp</span>
+                  <span className="text-[10px] text-muted-foreground">of ${r.amountK}K</span>
+                </div>
+                <div className="mt-1 text-[11px] text-muted-foreground">{r.pattern}</div>
+                <div className="mt-1.5 h-1 rounded-full bg-muted overflow-hidden">
+                  <div className={`h-full ${i < 3 ? "bg-emerald-500" : i < 6 ? "bg-amber-500" : "bg-muted-foreground/40"}`} style={{ width: `${r.score}%` }} />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function Slider({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="border rounded p-2 space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase text-muted-foreground">{label}</span>
+        <span className="font-mono text-[10px]">{value}</span>
+      </div>
+      <input
+        type="range" min={0} max={100} value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-primary"
+      />
     </div>
   );
 }
