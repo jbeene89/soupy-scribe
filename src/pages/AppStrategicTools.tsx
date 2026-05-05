@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Gavel, Coins, Receipt, Clock, TrendingUp, AlertTriangle, Loader2, FlaskConical, Bell, Stethoscope, ShieldCheck } from "lucide-react";
+import { Gavel, Coins, Receipt, Clock, TrendingUp, AlertTriangle, Loader2, FlaskConical, Bell, Stethoscope, ShieldCheck, Download, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { parseX12, SAMPLE_835 } from "@/lib/x12Ingest";
 import { detectLeakage, defaultFeeSchedule } from "@/lib/contractLeakage";
@@ -43,17 +43,19 @@ export default function AppStrategicTools() {
       </div>
 
       <Tabs defaultValue="auditor" className="w-full">
-        <TabsList className="grid w-full grid-cols-9 h-auto">
-          <TabsTrigger value="auditor"><Gavel className="h-3.5 w-3.5 mr-1.5" />Audit the Auditor</TabsTrigger>
-          <TabsTrigger value="counterfactual"><Coins className="h-3.5 w-3.5 mr-1.5" />Counterfactual</TabsTrigger>
-          <TabsTrigger value="leakage"><Receipt className="h-3.5 w-3.5 mr-1.5" />Contract Leakage</TabsTrigger>
-          <TabsTrigger value="clocks"><Clock className="h-3.5 w-3.5 mr-1.5" />Regulatory Clocks</TabsTrigger>
-          <TabsTrigger value="drift"><TrendingUp className="h-3.5 w-3.5 mr-1.5" />Denial Drift</TabsTrigger>
-          <TabsTrigger value="abtest"><FlaskConical className="h-3.5 w-3.5 mr-1.5" />Appeal A/B</TabsTrigger>
-          <TabsTrigger value="ncd"><Bell className="h-3.5 w-3.5 mr-1.5" />NCD/LCD Alerts</TabsTrigger>
-          <TabsTrigger value="debt"><Stethoscope className="h-3.5 w-3.5 mr-1.5" />Doc Debt</TabsTrigger>
-          <TabsTrigger value="pa"><ShieldCheck className="h-3.5 w-3.5 mr-1.5" />PA Predictor</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-auto flex-nowrap gap-1 w-max min-w-full">
+            <TabsTrigger value="auditor" className="whitespace-nowrap"><Gavel className="h-3.5 w-3.5 mr-1.5 shrink-0" />Audit the Auditor</TabsTrigger>
+            <TabsTrigger value="counterfactual" className="whitespace-nowrap"><Coins className="h-3.5 w-3.5 mr-1.5 shrink-0" />Counterfactual</TabsTrigger>
+            <TabsTrigger value="leakage" className="whitespace-nowrap"><Receipt className="h-3.5 w-3.5 mr-1.5 shrink-0" />Contract Leakage</TabsTrigger>
+            <TabsTrigger value="clocks" className="whitespace-nowrap"><Clock className="h-3.5 w-3.5 mr-1.5 shrink-0" />Regulatory Clocks</TabsTrigger>
+            <TabsTrigger value="drift" className="whitespace-nowrap"><TrendingUp className="h-3.5 w-3.5 mr-1.5 shrink-0" />Denial Drift</TabsTrigger>
+            <TabsTrigger value="abtest" className="whitespace-nowrap"><FlaskConical className="h-3.5 w-3.5 mr-1.5 shrink-0" />Appeal A/B</TabsTrigger>
+            <TabsTrigger value="ncd" className="whitespace-nowrap"><Bell className="h-3.5 w-3.5 mr-1.5 shrink-0" />NCD/LCD Alerts</TabsTrigger>
+            <TabsTrigger value="debt" className="whitespace-nowrap"><Stethoscope className="h-3.5 w-3.5 mr-1.5 shrink-0" />Doc Debt</TabsTrigger>
+            <TabsTrigger value="pa" className="whitespace-nowrap"><ShieldCheck className="h-3.5 w-3.5 mr-1.5 shrink-0" />PA Predictor</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="auditor" className="mt-4"><AuditTheAuditor /></TabsContent>
         <TabsContent value="counterfactual" className="mt-4"><Counterfactual /></TabsContent>
