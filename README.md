@@ -279,6 +279,34 @@ App runs at `http://localhost:8080`. Demo cases load by default; toggle to **Liv
 
 Versioned record of major shipped features. Routes are app-relative; module paths are repo-relative.
 
+### v0.10.0 — 2026-05-05 (Ops Center + Vendor Watch)
+
+**Ops Center** — cross-pollinated playbooks workspace at [`/app/ops-center`](src/pages/AppOpsCenter.tsx). Synthetic deterministic data in [`src/lib/opsCenterData.ts`](src/lib/opsCenterData.ts).
+
+| Tab | Inspired by | Notes |
+|-----|-------------|-------|
+| Denial NOC | IT/MSP NOC wall | Live incident board with SLA countdowns, breach badges, severity filter. **CSV** export. |
+| Payer QBR | Retail vendor scorecards | A–F grading per payer with auto-generated QBR talking points. **CSV** export. |
+| Weekly Brief | Agency client comms | Auto-generated "what changed / what we did / what we recommend" plus metrics. **Copy** + **.txt** export. |
+| Mystery Shopper | Retail loss prevention | Synthetic-claim drift detection per payer (none/minor/material). **CSV** export. |
+| Shrinkage | Retail shrink decomposition | Revenue leakage by category with preventable share. **CSV** export. |
+| Service Lines | Agency RAG health | Red/Amber/Green per service line with denial %, AR days, doc debt. **CSV** export. |
+| Sev Runbooks | ITIL incident management | Page/Pull/Template per severity tier with SLA hours. |
+| Lost-Appeal RCA | Blameless post-mortem | Root-cause + prevention rule per lost appeal; feeds pre-bill check library. **CSV** export. |
+| **Vendor Watch** | Retail vendor mgmt + IT procurement | See subsection below. |
+
+**Vendor Watch** — sub-tabs inside Ops Center for catching vendor overbilling and renewal traps:
+
+| Sub-tab | Module | Notes |
+|---------|--------|-------|
+| ROI Prioritizer | [`AppOpsCenter.tsx`](src/pages/AppOpsCenter.tsx) `VendorRoi` | Weighted scoring (`$ × confidence × effort × leverage`) with tunable sliders, expected-recovery math (`$ × confWeight × leverage`), pursue-list builder with cum days+$, and **CSV** export of the ranked list. |
+| Contracts | `VENDOR_CONTRACTS` | Contracted vs effective rate, variance %, auto-renew vs notice-window trap detection. **CSV** export. |
+| Billing Anomalies | `VENDOR_ANOMALIES` | Findings tagged: price-creep / shadow-fee / unearned-rebate / SLA-credit-owed / duplicate / scope-creep / auto-renew-trap. Each with citable evidence. **CSV** export. |
+| Recovery Plays | `VENDOR_PLAYS` | Copy-paste runbooks with leverage notes. **Copy** export per play. |
+| Market Benchmarks | `VENDOR_BENCHMARKS` | P25/Median/P75 by vendor category for QBR ammunition. **CSV** export. |
+
+ROI scoring profiles (`SIGNAL_PROFILE`) encode effort-days and leverage per signal type — quick-win signals (rebate-miss, sla-credit-miss, auto-renew-trap) bubble to the top by default.
+
 ### v0.9.0 — 2026-05-05 (AM batch)
 
 **Strategic Analytical Tools** — new tabbed workspace at [`/app/strategic-tools`](src/pages/AppStrategicTools.tsx):
