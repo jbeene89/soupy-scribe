@@ -275,6 +275,54 @@ App runs at `http://localhost:8080`. Demo cases load by default; toggle to **Liv
 
 ---
 
+## Changelog
+
+Versioned record of major shipped features. Routes are app-relative; module paths are repo-relative.
+
+### v0.9.0 — 2026-05-05 (AM batch)
+
+**Strategic Analytical Tools** — new tabbed workspace at [`/app/strategic-tools`](src/pages/AppStrategicTools.tsx):
+
+| Feature | Module / Edge | Notes |
+|---------|---------------|-------|
+| Audit the Auditor | [`supabase/functions/audit-the-auditor/`](supabase/functions/audit-the-auditor/index.ts) | Audits payer denial letters for medical-policy misapplication, ERISA defects, prompt-pay violations; drafts state-DOI complaint. Gemini 2.5 Flash. **Copy JSON** export. |
+| Counterfactual Coding | [`src/lib/counterfactualCoding.ts`](src/lib/counterfactualCoding.ts) | DRG-shift detection (Sepsis/Bacteremia, AKI specificity, etc.) with $ delta + CMI impact. **CSV** export. |
+| Contract Leakage Detector | [`src/lib/contractLeakage.ts`](src/lib/contractLeakage.ts) | X12 835 vs reference fee schedule; underpayment + silent-denial flagging by CPT. **CSV** export. |
+| Regulatory Clock Tracker | [`src/lib/regulatoryClock.ts`](src/lib/regulatoryClock.ts) | State-specific (30+) and payer-specific (ERISA, MA, Medicaid MCO) appeal + clean-claim deadlines. **CSV** export. |
+| Denial Drift + Reviewer Fingerprinting | [`src/lib/denialDrift.ts`](src/lib/denialDrift.ts) | CARC/RARC drift (last-30d vs prior-30d) + boilerplate-signature reviewer clustering. Two **CSV** exports. |
+| Appeal Letter A/B Testing | [`src/lib/appealABTest.ts`](src/lib/appealABTest.ts) | Per (payer, denial-reason) variant tracking with overturn outcomes + lift. **CSV** export. |
+| NCD/LCD Alerts | [`src/lib/ncdLcdAlerts.ts`](src/lib/ncdLcdAlerts.ts) | Recent CMS coverage changes correlated to provider code mix; retroactive recoupment risk surfaced. **CSV** export. |
+| Documentation Debt Scoring | [`src/lib/documentationDebt.ts`](src/lib/documentationDebt.ts) | Per-physician 12-month debt + CMI opportunity + trend. **CSV** export. |
+| Prior-Auth / Outcome Predictor | [`src/lib/priorAuthPredictor.ts`](src/lib/priorAuthPredictor.ts) | Per-payer PA outcome prediction with strength/weakness factors and remediation. **Copy JSON** export. |
+
+**Integration Depth** — new workspace at [`/app/ehr`](src/pages/AppEHR.tsx):
+
+| Feature | Module | Notes |
+|---------|--------|-------|
+| HL7 v2 ingest (ADT/DFT/ORM/ORU) | [`src/lib/hl7v2Ingest.ts`](src/lib/hl7v2Ingest.ts) | Pipe-delimited parser; MSH/PID/PV1/DG1/PR1/FT1; normalized into shared internal shape. |
+| X12 EDI ingest (837/835/277) | [`src/lib/x12Ingest.ts`](src/lib/x12Ingest.ts) | CAS adjustment reasons feed appeal-defense module. |
+| FHIR Bulk `$export` (file-based) | [`src/lib/fhirIngest.ts`](src/lib/fhirIngest.ts) | NDJSON ingestion from Epic/Cerner/MEDITECH. |
+| SMART-on-FHIR launch posture | EHR Standards tab | Documented and roadmapped against existing FHIR normalizer. |
+| SAML 2.0 SSO + SCIM posture | EHR Connectors tab | Native SAML available; SCIM scoped for first enterprise contract. |
+| EHR connectivity matrix | EHR Connectors tab | 12-vendor matrix (Epic, Cerner, athena, MEDITECH, eCW, NextGen, …) with status badges + **CSV** export. |
+
+**AI Governance** — public trust surface at [`/ai-governance`](src/pages/AIGovernance.tsx):
+
+- Per-agent **model cards** (provider, version, eval scores, known failure modes)
+- "No PHI used for training" attestation
+- Hallucination rate / confidence calibration metrics
+- Documented human-in-the-loop checkpoints
+- Prompt-injection defenses
+- NIST AI RMF + ISO 42001 alignment statement
+- Linked from [`Trust`](src/pages/Trust.tsx) and registered in [`src/App.tsx`](src/App.tsx)
+
+**UX polish**
+
+- Strategic Tools and EHR tab strips converted to horizontal-scroll `flex-nowrap` to fix label run-off at all viewports.
+- Standardized export affordances (CSV / Copy JSON) on every panel that produces structured output.
+
+---
+
 ## License
 
 Proprietary — All rights reserved.
