@@ -25,6 +25,7 @@ import Trust from "./pages/Trust";
 import Status from "./pages/Status";
 import SubProcessors from "./pages/SubProcessors";
 import Security from "./pages/Security";
+import AIGovernance from "./pages/AIGovernance";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/status" element={<Status />} />
             <Route path="/sub-processors" element={<SubProcessors />} />
             <Route path="/security" element={<Security />} />
+            <Route path="/ai-governance" element={<AIGovernance />} />
 
             {/* Protected admin routes */}
             <Route path="/app" element={
