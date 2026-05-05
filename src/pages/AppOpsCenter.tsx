@@ -920,6 +920,7 @@ function VendorContracts() {
       <div className="space-y-2">
         {VENDOR_CONTRACTS.map(v => {
           const trap = v.noticeRequiredDays > v.autoRenewDays;
+          const xref = getVendorCrossRef(v.vendorKey);
           return (
             <div key={v.vendor} className={`border rounded-md p-3 ${v.risk === "critical" ? "border-red-500/50 bg-red-500/5" : v.risk === "high" ? "border-orange-500/40 bg-orange-500/5" : ""}`}>
               <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -929,6 +930,16 @@ function VendorContracts() {
                     <Badge variant="outline" className="text-[10px]">{v.category}</Badge>
                     <Badge variant="outline" className={`text-[10px] uppercase ${vendorRiskClass(v.risk)}`}>{v.risk}</Badge>
                     {trap && <Badge variant="destructive" className="text-[10px] gap-1"><AlertTriangle className="h-3 w-3" />Renew trap</Badge>}
+                    {xref.anomalies.length > 0 && (
+                      <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/40 text-amber-500">
+                        <Search className="h-3 w-3" />{xref.anomalies.length} anomaly · ${xref.anomalyDollarsK}K
+                      </Badge>
+                    )}
+                    {xref.deals.length > 0 && (
+                      <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/40 text-emerald-500">
+                        <Handshake className="h-3 w-3" />{xref.deals.length} deal · ${xref.dealAnnualK}K/yr
+                      </Badge>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-[11px]">
                     <div><div className="text-[10px] uppercase text-muted-foreground">Contracted</div><div>{v.contractedRate}</div></div>
