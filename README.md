@@ -362,5 +362,3 @@ ROI scoring profiles (`SIGNAL_PROFILE`) encode effort-days and leverage per sign
 ## License
 
 Proprietary — All rights reserved.
-
-*Built with [Lovable](https://lovable.dev)*
