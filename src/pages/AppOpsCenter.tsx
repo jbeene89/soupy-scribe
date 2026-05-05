@@ -1006,6 +1006,23 @@ function VendorAnomalies() {
                   <span className="font-semibold">{a.vendor}</span>
                   <Badge variant="outline" className="text-[10px]">{vendorSignalLabel(a.signal)}</Badge>
                   <Badge variant={a.confidence === "high" ? "default" : "secondary"} className="text-[10px]">{a.confidence} conf</Badge>
+                  {(() => {
+                    const x = getVendorCrossRef(a.vendorKey);
+                    return (
+                      <>
+                        {x.contract && (
+                          <Badge variant="outline" className={`text-[10px] uppercase ${vendorRiskClass(x.contract.risk)}`}>
+                            contract: {x.contract.risk}
+                          </Badge>
+                        )}
+                        {x.deals.length > 0 && (
+                          <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/40 text-emerald-500">
+                            <Handshake className="h-3 w-3" />{x.deals.length} linked deal
+                          </Badge>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="mt-1">{a.pattern}</div>
                 <div className="text-[10px] text-muted-foreground mt-1">Evidence: {a.evidence}</div>
