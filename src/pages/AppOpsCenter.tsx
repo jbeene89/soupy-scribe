@@ -476,17 +476,19 @@ function RunbookCol({ title, items }: { title: string; items: string[] }) {
 
 /* ── Vendor Watch ── */
 function Vendors() {
-  const [tab, setTab] = useState<"roi" | "contracts" | "anomalies" | "plays" | "bench">("roi");
+  const [tab, setTab] = useLocalState<"roi" | "deals" | "contracts" | "anomalies" | "plays" | "bench">("opsc.vendor.tab", "roi");
+  const [pursued] = useLocalState<Record<string, PursueEntry>>("opsc.vendor.pursued", {});
   const totalRecovery = VENDOR_ANOMALIES.reduce((s, a) => s + a.amountK, 0);
   const critical = VENDOR_CONTRACTS.filter(v => v.risk === "critical").length;
   const trapDays = Math.min(...VENDOR_CONTRACTS.filter(v => v.noticeRequiredDays > v.autoRenewDays).map(v => v.autoRenewDays));
+  const pursuedCount = Object.values(pursued).filter(p => p.active).length;
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Stat label="Vendors monitored" value={VENDOR_CONTRACTS.length} />
         <Stat label="Critical risk" value={critical} tone={critical ? "red" : "muted"} />
-        <Stat label="Recoverable (open)" value={`$${totalRecovery}K`} tone="emerald" />
+        <Stat label={pursuedCount ? `Pursuing (${pursuedCount})` : "Recoverable (open)"} value={`$${totalRecovery}K`} tone="emerald" />
         <Stat label="Nearest renew trap" value={isFinite(trapDays) ? `${trapDays}d` : "—"} tone={trapDays <= 30 ? "red" : "amber"} />
       </div>
 
@@ -494,6 +496,7 @@ function Vendors() {
         <div className="inline-flex gap-1 border rounded-md p-1 bg-muted/30">
           {([
             { k: "roi",       label: "ROI prioritizer" },
+            { k: "deals",     label: "Deals" },
             { k: "contracts", label: "Contracts" },
             { k: "anomalies", label: "Billing anomalies" },
             { k: "plays",     label: "Recovery plays" },
@@ -507,6 +510,7 @@ function Vendors() {
       </div>
 
       {tab === "roi" && <VendorRoi />}
+      {tab === "deals" && <VendorDeals />}
       {tab === "contracts" && <VendorContracts />}
       {tab === "anomalies" && <VendorAnomalies />}
       {tab === "plays" && <VendorPlays />}
@@ -514,6 +518,11 @@ function Vendors() {
     </div>
   );
 }
+
+/* ── persistence shapes ── */
+interface PursueEntry { active: boolean; note: string; pinned: boolean; updatedAt: string; }
+interface RoiWeights { dollars: number; confidence: number; effort: number; leverage: number; }
+const DEFAULT_WEIGHTS: RoiWeights = { dollars: 50, confidence: 25, effort: 15, leverage: 10 };
 
 /* ── ROI prioritizer ──
  * Score = recoverable$ × confidence × effortInverse × leverage
