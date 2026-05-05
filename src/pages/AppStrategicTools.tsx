@@ -416,7 +416,15 @@ function Drift() {
   return (
     <div className="space-y-4">
       <Card className="p-5">
-        <h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp className="h-4 w-4" />Denial reason drift (last 30d vs prior 30d)</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-sm flex items-center gap-2"><TrendingUp className="h-4 w-4" />Denial reason drift (last 30d vs prior 30d)</h3>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+            ["Payer", "CARC", "Last 30d", "Prior 30d", "Change %", "Trend"],
+            ...drift.map(d => [d.payer, d.reasonCode, d.totalLast30, d.totalPrev30, d.changePct, d.trend]),
+          ], "denial-drift.csv")}>
+            <Download className="h-3 w-3" />CSV
+          </Button>
+        </div>
         <p className="text-xs text-muted-foreground mt-1">Reasons accelerating per payer. Surface emerging denial patterns before your RCM team notices.</p>
         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
           {accelerating.slice(0, 8).map((d, i) => (
@@ -439,7 +447,17 @@ function Drift() {
       </Card>
 
       <Card className="p-5">
-        <h3 className="font-semibold text-sm">Reviewer fingerprint clusters</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-sm">Reviewer fingerprint clusters</h3>
+          {clusters.length > 0 && (
+            <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => downloadCsv([
+              ["Payer", "Reviewer", "Fingerprint", "Denials", "Est overturn %", "Top reasons"],
+              ...clusters.map(c => [c.payer, c.reviewerHint, c.fingerprint, c.count, c.overturnRateEstimate, c.topReasonCodes.map(r => `${r.code}x${r.count}`).join("; ")]),
+            ], "reviewer-fingerprints.csv")}>
+              <Download className="h-3 w-3" />CSV
+            </Button>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground mt-1">Denials grouped by letter boilerplate signature. Same fingerprint + same reviewer suggests templated denials — typically higher overturn rate.</p>
         <div className="mt-3 space-y-2">
           {clusters.map((c, i) => (
