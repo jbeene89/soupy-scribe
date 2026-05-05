@@ -13,6 +13,7 @@ import {
   VENDOR_CONTRACTS, VENDOR_ANOMALIES, VENDOR_PLAYS, VENDOR_BENCHMARKS,
   vendorRiskClass, vendorSignalLabel,
   VENDOR_DEALS, dealTypeLabel,
+  getVendorCrossRef,
 } from "@/lib/opsCenterData";
 
 function downloadCsv(rows: (string | number)[][], filename: string) {
@@ -455,6 +456,14 @@ function VendorDeals() {
                     <Badge variant="outline" className="text-[10px]">{dealTypeLabel(d.type)}</Badge>
                     <Badge variant={d.confidence === "high" ? "default" : "secondary"} className="text-[10px]">{d.confidence}</Badge>
                     {urgent && <Badge variant="destructive" className="text-[10px]">window {d.triggerWindowDays}d</Badge>}
+                    {(() => {
+                      const x = getVendorCrossRef(d.vendorKey);
+                      return x.anomalies.length > 0 ? (
+                        <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/40 text-amber-500">
+                          <Search className="h-3 w-3" />{x.anomalies.length} anomaly · ${x.anomalyDollarsK}K
+                        </Badge>
+                      ) : null;
+                    })()}
                     {e?.note && <Badge variant="outline" className="text-[10px] gap-1"><NotebookPen className="h-3 w-3" />note</Badge>}
                     <span className="ml-auto text-emerald-500 font-semibold">${d.estAnnualSavingsK}K/yr</span>
                     {d.oneTimeSavingsK > 0 && <span className="text-[10px] text-emerald-500">+${d.oneTimeSavingsK}K once</span>}
@@ -617,17 +626,27 @@ function RunbookCol({ title, items }: { title: string; items: string[] }) {
 function Vendors() {
   const [tab, setTab] = useLocalState<"roi" | "deals" | "contracts" | "anomalies" | "plays" | "bench">("opsc.vendor.tab", "roi");
   const [pursued] = useLocalState<Record<string, PursueEntry>>("opsc.vendor.pursued", {});
+  const [deals] = useLocalState<Record<string, DealEntry>>("opsc.vendor.deals", {});
   const totalRecovery = VENDOR_ANOMALIES.reduce((s, a) => s + a.amountK, 0);
   const critical = VENDOR_CONTRACTS.filter(v => v.risk === "critical").length;
   const trapDays = Math.min(...VENDOR_CONTRACTS.filter(v => v.noticeRequiredDays > v.autoRenewDays).map(v => v.autoRenewDays));
-  const pursuedCount = Object.values(pursued).filter(p => p.active).length;
+  const pursuedAnomalies = VENDOR_ANOMALIES.filter(a => pursued[a.id]?.active);
+  const activeDeals = VENDOR_DEALS.filter(d => deals[d.id]?.active);
+  const pursuedDollarsK = pursuedAnomalies.reduce((s, a) => s + a.amountK, 0);
+  const activeDealAnnualK = activeDeals.reduce((s, d) => s + d.estAnnualSavingsK, 0);
+  const pipelineCount = pursuedAnomalies.length + activeDeals.length;
+  const pipelineDollarsK = pursuedDollarsK + activeDealAnnualK;
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Stat label="Vendors monitored" value={VENDOR_CONTRACTS.length} />
         <Stat label="Critical risk" value={critical} tone={critical ? "red" : "muted"} />
-        <Stat label={pursuedCount ? `Pursuing (${pursuedCount})` : "Recoverable (open)"} value={`$${totalRecovery}K`} tone="emerald" />
+        <Stat
+          label={pipelineCount ? `In pipeline (${pipelineCount}: ${pursuedAnomalies.length} anom + ${activeDeals.length} deals)` : "Recoverable (open)"}
+          value={pipelineCount ? `$${pipelineDollarsK}K` : `$${totalRecovery}K`}
+          tone="emerald"
+        />
         <Stat label="Nearest renew trap" value={isFinite(trapDays) ? `${trapDays}d` : "—"} tone={trapDays <= 30 ? "red" : "amber"} />
       </div>
 
@@ -909,6 +928,7 @@ function VendorContracts() {
       <div className="space-y-2">
         {VENDOR_CONTRACTS.map(v => {
           const trap = v.noticeRequiredDays > v.autoRenewDays;
+          const xref = getVendorCrossRef(v.vendorKey);
           return (
             <div key={v.vendor} className={`border rounded-md p-3 ${v.risk === "critical" ? "border-red-500/50 bg-red-500/5" : v.risk === "high" ? "border-orange-500/40 bg-orange-500/5" : ""}`}>
               <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -918,6 +938,16 @@ function VendorContracts() {
                     <Badge variant="outline" className="text-[10px]">{v.category}</Badge>
                     <Badge variant="outline" className={`text-[10px] uppercase ${vendorRiskClass(v.risk)}`}>{v.risk}</Badge>
                     {trap && <Badge variant="destructive" className="text-[10px] gap-1"><AlertTriangle className="h-3 w-3" />Renew trap</Badge>}
+                    {xref.anomalies.length > 0 && (
+                      <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/40 text-amber-500">
+                        <Search className="h-3 w-3" />{xref.anomalies.length} anomaly · ${xref.anomalyDollarsK}K
+                      </Badge>
+                    )}
+                    {xref.deals.length > 0 && (
+                      <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/40 text-emerald-500">
+                        <Handshake className="h-3 w-3" />{xref.deals.length} deal · ${xref.dealAnnualK}K/yr
+                      </Badge>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-[11px]">
                     <div><div className="text-[10px] uppercase text-muted-foreground">Contracted</div><div>{v.contractedRate}</div></div>
@@ -984,6 +1014,23 @@ function VendorAnomalies() {
                   <span className="font-semibold">{a.vendor}</span>
                   <Badge variant="outline" className="text-[10px]">{vendorSignalLabel(a.signal)}</Badge>
                   <Badge variant={a.confidence === "high" ? "default" : "secondary"} className="text-[10px]">{a.confidence} conf</Badge>
+                  {(() => {
+                    const x = getVendorCrossRef(a.vendorKey);
+                    return (
+                      <>
+                        {x.contract && (
+                          <Badge variant="outline" className={`text-[10px] uppercase ${vendorRiskClass(x.contract.risk)}`}>
+                            contract: {x.contract.risk}
+                          </Badge>
+                        )}
+                        {x.deals.length > 0 && (
+                          <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/40 text-emerald-500">
+                            <Handshake className="h-3 w-3" />{x.deals.length} linked deal
+                          </Badge>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="mt-1">{a.pattern}</div>
                 <div className="text-[10px] text-muted-foreground mt-1">Evidence: {a.evidence}</div>

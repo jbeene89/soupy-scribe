@@ -192,7 +192,36 @@ export function severityClass(s: Severity) {
 
 export type VendorRisk = "low" | "watch" | "high" | "critical";
 
+/**
+ * Stable vendor identifiers — used to join Contracts ↔ Anomalies ↔ Deals.
+ * Display names can vary (long contract name vs. short brand) but vendorKey
+ * is the single source of truth for cross-referencing.
+ */
+export type VendorKey =
+  | "clearmd"
+  | "coderight"
+  | "revcycle"
+  | "chartscribe"
+  | "ehr-vendor"
+  | "denial-boutique"
+  | "transcription"
+  | "multi-ancillary"
+  | "cloud-edge";
+
+export const VENDOR_DISPLAY: Record<VendorKey, string> = {
+  "clearmd":         "ClearMD Clearinghouse",
+  "coderight":       "CodeRight Coding",
+  "revcycle":        "RevCycle Partners",
+  "chartscribe":     "ChartScribe AI",
+  "ehr-vendor":      "EHR Vendor",
+  "denial-boutique": "Denial Mgmt Boutique",
+  "transcription":   "Transcription Co.",
+  "multi-ancillary": "Multi-vendor (Ancillary)",
+  "cloud-edge":      "Cloud Compute (Edge AI)",
+};
+
 export interface VendorContract {
+  vendorKey: VendorKey;
   vendor: string;
   category: string;            // e.g. Clearinghouse, Coding, RCM, EHR, SaaS
   spendAnnualK: number;        // $K/yr
@@ -208,6 +237,7 @@ export interface VendorContract {
 
 export const VENDOR_CONTRACTS: VendorContract[] = [
   {
+    vendorKey: "clearmd",
     vendor: "ClearMD Clearinghouse", category: "Clearinghouse",
     spendAnnualK: 184, contractedRate: "$0.32 / claim",
     effectiveRate: "$0.41 / claim (+rejection re-fee)",
@@ -221,6 +251,7 @@ export const VENDOR_CONTRACTS: VendorContract[] = [
     estRecoveryK: 38,
   },
   {
+    vendorKey: "coderight",
     vendor: "CodeRight Outsourced Coding", category: "Coding",
     spendAnnualK: 612, contractedRate: "$2.10 / chart, SLA 24h",
     effectiveRate: "$2.31 / chart, SLA 31h actual",
@@ -234,6 +265,7 @@ export const VENDOR_CONTRACTS: VendorContract[] = [
     estRecoveryK: 62,
   },
   {
+    vendorKey: "revcycle",
     vendor: "RevCycle Partners (extended BO)", category: "RCM",
     spendAnnualK: 940, contractedRate: "4.5% net collections",
     effectiveRate: "4.5% gross collections",
@@ -247,6 +279,7 @@ export const VENDOR_CONTRACTS: VendorContract[] = [
     estRecoveryK: 71,
   },
   {
+    vendorKey: "chartscribe",
     vendor: "ChartScribe AI Documentation", category: "SaaS",
     spendAnnualK: 96, contractedRate: "$1,200 / provider / yr",
     effectiveRate: "$1,380 / provider / yr (auto CPI)",
@@ -260,6 +293,7 @@ export const VENDOR_CONTRACTS: VendorContract[] = [
     estRecoveryK: 22,
   },
   {
+    vendorKey: "ehr-vendor",
     vendor: "EHR Vendor — Add-on Modules", category: "EHR",
     spendAnnualK: 1480, contractedRate: "Bundled enterprise license",
     effectiveRate: "Bundle + per-API-call overages",
@@ -272,6 +306,7 @@ export const VENDOR_CONTRACTS: VendorContract[] = [
     estRecoveryK: 28,
   },
   {
+    vendorKey: "denial-boutique",
     vendor: "Denial Mgmt Boutique", category: "Appeals",
     spendAnnualK: 220, contractedRate: "20% of overturn $",
     effectiveRate: "20% of overturn + 'research' hourly",
@@ -284,6 +319,7 @@ export const VENDOR_CONTRACTS: VendorContract[] = [
     estRecoveryK: 18,
   },
   {
+    vendorKey: "transcription",
     vendor: "Transcription Co.", category: "Ancillary",
     spendAnnualK: 74, contractedRate: "$0.09 / line",
     effectiveRate: "$0.09 / line",
@@ -296,6 +332,7 @@ export const VENDOR_CONTRACTS: VendorContract[] = [
 
 export interface VendorAnomaly {
   id: string;
+  vendorKey: VendorKey;
   vendor: string;
   detected: string;       // ISO date
   pattern: string;        // what was observed
@@ -306,16 +343,16 @@ export interface VendorAnomaly {
 }
 
 export const VENDOR_ANOMALIES: VendorAnomaly[] = [
-  { id: "VA-401", vendor: "ClearMD Clearinghouse", detected: "2026-05-04", pattern: "Per-claim rate drifted from $0.32 → $0.39 over 6 invoices without amendment", signal: "price-creep",     amountK: 11, confidence: "high",   evidence: "Invoices #4471–4476 vs MSA §3.1 pricing exhibit" },
-  { id: "VA-402", vendor: "ClearMD Clearinghouse", detected: "2026-05-03", pattern: "Re-submission fee billed on payer-side 277CA rejects", signal: "shadow-fee",      amountK:  9, confidence: "high",   evidence: "Invoice line 'RSF' not present in MSA fee schedule" },
-  { id: "VA-403", vendor: "CodeRight Coding",       detected: "2026-05-02", pattern: "Volume tier 3 (>15K charts/mo) hit Q3, 8% rebate not credited", signal: "rebate-miss",     amountK: 41, confidence: "high",   evidence: "Volume report Q3 + MSA exhibit B" },
-  { id: "VA-404", vendor: "CodeRight Coding",       detected: "2026-05-01", pattern: "SLA missed (31h vs 24h) for 4 months — 5% credit/mo not issued", signal: "sla-credit-miss", amountK: 24, confidence: "high",   evidence: "Vendor's own monthly SLA reports" },
-  { id: "VA-405", vendor: "RevCycle Partners",      detected: "2026-04-30", pattern: "Commission charged on gross including refunded $/take-backs",   signal: "scope-creep",     amountK: 52, confidence: "high",   evidence: "Remit-vs-commission reconciliation, Mar–Apr" },
-  { id: "VA-406", vendor: "RevCycle Partners",      detected: "2026-04-29", pattern: "Same encounter commissioned twice (re-billed after correction)", signal: "duplicate",       amountK:  7, confidence: "medium", evidence: "Encounters E-22817, E-22833 — two commission lines" },
-  { id: "VA-407", vendor: "ChartScribe AI",         detected: "2026-04-28", pattern: "CPI uplift +9% applied; MSA caps at +5%",                       signal: "price-creep",     amountK:  6, confidence: "high",   evidence: "Renewal quote vs MSA §4.3" },
-  { id: "VA-408", vendor: "ChartScribe AI",         detected: "2026-04-28", pattern: "Notice (30d) > auto-renew window (19d remaining) — trap",      signal: "auto-renew-trap", amountK: 16, confidence: "high",   evidence: "Calendar math, executed MSA dates" },
-  { id: "VA-409", vendor: "EHR Vendor",             detected: "2026-04-26", pattern: "FHIR API overages billed despite enterprise-bundle clause",    signal: "shadow-fee",      amountK: 14, confidence: "medium", evidence: "Enterprise bundle §2.7 vs invoice 'API meter'" },
-  { id: "VA-410", vendor: "Denial Mgmt Boutique",   detected: "2026-04-25", pattern: "'Research' hours billed on auto-overturn cases (no work product)", signal: "scope-creep",     amountK:  8, confidence: "medium", evidence: "Vendor work-product log shows zero deliverables on flagged cases" },
+  { id: "VA-401", vendorKey: "clearmd",         vendor: "ClearMD Clearinghouse", detected: "2026-05-04", pattern: "Per-claim rate drifted from $0.32 → $0.39 over 6 invoices without amendment", signal: "price-creep",     amountK: 11, confidence: "high",   evidence: "Invoices #4471–4476 vs MSA §3.1 pricing exhibit" },
+  { id: "VA-402", vendorKey: "clearmd",         vendor: "ClearMD Clearinghouse", detected: "2026-05-03", pattern: "Re-submission fee billed on payer-side 277CA rejects", signal: "shadow-fee",      amountK:  9, confidence: "high",   evidence: "Invoice line 'RSF' not present in MSA fee schedule" },
+  { id: "VA-403", vendorKey: "coderight",       vendor: "CodeRight Coding",       detected: "2026-05-02", pattern: "Volume tier 3 (>15K charts/mo) hit Q3, 8% rebate not credited", signal: "rebate-miss",     amountK: 41, confidence: "high",   evidence: "Volume report Q3 + MSA exhibit B" },
+  { id: "VA-404", vendorKey: "coderight",       vendor: "CodeRight Coding",       detected: "2026-05-01", pattern: "SLA missed (31h vs 24h) for 4 months — 5% credit/mo not issued", signal: "sla-credit-miss", amountK: 24, confidence: "high",   evidence: "Vendor's own monthly SLA reports" },
+  { id: "VA-405", vendorKey: "revcycle",        vendor: "RevCycle Partners",      detected: "2026-04-30", pattern: "Commission charged on gross including refunded $/take-backs",   signal: "scope-creep",     amountK: 52, confidence: "high",   evidence: "Remit-vs-commission reconciliation, Mar–Apr" },
+  { id: "VA-406", vendorKey: "revcycle",        vendor: "RevCycle Partners",      detected: "2026-04-29", pattern: "Same encounter commissioned twice (re-billed after correction)", signal: "duplicate",       amountK:  7, confidence: "medium", evidence: "Encounters E-22817, E-22833 — two commission lines" },
+  { id: "VA-407", vendorKey: "chartscribe",     vendor: "ChartScribe AI",         detected: "2026-04-28", pattern: "CPI uplift +9% applied; MSA caps at +5%",                       signal: "price-creep",     amountK:  6, confidence: "high",   evidence: "Renewal quote vs MSA §4.3" },
+  { id: "VA-408", vendorKey: "chartscribe",     vendor: "ChartScribe AI",         detected: "2026-04-28", pattern: "Notice (30d) > auto-renew window (19d remaining) — trap",      signal: "auto-renew-trap", amountK: 16, confidence: "high",   evidence: "Calendar math, executed MSA dates" },
+  { id: "VA-409", vendorKey: "ehr-vendor",      vendor: "EHR Vendor",             detected: "2026-04-26", pattern: "FHIR API overages billed despite enterprise-bundle clause",    signal: "shadow-fee",      amountK: 14, confidence: "medium", evidence: "Enterprise bundle §2.7 vs invoice 'API meter'" },
+  { id: "VA-410", vendorKey: "denial-boutique", vendor: "Denial Mgmt Boutique",   detected: "2026-04-25", pattern: "'Research' hours billed on auto-overturn cases (no work product)", signal: "scope-creep",     amountK:  8, confidence: "medium", evidence: "Vendor work-product log shows zero deliverables on flagged cases" },
 ];
 
 export interface VendorPlay {
@@ -411,6 +448,7 @@ export type DealType =
 
 export interface VendorDeal {
   id: string;
+  vendorKey: VendorKey;
   vendor: string;
   category: string;
   type: DealType;
@@ -426,7 +464,7 @@ export interface VendorDeal {
 
 export const VENDOR_DEALS: VendorDeal[] = [
   {
-    id: "DEAL-501", vendor: "ClearMD Clearinghouse", category: "Clearinghouse",
+    id: "DEAL-501", vendorKey: "clearmd", vendor: "ClearMD Clearinghouse", category: "Clearinghouse",
     type: "rfp-leverage",
     thesis: "Two peer quotes at $0.24/$0.26 per claim vs our $0.32 contracted / $0.41 effective.",
     estAnnualSavingsK: 52, oneTimeSavingsK: 38, effortDays: 14, confidence: "high", triggerWindowDays: 41,
@@ -434,7 +472,7 @@ export const VENDOR_DEALS: VendorDeal[] = [
     nextStep: "Issue RFP letter; CC current vendor with 60d non-renewal placeholder.",
   },
   {
-    id: "DEAL-502", vendor: "CodeRight Coding", category: "Coding",
+    id: "DEAL-502", vendorKey: "coderight", vendor: "CodeRight Coding", category: "Coding",
     type: "vol-commit",
     thesis: "Q3 hit Tier 3 (>15K charts/mo). Lock 18mo commit at Tier 3 rate (-12%) + monthly SLA reconciliation.",
     estAnnualSavingsK: 73, oneTimeSavingsK: 41, effortDays: 10, confidence: "high", triggerWindowDays: 88,
@@ -442,7 +480,7 @@ export const VENDOR_DEALS: VendorDeal[] = [
     nextStep: "Counter-offer: 18mo @ Tier 3 with auto-step at Tier 4 trigger.",
   },
   {
-    id: "DEAL-503", vendor: "RevCycle Partners", category: "RCM",
+    id: "DEAL-503", vendorKey: "revcycle", vendor: "RevCycle Partners", category: "RCM",
     type: "rate-reset",
     thesis: "Market median is 4.2% NET; we pay 4.5% on GROSS (effective ~4.8% net).",
     estAnnualSavingsK: 48, oneTimeSavingsK: 71, effortDays: 30, confidence: "medium", triggerWindowDays: 122,
@@ -450,7 +488,7 @@ export const VENDOR_DEALS: VendorDeal[] = [
     nextStep: "Re-paper to 4.2% NET with explicit refund/take-back offset.",
   },
   {
-    id: "DEAL-504", vendor: "ChartScribe AI", category: "SaaS",
+    id: "DEAL-504", vendorKey: "chartscribe", vendor: "ChartScribe AI", category: "SaaS",
     type: "early-renewal",
     thesis: "Renew NOW pre-CPI; trade 2yr commit for cap on uplift + inactive-seat true-up.",
     estAnnualSavingsK: 18, oneTimeSavingsK: 22, effortDays: 5, confidence: "high", triggerWindowDays: 19,
@@ -458,7 +496,7 @@ export const VENDOR_DEALS: VendorDeal[] = [
     nextStep: "Send conditional 30d non-renewal to preserve optionality.",
   },
   {
-    id: "DEAL-505", vendor: "ChartScribe AI", category: "SaaS",
+    id: "DEAL-505", vendorKey: "chartscribe", vendor: "ChartScribe AI", category: "SaaS",
     type: "consolidation",
     thesis: "Replace with EHR-bundled ambient module already paid for in enterprise license.",
     estAnnualSavingsK: 96, oneTimeSavingsK: 0, effortDays: 60, confidence: "medium", triggerWindowDays: 19,
@@ -466,7 +504,7 @@ export const VENDOR_DEALS: VendorDeal[] = [
     nextStep: "Pilot EHR module with 10 providers; sunset ChartScribe at renewal.",
   },
   {
-    id: "DEAL-506", vendor: "EHR Vendor", category: "EHR",
+    id: "DEAL-506", vendorKey: "ehr-vendor", vendor: "EHR Vendor", category: "EHR",
     type: "bundle-unbundle",
     thesis: "Drop unused add-on modules (3 of 11), redirect spend to FHIR overage cap amendment.",
     estAnnualSavingsK: 184, oneTimeSavingsK: 14, effortDays: 45, confidence: "medium", triggerWindowDays: 210,
@@ -474,7 +512,7 @@ export const VENDOR_DEALS: VendorDeal[] = [
     nextStep: "Build module-by-module use case before next mid-year true-up.",
   },
   {
-    id: "DEAL-507", vendor: "Denial Mgmt Boutique", category: "Appeals",
+    id: "DEAL-507", vendorKey: "denial-boutique", vendor: "Denial Mgmt Boutique", category: "Appeals",
     type: "alt-vendor",
     thesis: "Switch to flat 18% contingency vendor with no hourly add-on; same overturn rate.",
     estAnnualSavingsK: 26, oneTimeSavingsK: 18, effortDays: 21, confidence: "medium", triggerWindowDays: 64,
@@ -482,7 +520,7 @@ export const VENDOR_DEALS: VendorDeal[] = [
     nextStep: "Run 60d parallel on 50 cases; compare overturn $ net of fees.",
   },
   {
-    id: "DEAL-508", vendor: "Multi-vendor (3)", category: "Ancillary",
+    id: "DEAL-508", vendorKey: "multi-ancillary", vendor: "Multi-vendor (3)", category: "Ancillary",
     type: "consolidation",
     thesis: "Three transcription/translation/captioning vendors → one bundled MSA.",
     estAnnualSavingsK: 31, oneTimeSavingsK: 0, effortDays: 30, confidence: "medium", triggerWindowDays: 90,
@@ -490,7 +528,7 @@ export const VENDOR_DEALS: VendorDeal[] = [
     nextStep: "RFP single MSA with carve-outs by service line.",
   },
   {
-    id: "DEAL-509", vendor: "Cloud Compute (Edge AI)", category: "Infra",
+    id: "DEAL-509", vendorKey: "cloud-edge", vendor: "Cloud Compute (Edge AI)", category: "Infra",
     type: "term-extension",
     thesis: "3yr reserved-instance commit on baseline workload; on-demand for burst.",
     estAnnualSavingsK: 42, oneTimeSavingsK: 0, effortDays: 7, confidence: "high", triggerWindowDays: 365,
@@ -529,6 +567,35 @@ export function vendorSignalLabel(s: VendorAnomaly["signal"]) {
     "scope-creep": "Scope creep",
     "auto-renew-trap": "Auto-renew trap",
   } as const)[s];
+}
+
+/* ── Cross-vendor join helpers (Contracts ↔ Anomalies ↔ Deals) ── */
+
+export interface VendorCrossRef {
+  contract: VendorContract | undefined;
+  anomalies: VendorAnomaly[];
+  deals: VendorDeal[];
+  anomalyDollarsK: number;
+  dealAnnualK: number;
+  dealOneTimeK: number;
+  totalUpsideK: number; // anomaly $ + deal annual + deal one-time
+}
+
+export function getVendorCrossRef(key: VendorKey): VendorCrossRef {
+  const anomalies = VENDOR_ANOMALIES.filter(a => a.vendorKey === key);
+  const deals = VENDOR_DEALS.filter(d => d.vendorKey === key);
+  const anomalyDollarsK = anomalies.reduce((s, a) => s + a.amountK, 0);
+  const dealAnnualK = deals.reduce((s, d) => s + d.estAnnualSavingsK, 0);
+  const dealOneTimeK = deals.reduce((s, d) => s + d.oneTimeSavingsK, 0);
+  return {
+    contract: VENDOR_CONTRACTS.find(c => c.vendorKey === key),
+    anomalies,
+    deals,
+    anomalyDollarsK,
+    dealAnnualK,
+    dealOneTimeK,
+    totalUpsideK: anomalyDollarsK + dealAnnualK + dealOneTimeK,
+  };
 }
 
 /** Deterministic weekly brief generator from current data. */
