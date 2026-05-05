@@ -35,6 +35,7 @@ import {
   ClipboardCheck,
   Network,
   ScanSearch,
+  Database as DatabaseIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -58,6 +59,7 @@ const EXPERIMENTAL_NAV = [
   { title: 'ER / Acute', path: '/app/er-acute', icon: Siren },
   { title: 'Patient Advocate', path: '/app/advocate', icon: HeartHandshake },
   { title: 'Imaging Audit', path: '/app/imaging', icon: ScanSearch },
+  { title: 'EHR Integration', path: '/app/ehr', icon: DatabaseIcon },
 ];
 
 const PROVIDER_NAV = [
