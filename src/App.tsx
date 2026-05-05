@@ -22,6 +22,9 @@ import AppRevenueIntegrity from "./pages/AppRevenueIntegrity";
 import AppEHR from "./pages/AppEHR";
 import Unsubscribe from "./pages/Unsubscribe";
 import Trust from "./pages/Trust";
+import Status from "./pages/Status";
+import SubProcessors from "./pages/SubProcessors";
+import Security from "./pages/Security";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +41,9 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/trust" element={<Trust />} />
+            <Route path="/status" element={<Status />} />
+            <Route path="/sub-processors" element={<SubProcessors />} />
+            <Route path="/security" element={<Security />} />
 
             {/* Protected admin routes */}
             <Route path="/app" element={
