@@ -6,6 +6,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
+import { ingestFhir, looksLikeFhir } from './fhirIngest';
 
 // Configure pdf.js worker (Vite-friendly: use the bundled worker)
 // We use the legacy build for max compatibility.
@@ -61,6 +62,33 @@ export async function extractTextFromFile(file: File): Promise<ExtractionResult>
     name.endsWith('.rtf')
   ) {
     const text = await file.text();
+    // FHIR detection — JSON or NDJSON FHIR payloads get normalized into
+    // a structured plain-text summary the existing pipelines can read.
+    if ((name.endsWith('.json') || name.endsWith('.ndjson')) && looksLikeFhir(text)) {
+      try {
+        const fhir = ingestFhir(text);
+        const header = `[FHIR ${fhir.format} · ${fhir.totalResources} resources]\n`;
+        return {
+          text: header + fhir.text,
+          warning: fhir.warnings.length ? fhir.warnings.join(' ') : undefined,
+        };
+      } catch (e) {
+        // Fall through to plain text if FHIR parsing fails.
+      }
+    }
+    return { text: cleanText(text) };
+  }
+
+  // NDJSON FHIR (no .json extension caught above)
+  if (name.endsWith('.ndjson')) {
+    const text = await file.text();
+    if (looksLikeFhir(text)) {
+      const fhir = ingestFhir(text);
+      return {
+        text: `[FHIR ${fhir.format} · ${fhir.totalResources} resources]\n` + fhir.text,
+        warning: fhir.warnings.length ? fhir.warnings.join(' ') : undefined,
+      };
+    }
     return { text: cleanText(text) };
   }
 
