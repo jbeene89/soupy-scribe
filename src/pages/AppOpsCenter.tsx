@@ -508,6 +508,7 @@ function VendorDeals() {
                         <Copy className="h-3 w-3" />Copy
                       </Button>
                     </div>
+                    <VendorSubmissions vendorKey={d.vendorKey} scope="deal" scopeRef={d.id} label={d.id} />
                   </div>
                 )}
               </div>
