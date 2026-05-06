@@ -1268,6 +1268,128 @@ export type Database = {
         }
         Relationships: []
       }
+      hcc_suspects: {
+        Row: {
+          confidence: string
+          created_at: string
+          estimated_dollar_impact: number
+          evidence_snippet: string | null
+          hcc_code: string | null
+          hcc_label: string
+          icd_code: string | null
+          id: string
+          last_documented_date: string | null
+          raf_weight: number
+          recapture_recommendation: string | null
+          resolved: boolean
+          status: string
+          sweep_id: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: string
+          created_at?: string
+          estimated_dollar_impact?: number
+          evidence_snippet?: string | null
+          hcc_code?: string | null
+          hcc_label: string
+          icd_code?: string | null
+          id?: string
+          last_documented_date?: string | null
+          raf_weight?: number
+          recapture_recommendation?: string | null
+          resolved?: boolean
+          status?: string
+          sweep_id: string
+          user_id: string
+        }
+        Update: {
+          confidence?: string
+          created_at?: string
+          estimated_dollar_impact?: number
+          evidence_snippet?: string | null
+          hcc_code?: string | null
+          hcc_label?: string
+          icd_code?: string | null
+          id?: string
+          last_documented_date?: string | null
+          raf_weight?: number
+          recapture_recommendation?: string | null
+          resolved?: boolean
+          status?: string
+          sweep_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hcc_suspects_sweep_id_fkey"
+            columns: ["sweep_id"]
+            isOneToOne: false
+            referencedRelation: "hcc_sweeps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hcc_sweeps: {
+        Row: {
+          baseline_raf: number
+          benchmark_per_raf: number
+          created_at: string
+          current_encounter_text: string | null
+          current_raf: number
+          estimated_revenue_impact: number
+          historical_problem_list: Json
+          id: string
+          metadata: Json
+          notes: string | null
+          patient_ref: string
+          payer: string | null
+          plan_year: number | null
+          raf_delta: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          baseline_raf?: number
+          benchmark_per_raf?: number
+          created_at?: string
+          current_encounter_text?: string | null
+          current_raf?: number
+          estimated_revenue_impact?: number
+          historical_problem_list?: Json
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          patient_ref: string
+          payer?: string | null
+          plan_year?: number | null
+          raf_delta?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          baseline_raf?: number
+          benchmark_per_raf?: number
+          created_at?: string
+          current_encounter_text?: string | null
+          current_raf?: number
+          estimated_revenue_impact?: number
+          historical_problem_list?: Json
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          patient_ref?: string
+          payer?: string | null
+          plan_year?: number | null
+          raf_delta?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       imaging_findings: {
         Row: {
           ai_confidence: number | null
@@ -1764,6 +1886,75 @@ export type Database = {
           modifier_sensitivity?: Json | null
           payer_code?: string | null
           payer_name?: string
+        }
+        Relationships: []
+      }
+      policy_timeline_checks: {
+        Row: {
+          active_policy_date: string | null
+          active_policy_excerpt: string | null
+          active_policy_version: string | null
+          case_id: string | null
+          citations: Json
+          cited_policy_date: string | null
+          cited_policy_excerpt: string | null
+          cited_policy_version: string | null
+          created_at: string
+          date_of_service: string
+          diff_summary: string | null
+          id: string
+          metadata: Json
+          mismatch: boolean
+          payer: string | null
+          policy_id: string
+          policy_type: string
+          recommendation: string | null
+          severity: string
+          user_id: string
+        }
+        Insert: {
+          active_policy_date?: string | null
+          active_policy_excerpt?: string | null
+          active_policy_version?: string | null
+          case_id?: string | null
+          citations?: Json
+          cited_policy_date?: string | null
+          cited_policy_excerpt?: string | null
+          cited_policy_version?: string | null
+          created_at?: string
+          date_of_service: string
+          diff_summary?: string | null
+          id?: string
+          metadata?: Json
+          mismatch?: boolean
+          payer?: string | null
+          policy_id: string
+          policy_type?: string
+          recommendation?: string | null
+          severity?: string
+          user_id: string
+        }
+        Update: {
+          active_policy_date?: string | null
+          active_policy_excerpt?: string | null
+          active_policy_version?: string | null
+          case_id?: string | null
+          citations?: Json
+          cited_policy_date?: string | null
+          cited_policy_excerpt?: string | null
+          cited_policy_version?: string | null
+          created_at?: string
+          date_of_service?: string
+          diff_summary?: string | null
+          id?: string
+          metadata?: Json
+          mismatch?: boolean
+          payer?: string | null
+          policy_id?: string
+          policy_type?: string
+          recommendation?: string | null
+          severity?: string
+          user_id?: string
         }
         Relationships: []
       }
