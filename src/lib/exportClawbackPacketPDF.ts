@@ -1,7 +1,7 @@
 import {
   createPDFContext, addDocumentHeader, addSectionHeader, addTitle, addSubtitle,
   addBody, addBullet, addKeyValueGrid, addAlertBox, addBadge, addDivider, addSpacer,
-  addFooter, addTable, severityColor, checkPage,
+  addFooter, addTable, severityColor, checkPage, addScoreCards,
 } from "./pdfHelpers";
 import type { ClawbackAudit, ClawbackClaim, ClawbackExtrapolation } from "./clawbackTypes";
 
@@ -25,7 +25,38 @@ export function exportClawbackPacketPDF(opts: {
   const { audit, claims, extrapolation } = opts;
   const ctx = createPDFContext("portrait");
 
+  // ─── Cover Page ───
   addDocumentHeader(ctx, "RAC Clawback Defense Packet", `${audit.audit_name}${audit.contractor ? " · " + audit.contractor : ""}`);
+  addSpacer(ctx, 8);
+  if (extrapolation) {
+    addScoreCards(ctx, [
+      { label: "RAC Demand", value: fmtMoney(extrapolation.rac_point_estimate), color: "red" },
+      { label: "Defensible (90% LCB)", value: fmtMoney(extrapolation.reduced_exposure), color: "green" },
+      { label: "Liability Reduced", value: fmtMoney(extrapolation.exposure_delta), color: "amber" },
+      { label: "Leverage", value: `${extrapolation.leverage_score}/100`, color: "blue" },
+    ]);
+  }
+  addSubtitle(ctx, "Audit Particulars");
+  addKeyValueGrid(ctx, [
+    ["Audit", audit.audit_name],
+    ["Contractor", audit.contractor || "—"],
+    ["Audit Period", `${audit.audit_period_start || "—"} → ${audit.audit_period_end || "—"}`],
+    ["Notice Date", audit.notice_date || "—"],
+    ["Response Deadline", audit.response_deadline || "—"],
+    ["Sample / Universe", `${audit.sample_size ?? "—"} / ${audit.universe_size ?? "—"}`],
+    ["Claims Reviewed", String(claims.length)],
+    ["Status", audit.status],
+  ]);
+  addSpacer(ctx, 8);
+  addAlertBox(
+    ctx,
+    "This packet is prepared under attorney work-product privilege and is intended for use in administrative appeal, ALJ hearing, or settlement negotiation. Statistical recomputation follows CMS MPIM Ch.8 conventions.",
+    "info",
+    "Use & Privilege",
+  );
+  ctx.doc.addPage();
+  ctx.pageNumber++;
+  ctx.y = 44;
 
   // ─── Executive Summary ───
   addSectionHeader(ctx, "Executive Summary");
@@ -87,19 +118,31 @@ export function exportClawbackPacketPDF(opts: {
 
     addSubtitle(ctx, "Recomputed Estimator");
     addKeyValueGrid(ctx, [
+      ["Method", String(extrapolation.details?.method || "simple").toUpperCase()],
+      ["Degrees of Freedom", String(extrapolation.details?.df ?? "—")],
       ["Sample Mean Overpayment (post-defense)", fmtMoney(extrapolation.details?.sample_mean_overpayment || 0)],
       ["Sample Std. Dev.", fmtMoney(extrapolation.details?.sample_sd || 0)],
-      ["Standard Error", fmtMoney(extrapolation.details?.standard_error || 0)],
+      ["Standard Error (extrapolated)", fmtMoney(extrapolation.details?.standard_error || 0)],
       ["t-critical (90%, one-sided)", String((extrapolation.details?.t_critical_90 || 0).toFixed(3))],
       ["Margin of Error", fmtMoney(extrapolation.details?.margin_of_error || 0)],
       ["Recomputed Point Estimate", fmtMoney(extrapolation.recomputed_point_estimate)],
       ["90% Lower Confidence Bound", fmtMoney(extrapolation.recomputed_lower_ci)],
     ]);
+    if (extrapolation.details?.scenarios) {
+      addSpacer(ctx, 8);
+      addSubtitle(ctx, "Settlement Scenarios");
+      const s = extrapolation.details.scenarios;
+      addKeyValueGrid(ctx, [
+        ["Best Case — pending claims fully defended (LCB)", fmtMoney(s.best_case_lower_ci)],
+        ["Expected — current per-claim outcomes (LCB)", fmtMoney(s.expected_lower_ci)],
+        ["Worst Case — pending claims conceded (LCB)", fmtMoney(s.worst_case_lower_ci)],
+      ]);
+    }
     addSpacer(ctx, 10);
   }
 
   // ─── Per-Claim Defense Summary ───
-  addSectionHeader(ctx, "Per-Claim Defense Roster");
+  addSectionHeader(ctx, "Exhibit A — Per-Claim Defense Roster");
   const counts: Record<string, number> = {};
   claims.forEach((c) => {
     const k = c.defense_strength || c.defense_status || "pending";
@@ -110,7 +153,8 @@ export function exportClawbackPacketPDF(opts: {
   addSpacer(ctx, 8);
 
   // Sortable summary table
-  const claimRows: string[][] = claims.map((c) => [
+  const claimRows: string[][] = claims.map((c, i) => [
+    `A-${String(i + 1).padStart(3, "0")}`,
     c.claim_number || "—",
     c.date_of_service || "—",
     fmtMoney(Number(c.rac_disallowed_amount) || 0),
@@ -120,11 +164,12 @@ export function exportClawbackPacketPDF(opts: {
   ]);
   addTable(ctx,
     [
-      { header: "Claim #", width: 75 },
-      { header: "DOS", width: 58 },
-      { header: "Disallowed", width: 60 },
-      { header: "CPT", width: 70 },
-      { header: "Defense", width: 60 },
+      { header: "Exhibit", width: 50 },
+      { header: "Claim #", width: 70 },
+      { header: "DOS", width: 56 },
+      { header: "Disallowed", width: 58 },
+      { header: "CPT", width: 60 },
+      { header: "Defense", width: 56 },
       { header: "Outcome", width: 0 },
     ],
     claimRows
@@ -132,11 +177,11 @@ export function exportClawbackPacketPDF(opts: {
   addSpacer(ctx, 12);
 
   // ─── Detailed claim defenses ───
-  addSectionHeader(ctx, "Claim-Level Clinical Justifications");
+  addSectionHeader(ctx, "Exhibit B — Claim-Level Clinical Justifications");
   claims.forEach((c, i) => {
     if (!c.clinical_justification && !(c.defense_findings || []).length) return;
     checkPage(ctx, 80);
-    addTitle(ctx, `${i + 1}. Claim ${c.claim_number || "(unnumbered)"}${c.date_of_service ? " · " + c.date_of_service : ""}`, 11);
+    addTitle(ctx, `Exhibit A-${String(i + 1).padStart(3, "0")} · Claim ${c.claim_number || "(unnumbered)"}${c.date_of_service ? " · " + c.date_of_service : ""}`, 11);
     addBody(ctx, `RAC finding: ${c.rac_finding_text || c.rac_finding_code || "—"}`);
     if (c.clinical_justification) {
       addBody(ctx, `Defense: ${c.clinical_justification}`);
