@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, FileUp, AlertCircle, CheckCircle2, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { bulkAddVersions, coerceVersionRow, parseCSV, type BulkVersionRow } from "@/lib/policyLibraryService";
@@ -19,6 +20,38 @@ interface Props {
 type ParseResult =
   | { kind: "ok"; rows: BulkVersionRow[]; errors: { line: number; error: string }[] }
   | { kind: "fatal"; message: string };
+
+/* CSV column mapping ------------------------------------------------------- */
+
+const TARGET_FIELDS = [
+  { key: "effective_start", label: "Effective start *", required: true,
+    aliases: ["effective_start", "effective start", "start", "start_date", "startdate", "effectivestart", "from", "begin", "begin_date"] },
+  { key: "policy_text", label: "Policy text *", required: true,
+    aliases: ["policy_text", "policy text", "text", "policytext", "body", "content", "policy"] },
+  { key: "version_label", label: "Version label", required: false,
+    aliases: ["version_label", "label", "version", "ver", "rev", "revision"] },
+  { key: "effective_end", label: "Effective end", required: false,
+    aliases: ["effective_end", "effective end", "end", "end_date", "enddate", "effectiveend", "to", "thru", "until"] },
+  { key: "change_summary", label: "Change summary", required: false,
+    aliases: ["change_summary", "summary", "changes", "notes", "changelog", "change_log"] },
+  { key: "source_url", label: "Source URL", required: false,
+    aliases: ["source_url", "url", "source", "link", "href"] },
+] as const;
+
+type TargetKey = (typeof TARGET_FIELDS)[number]["key"];
+const NONE = "__none__";
+
+function norm(s: string) { return s.toLowerCase().replace(/[\s_\-]+/g, ""); }
+
+function autoMap(headers: string[]): Record<TargetKey, string> {
+  const m = {} as Record<TargetKey, string>;
+  for (const f of TARGET_FIELDS) {
+    const wanted = new Set(f.aliases.map(norm));
+    const hit = headers.find(h => wanted.has(norm(h)));
+    m[f.key] = hit ?? NONE;
+  }
+  return m;
+}
 
 const CSV_TEMPLATE = `version_label,effective_start,effective_end,policy_text,change_summary,source_url
 v6.1,2023-01-01,2023-12-31,"Full policy text for v6.1...","Initial version",https://example.com/v6.1
@@ -52,12 +85,55 @@ function parseInput(format: "csv" | "json", text: string): ParseResult {
   return { kind: "ok", rows, errors };
 }
 
+function parseCsvWithMapping(text: string, mapping: Record<TargetKey, string>): ParseResult {
+  const errors: { line: number; error: string }[] = [];
+  const rows: BulkVersionRow[] = [];
+  let recs: Record<string, string>[];
+  try { recs = parseCSV(text); } catch (e: any) { return { kind: "fatal", message: e?.message || "Failed to parse CSV." }; }
+  recs.forEach((r, i) => {
+    const remapped: Record<string, string> = {};
+    for (const f of TARGET_FIELDS) {
+      const src = mapping[f.key];
+      if (src && src !== NONE) remapped[f.key] = r[src] ?? "";
+    }
+    const c = coerceVersionRow(remapped);
+    if (c.ok === true) rows.push(c.row);
+    else errors.push({ line: i + 2, error: (c as { ok: false; error: string }).error });
+  });
+  return { kind: "ok", rows, errors };
+}
+
 export default function BulkImportVersionsDialog({ policyId, policyLabel, onImported }: Props) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<"csv" | "json">("csv");
   const [text, setText] = useState("");
   const [result, setResult] = useState<ParseResult | null>(null);
   const [importing, setImporting] = useState(false);
+  const [mapping, setMapping] = useState<Record<TargetKey, string> | null>(null);
+
+  // Detect CSV headers from current text
+  const csvHeaders = useMemo<string[]>(() => {
+    if (format !== "csv" || !text.trim()) return [];
+    try {
+      const recs = parseCSV(text);
+      if (recs.length === 0) {
+        // No data rows but we still want headers — re-derive from first non-empty line
+        const first = text.split(/\r?\n/).find(l => l.trim().length > 0) ?? "";
+        // crude split by comma respecting quotes
+        const m = first.match(/("([^"]|"")*"|[^,]+)/g) ?? [];
+        return m.map(h => h.replace(/^"|"$/g, "").replace(/""/g, '"').trim());
+      }
+      return Object.keys(recs[0]);
+    } catch { return []; }
+  }, [format, text]);
+
+  // Auto-map whenever CSV headers change
+  useEffect(() => {
+    if (format === "csv" && csvHeaders.length > 0) setMapping(autoMap(csvHeaders));
+    else setMapping(null);
+  }, [csvHeaders, format]);
+
+  const mappingComplete = !!mapping && TARGET_FIELDS.every(f => !f.required || (mapping[f.key] && mapping[f.key] !== NONE));
 
   function reset() { setText(""); setResult(null); }
 
@@ -74,7 +150,13 @@ export default function BulkImportVersionsDialog({ policyId, policyLabel, onImpo
 
   function handleParse() {
     if (!text.trim()) { toast.error("Paste content or upload a file first."); return; }
-    setResult(parseInput(format, text));
+    if (format === "csv") {
+      if (!mapping) { toast.error("Add CSV headers first."); return; }
+      if (!mappingComplete) { toast.error("Map all required columns (marked *)."); return; }
+      setResult(parseCsvWithMapping(text, mapping));
+    } else {
+      setResult(parseInput(format, text));
+    }
   }
 
   async function handleImport() {
@@ -130,6 +212,39 @@ export default function BulkImportVersionsDialog({ policyId, policyLabel, onImpo
           <TabsContent value="csv" className="mt-3 space-y-2">
             <Textarea rows={10} value={text} onChange={(e) => { setText(e.target.value); setResult(null); }}
               placeholder={CSV_TEMPLATE} className="font-mono text-xs" />
+            {csvHeaders.length > 0 && mapping && (
+              <div className="rounded border bg-muted/20 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium">Map your columns</div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px]">{csvHeaders.length} column{csvHeaders.length === 1 ? "" : "s"} detected</Badge>
+                    <Button variant="ghost" size="sm" onClick={() => setMapping(autoMap(csvHeaders))}>Auto-map</Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Pick which column in your file feeds each field. Required fields are marked *.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {TARGET_FIELDS.map(f => {
+                    const value = mapping[f.key] || NONE;
+                    const missing = f.required && (value === NONE);
+                    return (
+                      <div key={f.key}>
+                        <Label className="text-xs flex items-center gap-1">
+                          {f.label}
+                          {missing && <span className="text-destructive">unmapped</span>}
+                        </Label>
+                        <Select value={value} onValueChange={(v) => { setMapping({ ...mapping, [f.key]: v }); setResult(null); }}>
+                          <SelectTrigger className={missing ? "border-destructive" : ""}><SelectValue placeholder="Choose column" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NONE}>{f.required ? "— select column —" : "— not in file —"}</SelectItem>
+                            {csvHeaders.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </TabsContent>
           <TabsContent value="json" className="mt-3 space-y-2">
             <Textarea rows={10} value={text} onChange={(e) => { setText(e.target.value); setResult(null); }}
