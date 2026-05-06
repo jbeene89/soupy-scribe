@@ -120,6 +120,122 @@ export async function deleteVersion(id: string) {
   if (error) throw error;
 }
 
+/* ============ Bulk import ============ */
+
+export interface BulkVersionRow {
+  version_label?: string | null;
+  effective_start: string;
+  effective_end?: string | null;
+  policy_text: string;
+  change_summary?: string | null;
+  source_url?: string | null;
+}
+
+/** Parse a minimal CSV (RFC-4180-ish) into rows of objects keyed by header. */
+export function parseCSV(text: string): Record<string, string>[] {
+  const rows: string[][] = [];
+  let cur: string[] = [];
+  let field = "";
+  let inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQ = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ",") { cur.push(field); field = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        cur.push(field); field = ""; rows.push(cur); cur = [];
+      } else field += c;
+    }
+  }
+  if (field.length > 0 || cur.length > 0) { cur.push(field); rows.push(cur); }
+  const cleaned = rows.filter(r => r.some(v => v && v.trim() !== ""));
+  if (cleaned.length === 0) return [];
+  const headers = cleaned[0].map(h => h.trim());
+  return cleaned.slice(1).map(r => {
+    const o: Record<string, string> = {};
+    headers.forEach((h, idx) => { o[h] = (r[idx] ?? "").trim(); });
+    return o;
+  });
+}
+
+function normalizeDate(s: string | null | undefined): string | null {
+  if (!s) return null;
+  const t = s.trim();
+  if (!t) return null;
+  // Accept YYYY-MM-DD directly
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  // Accept M/D/YYYY or MM/DD/YYYY
+  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    const [, mm, dd, yyyy] = m;
+    return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+  }
+  // Fallback: Date parse
+  const d = new Date(t);
+  if (!isNaN(d.getTime())) {
+    const y = d.getUTCFullYear();
+    const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const da = String(d.getUTCDate()).padStart(2, "0");
+    return `${y}-${mo}-${da}`;
+  }
+  return null;
+}
+
+/** Coerce an arbitrary parsed row into a BulkVersionRow with validation. */
+export function coerceVersionRow(raw: Record<string, any>): { ok: true; row: BulkVersionRow } | { ok: false; error: string } {
+  const get = (...keys: string[]) => {
+    for (const k of keys) {
+      const found = Object.keys(raw).find(rk => rk.toLowerCase() === k.toLowerCase());
+      if (found && raw[found] != null && String(raw[found]).trim() !== "") return String(raw[found]);
+    }
+    return "";
+  };
+  const start = normalizeDate(get("effective_start", "start", "effectiveStart", "effective start"));
+  if (!start) return { ok: false, error: "Missing or invalid effective_start" };
+  const endRaw = get("effective_end", "end", "effectiveEnd", "effective end");
+  const end = endRaw ? normalizeDate(endRaw) : null;
+  if (endRaw && !end) return { ok: false, error: "Invalid effective_end" };
+  const policy_text = get("policy_text", "text", "policyText", "policy text");
+  if (!policy_text) return { ok: false, error: "Missing policy_text" };
+  return {
+    ok: true,
+    row: {
+      version_label: get("version_label", "label", "version") || null,
+      effective_start: start,
+      effective_end: end,
+      policy_text,
+      change_summary: get("change_summary", "summary", "changeSummary", "change summary") || null,
+      source_url: get("source_url", "url", "sourceUrl", "source url") || null,
+    },
+  };
+}
+
+/** Bulk insert versions for a policy. Returns inserted count. */
+export async function bulkAddVersions(policyId: string, rows: BulkVersionRow[]): Promise<number> {
+  if (rows.length === 0) return 0;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  const payload = rows.map(r => ({
+    user_id: user.id,
+    policy_id: policyId,
+    version_label: r.version_label ?? null,
+    effective_start: r.effective_start,
+    effective_end: r.effective_end ?? null,
+    policy_text: r.policy_text,
+    change_summary: r.change_summary ?? null,
+    source_url: r.source_url ?? null,
+  }));
+  const { data, error } = await supabase.from("payer_policy_versions").insert(payload).select("id");
+  if (error) throw error;
+  return data?.length ?? 0;
+}
+
 /**
  * Resolve which version was active on a given Date of Service.
  * Active = effective_start <= dos AND (effective_end IS NULL OR effective_end >= dos).
