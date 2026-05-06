@@ -113,7 +113,7 @@ function extractJsonArray(text: string): { ok: true; arr: any[] } | { ok: false;
 
 function parseJsonWithMapping(text: string, mapping: Record<TargetKey, string>): ParseResult {
   const got = extractJsonArray(text);
-  if (!got.ok) return { kind: "fatal", message: got.message };
+  if (got.ok !== true) return { kind: "fatal", message: (got as { ok: false; message: string }).message };
   const errors: { line: number; error: string }[] = [];
   const rows: BulkVersionRow[] = [];
   got.arr.forEach((r: any, i: number) => {
@@ -162,7 +162,7 @@ export default function BulkImportVersionsDialog({ policyId, policyLabel, onImpo
   const jsonKeys = useMemo<string[]>(() => {
     if (format !== "json" || !text.trim()) return [];
     const got = extractJsonArray(text);
-    if (!got.ok) return [];
+    if (got.ok !== true) return [];
     const set = new Set<string>();
     for (const r of got.arr) {
       if (r && typeof r === "object" && !Array.isArray(r)) Object.keys(r).forEach(k => set.add(k));
