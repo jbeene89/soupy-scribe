@@ -155,6 +155,17 @@ export default function AppPolicyTimeMachine() {
                 <div><Label>Active-on-DOS Version (optional)</Label><Input value={activeVersion} onChange={(e)=>setActiveVersion(e.target.value)} placeholder="v6.2" /></div>
                 <div><Label>Active-on-DOS Effective Date</Label><Input type="date" value={activeDate} onChange={(e)=>setActiveDate(e.target.value)} /></div>
               </div>
+              <div className="flex items-center justify-between gap-3 p-3 rounded border bg-muted/30">
+                <div className="flex items-center gap-2 text-sm">
+                  <Library className="h-4 w-4 text-primary" />
+                  <span>Auto-fill cited + active-on-DOS versions from your Policy Library.</span>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={handleResolveFromLibrary} disabled={resolving}>
+                  {resolving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                  Resolve from Library
+                </Button>
+              </div>
+              {resolveStatus && <p className="text-xs text-muted-foreground -mt-2">{resolveStatus}</p>}
               <div><Label>Cited Policy Text (what payer applied)</Label><Textarea rows={6} value={citedText} onChange={(e)=>setCitedText(e.target.value)} placeholder="Paste the policy excerpt referenced in the denial letter…" /></div>
               <div><Label>Active-on-DOS Policy Text (optional)</Label><Textarea rows={6} value={activeText} onChange={(e)=>setActiveText(e.target.value)} placeholder="Paste the prior version that was in force on DOS, if available…" /></div>
               <Button onClick={handleRun} disabled={running} className="w-full">
