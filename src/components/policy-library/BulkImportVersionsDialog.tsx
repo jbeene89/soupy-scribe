@@ -33,8 +33,8 @@ function parseInput(format: "csv" | "json", text: string): ParseResult {
       const recs = parseCSV(text);
       recs.forEach((r, i) => {
         const c = coerceVersionRow(r);
-        if (c.ok) rows.push(c.row);
-        else errors.push({ line: i + 2, error: c.error });
+        if (c.ok === true) rows.push(c.row);
+        else errors.push({ line: i + 2, error: (c as { ok: false; error: string }).error });
       });
     } else {
       const parsed = JSON.parse(text);
@@ -42,8 +42,8 @@ function parseInput(format: "csv" | "json", text: string): ParseResult {
       if (!arr) return { kind: "fatal", message: "JSON must be an array of version objects, or { versions: [...] }." };
       arr.forEach((r: any, i: number) => {
         const c = coerceVersionRow(r ?? {});
-        if (c.ok) rows.push(c.row);
-        else errors.push({ line: i + 1, error: c.error });
+        if (c.ok === true) rows.push(c.row);
+        else errors.push({ line: i + 1, error: (c as { ok: false; error: string }).error });
       });
     }
   } catch (e: any) {
