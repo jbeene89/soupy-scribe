@@ -29,6 +29,8 @@ import AIGovernance from "./pages/AIGovernance";
 import AppStrategicTools from "./pages/AppStrategicTools";
 import AppOpsCenter from "./pages/AppOpsCenter";
 import AppClawbackShield from "./pages/AppClawbackShield";
+import AppHCCSweep from "./pages/AppHCCSweep";
+import AppPolicyTimeMachine from "./pages/AppPolicyTimeMachine";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +81,8 @@ const App = () => (
               <Route path="strategic-tools" element={<AppStrategicTools />} />
               <Route path="ops-center" element={<AppOpsCenter />} />
               <Route path="clawback-shield" element={<AppClawbackShield />} />
+              <Route path="hcc-sweep" element={<AppHCCSweep />} />
+              <Route path="policy-time-machine" element={<AppPolicyTimeMachine />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
