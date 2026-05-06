@@ -14,6 +14,7 @@ import {
   listVersions, addVersion, deleteVersion,
   type PayerPolicy, type PayerPolicyVersion,
 } from "@/lib/policyLibraryService";
+import BulkImportVersionsDialog from "@/components/policy-library/BulkImportVersionsDialog";
 
 export default function AppPolicyLibrary() {
   const { session } = useAuth();
@@ -168,6 +169,13 @@ export default function AppPolicyLibrary() {
           <Card>
             <CardHeader><CardTitle className="text-base">Add Version</CardTitle><CardDescription>Each version stores the policy text in force during a date range. Leave Effective End blank if it's the current version.</CardDescription></CardHeader>
             <CardContent className="space-y-3">
+              <div className="flex justify-end">
+                <BulkImportVersionsDialog
+                  policyId={active.id}
+                  policyLabel={`${active.policy_id}${active.payer ? " · " + active.payer : ""}`}
+                  onImported={async () => setVersions(await listVersions(active.id))}
+                />
+              </div>
               <div className="grid grid-cols-3 gap-3">
                 <div><Label>Version Label</Label><Input value={vLabel} onChange={(e)=>setVLabel(e.target.value)} placeholder="v6.2" /></div>
                 <div><Label>Effective Start *</Label><Input type="date" value={vStart} onChange={(e)=>setVStart(e.target.value)} /></div>
