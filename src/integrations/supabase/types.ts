@@ -396,6 +396,261 @@ export type Database = {
         }
         Relationships: []
       }
+      clawback_audits: {
+        Row: {
+          audit_name: string
+          audit_period_end: string | null
+          audit_period_start: string | null
+          contractor: string | null
+          contractor_type: string | null
+          created_at: string
+          demand_amount: number | null
+          id: string
+          metadata: Json | null
+          notes: string | null
+          notice_date: string | null
+          owner_id: string
+          response_deadline: string | null
+          sample_size: number | null
+          status: string
+          stratification: Json | null
+          universe_size: number | null
+          updated_at: string
+        }
+        Insert: {
+          audit_name: string
+          audit_period_end?: string | null
+          audit_period_start?: string | null
+          contractor?: string | null
+          contractor_type?: string | null
+          created_at?: string
+          demand_amount?: number | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          notice_date?: string | null
+          owner_id: string
+          response_deadline?: string | null
+          sample_size?: number | null
+          status?: string
+          stratification?: Json | null
+          universe_size?: number | null
+          updated_at?: string
+        }
+        Update: {
+          audit_name?: string
+          audit_period_end?: string | null
+          audit_period_start?: string | null
+          contractor?: string | null
+          contractor_type?: string | null
+          created_at?: string
+          demand_amount?: number | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          notice_date?: string | null
+          owner_id?: string
+          response_deadline?: string | null
+          sample_size?: number | null
+          status?: string
+          stratification?: Json | null
+          universe_size?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      clawback_claims: {
+        Row: {
+          audit_id: string
+          billed_amount: number | null
+          chart_file_path: string | null
+          claim_number: string | null
+          clinical_justification: string | null
+          cpt_codes: string[] | null
+          created_at: string
+          date_of_service: string | null
+          defense_findings: Json | null
+          defense_status: string
+          defense_strength: string | null
+          icd_codes: string[] | null
+          id: string
+          metadata: Json | null
+          owner_id: string
+          patient_ref: string | null
+          rac_disallowed_amount: number | null
+          rac_finding_code: string | null
+          rac_finding_text: string | null
+          recommended_outcome: string | null
+          recovered_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          audit_id: string
+          billed_amount?: number | null
+          chart_file_path?: string | null
+          claim_number?: string | null
+          clinical_justification?: string | null
+          cpt_codes?: string[] | null
+          created_at?: string
+          date_of_service?: string | null
+          defense_findings?: Json | null
+          defense_status?: string
+          defense_strength?: string | null
+          icd_codes?: string[] | null
+          id?: string
+          metadata?: Json | null
+          owner_id: string
+          patient_ref?: string | null
+          rac_disallowed_amount?: number | null
+          rac_finding_code?: string | null
+          rac_finding_text?: string | null
+          recommended_outcome?: string | null
+          recovered_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          audit_id?: string
+          billed_amount?: number | null
+          chart_file_path?: string | null
+          claim_number?: string | null
+          clinical_justification?: string | null
+          cpt_codes?: string[] | null
+          created_at?: string
+          date_of_service?: string | null
+          defense_findings?: Json | null
+          defense_status?: string
+          defense_strength?: string | null
+          icd_codes?: string[] | null
+          id?: string
+          metadata?: Json | null
+          owner_id?: string
+          patient_ref?: string | null
+          rac_disallowed_amount?: number | null
+          rac_finding_code?: string | null
+          rac_finding_text?: string | null
+          recommended_outcome?: string | null
+          recovered_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clawback_claims_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "clawback_audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clawback_defense_packets: {
+        Row: {
+          audit_id: string
+          created_at: string
+          id: string
+          leverage_score: number | null
+          owner_id: string
+          storage_path: string | null
+          summary: Json | null
+          version: number
+        }
+        Insert: {
+          audit_id: string
+          created_at?: string
+          id?: string
+          leverage_score?: number | null
+          owner_id: string
+          storage_path?: string | null
+          summary?: Json | null
+          version?: number
+        }
+        Update: {
+          audit_id?: string
+          created_at?: string
+          id?: string
+          leverage_score?: number | null
+          owner_id?: string
+          storage_path?: string | null
+          summary?: Json | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clawback_defense_packets_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "clawback_audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clawback_extrapolation: {
+        Row: {
+          attack_summary: string | null
+          audit_id: string
+          cms_compliance: Json | null
+          created_at: string
+          details: Json | null
+          exposure_delta: number | null
+          id: string
+          leverage_score: number | null
+          owner_id: string
+          precision_pct: number | null
+          procedural_defects: Json | null
+          rac_demand: number | null
+          rac_point_estimate: number | null
+          recomputed_lower_ci: number | null
+          recomputed_point_estimate: number | null
+          reduced_exposure: number | null
+          updated_at: string
+        }
+        Insert: {
+          attack_summary?: string | null
+          audit_id: string
+          cms_compliance?: Json | null
+          created_at?: string
+          details?: Json | null
+          exposure_delta?: number | null
+          id?: string
+          leverage_score?: number | null
+          owner_id: string
+          precision_pct?: number | null
+          procedural_defects?: Json | null
+          rac_demand?: number | null
+          rac_point_estimate?: number | null
+          recomputed_lower_ci?: number | null
+          recomputed_point_estimate?: number | null
+          reduced_exposure?: number | null
+          updated_at?: string
+        }
+        Update: {
+          attack_summary?: string | null
+          audit_id?: string
+          cms_compliance?: Json | null
+          created_at?: string
+          details?: Json | null
+          exposure_delta?: number | null
+          id?: string
+          leverage_score?: number | null
+          owner_id?: string
+          precision_pct?: number | null
+          procedural_defects?: Json | null
+          rac_demand?: number | null
+          rac_point_estimate?: number | null
+          recomputed_lower_ci?: number | null
+          recomputed_point_estimate?: number | null
+          reduced_exposure?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clawback_extrapolation_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "clawback_audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       code_combinations: {
         Row: {
           case_id: string | null

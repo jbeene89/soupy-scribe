@@ -28,6 +28,7 @@ import Security from "./pages/Security";
 import AIGovernance from "./pages/AIGovernance";
 import AppStrategicTools from "./pages/AppStrategicTools";
 import AppOpsCenter from "./pages/AppOpsCenter";
+import AppClawbackShield from "./pages/AppClawbackShield";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const App = () => (
               <Route path="ehr" element={<AppEHR />} />
               <Route path="strategic-tools" element={<AppStrategicTools />} />
               <Route path="ops-center" element={<AppOpsCenter />} />
+              <Route path="clawback-shield" element={<AppClawbackShield />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
