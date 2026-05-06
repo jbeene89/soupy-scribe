@@ -42,7 +42,8 @@ const STRENGTH_LABEL: Record<string, string> = {
 };
 
 export default function AppClawbackShield() {
-  const { user } = useAuth();
+  const { session } = useAuth();
+  const user = session?.user;
   const [params, setParams] = useSearchParams();
   const auditId = params.get("auditId");
   const navigate = useNavigate();
