@@ -1847,6 +1847,98 @@ export type Database = {
         }
         Relationships: []
       }
+      payer_policies: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json
+          notes: string | null
+          payer: string | null
+          policy_id: string
+          policy_type: string
+          source_url: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          payer?: string | null
+          policy_id: string
+          policy_type?: string
+          source_url?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          notes?: string | null
+          payer?: string | null
+          policy_id?: string
+          policy_type?: string
+          source_url?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payer_policy_versions: {
+        Row: {
+          change_summary: string | null
+          created_at: string
+          effective_end: string | null
+          effective_start: string
+          id: string
+          metadata: Json
+          policy_id: string
+          policy_text: string
+          source_url: string | null
+          user_id: string
+          version_label: string | null
+        }
+        Insert: {
+          change_summary?: string | null
+          created_at?: string
+          effective_end?: string | null
+          effective_start: string
+          id?: string
+          metadata?: Json
+          policy_id: string
+          policy_text: string
+          source_url?: string | null
+          user_id: string
+          version_label?: string | null
+        }
+        Update: {
+          change_summary?: string | null
+          created_at?: string
+          effective_end?: string | null
+          effective_start?: string
+          id?: string
+          metadata?: Json
+          policy_id?: string
+          policy_text?: string
+          source_url?: string | null
+          user_id?: string
+          version_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payer_policy_versions_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "payer_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payer_profiles: {
         Row: {
           adversarial_prompt_additions: string | null
@@ -1903,11 +1995,13 @@ export type Database = {
           date_of_service: string
           diff_summary: string | null
           id: string
+          library_policy_id: string | null
           metadata: Json
           mismatch: boolean
           payer: string | null
           policy_id: string
           policy_type: string
+          policy_version_id: string | null
           recommendation: string | null
           severity: string
           user_id: string
@@ -1925,11 +2019,13 @@ export type Database = {
           date_of_service: string
           diff_summary?: string | null
           id?: string
+          library_policy_id?: string | null
           metadata?: Json
           mismatch?: boolean
           payer?: string | null
           policy_id: string
           policy_type?: string
+          policy_version_id?: string | null
           recommendation?: string | null
           severity?: string
           user_id: string
@@ -1947,16 +2043,33 @@ export type Database = {
           date_of_service?: string
           diff_summary?: string | null
           id?: string
+          library_policy_id?: string | null
           metadata?: Json
           mismatch?: boolean
           payer?: string | null
           policy_id?: string
           policy_type?: string
+          policy_version_id?: string | null
           recommendation?: string | null
           severity?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "policy_timeline_checks_library_policy_id_fkey"
+            columns: ["library_policy_id"]
+            isOneToOne: false
+            referencedRelation: "payer_policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policy_timeline_checks_policy_version_id_fkey"
+            columns: ["policy_version_id"]
+            isOneToOne: false
+            referencedRelation: "payer_policy_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       postop_flow_events: {
         Row: {

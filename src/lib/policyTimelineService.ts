@@ -21,6 +21,8 @@ export interface PolicyTimelineCheck {
   citations: any[];
   metadata: Record<string, any>;
   created_at: string;
+  policy_version_id?: string | null;
+  library_policy_id?: string | null;
 }
 
 export async function listChecks(): Promise<PolicyTimelineCheck[]> {
@@ -41,6 +43,8 @@ export async function runTimelineCheck(params: {
   active_policy_text?: string;
   active_policy_version?: string | null;
   active_policy_date?: string | null;
+  library_policy_id?: string | null;
+  policy_version_id?: string | null;
 }): Promise<PolicyTimelineCheck> {
   const { data, error } = await supabase.functions.invoke("policy-time-machine", { body: params });
   if (error) throw new Error(error.message);

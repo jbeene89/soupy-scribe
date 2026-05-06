@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Clock, Play, Trash2, ArrowLeft, Loader2, AlertTriangle, CheckCircle2, ScrollText } from "lucide-react";
+import { Clock, Play, Trash2, ArrowLeft, Loader2, AlertTriangle, CheckCircle2, ScrollText, Library, Wand2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { listChecks, runTimelineCheck, deleteCheck, type PolicyTimelineCheck } from "@/lib/policyTimelineService";
+import { findPolicy, getCurrentVersion, resolveVersionForDOS } from "@/lib/policyLibraryService";
 
 const SEV_VARIANT: Record<string, "destructive"|"secondary"|"outline"> = { high: "destructive", medium: "secondary", low: "outline" };
 
@@ -30,6 +31,58 @@ export default function AppPolicyTimeMachine() {
   const [activeDate, setActiveDate] = useState("");
   const [citedText, setCitedText] = useState("");
   const [activeText, setActiveText] = useState("");
+  const [libraryPolicyId, setLibraryPolicyId] = useState<string | null>(null);
+  const [resolvedVersionId, setResolvedVersionId] = useState<string | null>(null);
+  const [resolveStatus, setResolveStatus] = useState<string>("");
+  const [resolving, setResolving] = useState(false);
+
+  async function handleResolveFromLibrary() {
+    if (!policyId.trim() || !dos) {
+      toast.error("Policy ID and Date of Service are required to resolve from library.");
+      return;
+    }
+    setResolving(true); setResolveStatus("");
+    try {
+      const lib = await findPolicy(policyId.trim(), payer.trim() || null);
+      if (!lib) {
+        setResolveStatus(`No policy "${policyId}"${payer ? ` for payer "${payer}"` : ""} in your library.`);
+        toast.error("Policy not found in library. Add it under Policy Library.");
+        setLibraryPolicyId(null); setResolvedVersionId(null);
+        return;
+      }
+      setLibraryPolicyId(lib.id);
+      const [current, activeOnDos] = await Promise.all([
+        getCurrentVersion(lib.id),
+        resolveVersionForDOS(lib.id, dos),
+      ]);
+      if (current) {
+        setCitedVersion(current.version_label || "");
+        setCitedDate(current.effective_start);
+        setCitedText(current.policy_text);
+      }
+      if (activeOnDos) {
+        setActiveVersion(activeOnDos.version_label || "");
+        setActiveDate(activeOnDos.effective_start);
+        setActiveText(activeOnDos.policy_text);
+        setResolvedVersionId(activeOnDos.id);
+      } else {
+        setResolvedVersionId(null);
+        setActiveVersion(""); setActiveDate(""); setActiveText("");
+      }
+      const sameVersion = current && activeOnDos && current.id === activeOnDos.id;
+      setResolveStatus(
+        !current ? "No versions stored yet for this policy."
+        : !activeOnDos ? `No version found in force on ${dos}. Add the historical version to your library.`
+        : sameVersion ? "Cited version equals the active-on-DOS version (no temporal mismatch on dates)."
+        : `Resolved: cited "${current.version_label || "current"}" (eff ${current.effective_start}) vs active-on-DOS "${activeOnDos.version_label || "—"}" (eff ${activeOnDos.effective_start}).`
+      );
+      toast.success("Library resolved.");
+    } catch (e: any) {
+      toast.error(e?.message || "Resolve failed");
+    } finally {
+      setResolving(false);
+    }
+  }
 
   async function refresh() {
     try { setChecks(await listChecks()); } catch (e: any) { toast.error(e.message); }
@@ -54,6 +107,8 @@ export default function AppPolicyTimeMachine() {
         active_policy_date: activeDate || null,
         cited_policy_text: citedText,
         active_policy_text: activeText || undefined,
+        library_policy_id: libraryPolicyId,
+        policy_version_id: resolvedVersionId,
       });
       toast.success(res.mismatch ? `Mismatch detected — ${res.severity} severity.` : "No timeline mismatch.");
       setActive(res);
@@ -100,6 +155,17 @@ export default function AppPolicyTimeMachine() {
                 <div><Label>Active-on-DOS Version (optional)</Label><Input value={activeVersion} onChange={(e)=>setActiveVersion(e.target.value)} placeholder="v6.2" /></div>
                 <div><Label>Active-on-DOS Effective Date</Label><Input type="date" value={activeDate} onChange={(e)=>setActiveDate(e.target.value)} /></div>
               </div>
+              <div className="flex items-center justify-between gap-3 p-3 rounded border bg-muted/30">
+                <div className="flex items-center gap-2 text-sm">
+                  <Library className="h-4 w-4 text-primary" />
+                  <span>Auto-fill cited + active-on-DOS versions from your Policy Library.</span>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={handleResolveFromLibrary} disabled={resolving}>
+                  {resolving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                  Resolve from Library
+                </Button>
+              </div>
+              {resolveStatus && <p className="text-xs text-muted-foreground -mt-2">{resolveStatus}</p>}
               <div><Label>Cited Policy Text (what payer applied)</Label><Textarea rows={6} value={citedText} onChange={(e)=>setCitedText(e.target.value)} placeholder="Paste the policy excerpt referenced in the denial letter…" /></div>
               <div><Label>Active-on-DOS Policy Text (optional)</Label><Textarea rows={6} value={activeText} onChange={(e)=>setActiveText(e.target.value)} placeholder="Paste the prior version that was in force on DOS, if available…" /></div>
               <Button onClick={handleRun} disabled={running} className="w-full">
