@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ClawbackAudit, ClawbackClaim, ClawbackExtrapolation } from "./clawbackTypes";
 import { extractTextFromFile } from "./fileTextExtractor";
+import JSZip from "jszip";
 
 export async function listAudits(): Promise<ClawbackAudit[]> {
   const { data, error } = await supabase.from("clawback_audits").select("*").order("created_at", { ascending: false });
@@ -73,4 +74,93 @@ export async function uploadChartForClaim(userId: string, auditId: string, claim
 export async function deleteAudit(id: string) {
   const { error } = await supabase.from("clawback_audits").delete().eq("id", id);
   if (error) throw error;
+}
+
+/**
+ * Bulk-attach charts from a ZIP file by matching filenames to claim_number.
+ * A chart matches a claim if its base filename (without extension) contains the claim_number,
+ * or vice versa. Returns counts of matched/unmatched files.
+ */
+export async function bulkAttachChartsFromZip(
+  userId: string,
+  auditId: string,
+  zipFile: File,
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ matched: number; unmatched: string[]; total: number }> {
+  const claims = await listClaims(auditId);
+  const claimByKey = new Map<string, ClawbackClaim>();
+  for (const c of claims) {
+    if (c.claim_number) claimByKey.set(c.claim_number.toLowerCase().trim(), c);
+  }
+
+  const zip = await JSZip.loadAsync(await zipFile.arrayBuffer());
+  const entries = Object.values(zip.files).filter(f => !f.dir);
+  let matched = 0;
+  const unmatched: string[] = [];
+  let i = 0;
+  for (const entry of entries) {
+    i++;
+    onProgress?.(i, entries.length);
+    const base = (entry.name.split("/").pop() || entry.name).replace(/\.[^.]+$/, "").toLowerCase();
+    let claim: ClawbackClaim | undefined;
+    // Direct match
+    claim = claimByKey.get(base);
+    if (!claim) {
+      // Fuzzy: any claim_number that appears in or contains the basename
+      for (const [k, c] of claimByKey) {
+        if (base.includes(k) || k.includes(base)) { claim = c; break; }
+      }
+    }
+    if (!claim) { unmatched.push(entry.name); continue; }
+    try {
+      const blob = await entry.async("blob");
+      const ext = entry.name.split(".").pop() || "bin";
+      const file = new File([blob], `${claim.claim_number}.${ext}`);
+      await uploadChartForClaim(userId, auditId, claim.id, file);
+      matched++;
+    } catch (e) {
+      console.error("bulk chart upload failed for", entry.name, e);
+      unmatched.push(entry.name);
+    }
+  }
+  return { matched, unmatched, total: entries.length };
+}
+
+/** Concurrency-limited batch claim analyzer with retry-on-rate-limit. */
+export async function batchAnalyzeClaims(
+  claims: ClawbackClaim[],
+  opts: { concurrency?: number; onProgress?: (done: number, total: number) => void; onClaimError?: (claim: ClawbackClaim, err: Error) => void } = {},
+): Promise<{ ok: number; failed: number }> {
+  const concurrency = Math.max(1, Math.min(opts.concurrency ?? 4, 8));
+  let ok = 0, failed = 0, done = 0;
+  const queue = [...claims];
+  async function worker() {
+    while (queue.length) {
+      const c = queue.shift()!;
+      let attempt = 0;
+      while (attempt < 3) {
+        try {
+          const chartText = c.chart_file_path ? await fetchChartText(c.chart_file_path) : "";
+          await analyzeClaim(c.id, chartText);
+          ok++;
+          break;
+        } catch (e: any) {
+          attempt++;
+          const msg = String(e?.message || e || "");
+          if (msg.includes("Rate limit") && attempt < 3) {
+            await new Promise(r => setTimeout(r, 1500 * attempt));
+            continue;
+          }
+          if (attempt >= 3) {
+            failed++;
+            opts.onClaimError?.(c, e instanceof Error ? e : new Error(msg));
+          }
+        }
+      }
+      done++;
+      opts.onProgress?.(done, claims.length);
+    }
+  }
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+  return { ok, failed };
 }

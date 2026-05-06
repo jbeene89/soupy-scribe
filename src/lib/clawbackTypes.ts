@@ -55,5 +55,23 @@ export interface ClawbackExtrapolation {
   exposure_delta: number;
   leverage_score: number;
   attack_summary: string;
-  details: Record<string, any>;
+  details: {
+    sample_mean_overpayment?: number;
+    sample_sd?: number;
+    standard_error?: number;
+    t_critical_90?: number;
+    margin_of_error?: number;
+    n?: number;
+    N?: number;
+    method?: "simple" | "stratified";
+    df?: number;
+    pending_claims?: number;
+    scenarios?: {
+      best_case_lower_ci: number;
+      expected_lower_ci: number;
+      worst_case_lower_ci: number;
+      best_case_point: number;
+      worst_case_point: number;
+    };
+  } & Record<string, any>;
 }

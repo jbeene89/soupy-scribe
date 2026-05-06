@@ -1,7 +1,8 @@
 // RAC Clawback Shield — Extrapolation Attack Engine
 // Validates RAC compliance with CMS MPIM Ch.8 statistical sampling rules,
-// recomputes point estimate + 90% CI lower bound from per-claim defense outcomes,
-// and quantifies reduced exposure.
+// recomputes point estimate + 90% CI lower bound (simple OR stratified) from
+// per-claim defense outcomes, and quantifies reduced exposure with multiple
+// settlement scenarios (best/expected/concede-pending).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
@@ -9,18 +10,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// One-sided 90% t-critical (alpha=0.10) for df = sample_size - 1
+// One-sided 90% t-critical (alpha=0.10), df = n-1, log-linear interpolated.
 function tCrit90(df: number): number {
   if (df <= 0) return 1.645;
-  // Lookup for common df, fall back to z=1.282 (one-sided 90%) for large df
-  const table: Record<number, number> = {
-    1: 3.078, 2: 1.886, 3: 1.638, 4: 1.533, 5: 1.476,
-    10: 1.372, 15: 1.341, 20: 1.325, 25: 1.316, 30: 1.310,
-    40: 1.303, 50: 1.299, 60: 1.296, 80: 1.292, 100: 1.290,
-    200: 1.286, 500: 1.283, 1000: 1.282,
-  };
-  const keys = Object.keys(table).map(Number).sort((a,b)=>a-b);
-  for (const k of keys) if (df <= k) return table[k];
+  const table: Array<[number, number]> = [
+    [1, 3.078], [2, 1.886], [3, 1.638], [4, 1.533], [5, 1.476],
+    [6, 1.440], [8, 1.397], [10, 1.372], [12, 1.356], [15, 1.341],
+    [20, 1.325], [25, 1.316], [30, 1.310], [40, 1.303], [50, 1.299],
+    [60, 1.296], [80, 1.292], [100, 1.290], [200, 1.286], [500, 1.283], [1000, 1.282],
+  ];
+  if (df <= table[0][0]) return table[0][1];
+  for (let i = 1; i < table.length; i++) {
+    if (df <= table[i][0]) {
+      const [d0, t0] = table[i-1];
+      const [d1, t1] = table[i];
+      const w = (Math.log(df) - Math.log(d0)) / (Math.log(d1) - Math.log(d0));
+      return t0 + (t1 - t0) * w;
+    }
+  }
   return 1.282;
 }
 
@@ -33,6 +40,42 @@ function stddev(arr: number[]): number {
   const m = mean(arr);
   const sq = arr.reduce((s,x)=>s + (x-m)*(x-m), 0);
   return Math.sqrt(sq / (arr.length - 1));
+}
+
+const CREDIT_MAP: Record<string, number> = {
+  full_defense: 1.0,
+  strong: 0.85,
+  partial: 0.5,
+  weak: 0.2,
+  conceded: 0.0,
+  pending: 0.3,
+};
+
+// Compute mean / SE from per-claim residual overpayments, optionally stratified.
+function estimate(values: number[], N: number, n: number, strata?: Array<{ N: number; values: number[] }>) {
+  if (strata && strata.length >= 2) {
+    // Stratified: total = sum_h N_h * mean_h ; var = sum_h (N_h^2 * (1 - n_h/N_h) * s_h^2 / n_h)
+    let total = 0, varTotal = 0, totalN = 0, totalN_n = 0;
+    for (const h of strata) {
+      const n_h = h.values.length;
+      if (n_h === 0) continue;
+      const m_h = mean(h.values);
+      const s_h = stddev(h.values);
+      const fpc = h.N > 0 ? Math.max(0, 1 - n_h / h.N) : 1;
+      total += h.N * m_h;
+      varTotal += (h.N * h.N) * fpc * (s_h * s_h) / Math.max(1, n_h);
+      totalN += h.N;
+      totalN_n += n_h;
+    }
+    const se = Math.sqrt(Math.max(0, varTotal));
+    return { point: total, se, df: Math.max(1, totalN_n - strata.length), method: "stratified", N: totalN };
+  }
+  const m = mean(values);
+  const s = stddev(values);
+  const fpc = N > 0 ? Math.max(0, 1 - n / N) : 1;
+  const se = (s / Math.sqrt(Math.max(1, n))) * Math.sqrt(fpc);
+  const point = (N > 0 ? N : n) * m;
+  return { point, se: se * (N > 0 ? N : n), df: Math.max(1, n - 1), method: "simple", N: N || n };
 }
 
 Deno.serve(async (req) => {
@@ -58,6 +101,9 @@ Deno.serve(async (req) => {
     const N = audit.universe_size || 0;
     const n = audit.sample_size || (claims?.length ?? 0);
     const racDemand = Number(audit.demand_amount) || 0;
+    const stratificationCfg = (audit.stratification || {}) as Record<string, any>;
+    // Optional explicit strata from intake: { strata: [{ key, N, claim_filter? }] }
+    const explicitStrata: Array<{ key: string; N: number; field?: string; match?: string | string[] }> = Array.isArray(stratificationCfg.strata) ? stratificationCfg.strata : [];
 
     // ─── 1. CMS Ch.8 Compliance Checks ───
     const compliance: Record<string, { ok: boolean; finding: string }> = {};
@@ -88,8 +134,7 @@ Deno.serve(async (req) => {
     });
 
     // Stratification documentation
-    const strat = (audit.stratification || {}) as Record<string, unknown>;
-    const stratDocumented = strat && Object.keys(strat).length > 0;
+    const stratDocumented = stratificationCfg && Object.keys(stratificationCfg).length > 0;
     compliance.stratification_documented = {
       ok: stratDocumented,
       finding: stratDocumented ? "Stratification methodology provided." : "RAC did not disclose stratification details — replication impossible.",
@@ -117,15 +162,10 @@ Deno.serve(async (req) => {
     // ─── 2. Recompute point estimate from defense outcomes ───
     // Per claim: overpayment_after_defense = rac_disallowed_amount * (1 - defense_credit)
     // defense_credit: full_defense=1.0, partial=0.5, weak=0.2, none=0.0
-    const creditMap: Record<string, number> = {
-      full_defense: 1.0,
-      strong: 0.85,
-      partial: 0.5,
-      weak: 0.2,
-      conceded: 0.0,
-      pending: 0.3, // optimistic-of-pending; flagged separately
-    };
     const perClaimOverpayments: number[] = [];
+    // Scenarios: pending claims treated three ways
+    const perClaimBest: number[] = [];     // pending → full defense
+    const perClaimWorst: number[] = [];    // pending → conceded
     let racTotalDisallowed = 0;
     let pendingCount = 0;
     for (const c of (claims ?? [])) {
@@ -133,28 +173,51 @@ Deno.serve(async (req) => {
       racTotalDisallowed += disallowed;
       const strength = (c.defense_strength || c.defense_status || "pending") as string;
       if (strength === "pending") pendingCount++;
-      const credit = creditMap[strength] ?? 0.3;
+      const credit = CREDIT_MAP[strength] ?? 0.3;
       const remaining = Math.max(0, disallowed * (1 - credit));
       perClaimOverpayments.push(remaining);
+      perClaimBest.push(strength === "pending" ? 0 : remaining);
+      perClaimWorst.push(strength === "pending" ? disallowed : remaining);
     }
+
+    // Build strata buckets if explicit strata present and a routing field is given.
+    function bucketize(values: number[]) {
+      if (!explicitStrata.length) return undefined;
+      const buckets = explicitStrata.map(s => ({ N: Number(s.N) || 0, values: [] as number[], key: s.key }));
+      (claims ?? []).forEach((c, i) => {
+        const val = values[i];
+        let idx = -1;
+        for (let k = 0; k < explicitStrata.length; k++) {
+          const s = explicitStrata[k];
+          const fld = s.field ? (c as any)[s.field] : null;
+          const match = Array.isArray(s.match) ? s.match : (s.match ? [s.match] : null);
+          if (!s.field || !match) { if (k === 0 && idx < 0) idx = k; continue; }
+          if (match.map(String).includes(String(fld))) { idx = k; break; }
+        }
+        if (idx < 0) idx = 0;
+        buckets[idx].values.push(val);
+      });
+      return buckets.filter(b => b.values.length > 0);
+    }
+
+    const expected = estimate(perClaimOverpayments, N, n, bucketize(perClaimOverpayments));
+    const best = estimate(perClaimBest, N, n, bucketize(perClaimBest));
+    const worst = estimate(perClaimWorst, N, n, bucketize(perClaimWorst));
 
     const sampleMeanOverpayment = mean(perClaimOverpayments);
     const sampleSD = stddev(perClaimOverpayments);
-    const standardError = n > 0 ? sampleSD / Math.sqrt(n) : 0;
-    const tval = tCrit90(Math.max(1, n - 1));
-    const marginOfError = tval * standardError;
+    const tval = tCrit90(expected.df);
+    const marginOfError = tval * expected.se;
 
-    // Point estimate (extrapolated to universe)
-    const recomputedPoint = N > 0 ? sampleMeanOverpayment * N : sampleMeanOverpayment * n;
-    // Lower bound (one-sided 90% — what CMS actually uses to demand)
-    const lowerCI = N > 0
-      ? Math.max(0, (sampleMeanOverpayment - marginOfError) * N)
-      : Math.max(0, (sampleMeanOverpayment - marginOfError) * n);
+    const recomputedPoint = expected.point;
+    const lowerCI = Math.max(0, expected.point - marginOfError);
+    const bestLower = Math.max(0, best.point - tCrit90(best.df) * best.se);
+    const worstLower = Math.max(0, worst.point - tCrit90(worst.df) * worst.se);
 
     const racPointEstimate = racDemand > 0 ? racDemand : (N > 0 ? (racTotalDisallowed / Math.max(n,1)) * N : racTotalDisallowed);
     const reducedExposure = lowerCI; // defensible position to settle at
     const exposureDelta = Math.max(0, racPointEstimate - reducedExposure);
-    const precisionPct = recomputedPoint > 0 ? (marginOfError * (N || n)) / recomputedPoint * 100 : 0;
+    const precisionPct = recomputedPoint > 0 ? (marginOfError / recomputedPoint) * 100 : 0;
 
     // ─── 3. Leverage score ───
     // 0–100. Procedural defects (high-severity) carry the most weight because they
@@ -193,11 +256,20 @@ Deno.serve(async (req) => {
       details: {
         sample_mean_overpayment: sampleMeanOverpayment,
         sample_sd: sampleSD,
-        standard_error: standardError,
+        standard_error: expected.se,
         t_critical_90: tval,
         margin_of_error: marginOfError,
         n, N,
+        method: expected.method,
+        df: expected.df,
         pending_claims: pendingCount,
+        scenarios: {
+          best_case_lower_ci: bestLower,
+          expected_lower_ci: lowerCI,
+          worst_case_lower_ci: worstLower,
+          best_case_point: best.point,
+          worst_case_point: worst.point,
+        },
       },
     };
     const { error: upErr } = await sb.from("clawback_extrapolation").upsert(payload, { onConflict: "audit_id" });
