@@ -11,12 +11,13 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   Shield, Upload, FileText, AlertTriangle, CheckCircle2, Calculator,
-  TrendingDown, FileDown, Trash2, Play, ArrowLeft, Loader2,
+  TrendingDown, FileDown, Trash2, Play, ArrowLeft, Loader2, Archive, Filter,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   listAudits, getAudit, listClaims, getExtrapolation, ingestAudit,
   analyzeClaim, runExtrapolationAttack, fetchChartText, uploadChartForClaim, deleteAudit,
+  bulkAttachChartsFromZip, batchAnalyzeClaims,
 } from "@/lib/clawbackService";
 import type { ClawbackAudit, ClawbackClaim, ClawbackExtrapolation } from "@/lib/clawbackTypes";
 import { exportClawbackPacketPDF } from "@/lib/exportClawbackPacketPDF";
@@ -54,6 +55,7 @@ export default function AppClawbackShield() {
   const [extrap, setExtrap] = useState<ClawbackExtrapolation | null>(null);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState<{ kind: string; pct: number } | null>(null);
+  const [filter, setFilter] = useState<"all" | "pending" | "analyzed" | "weak">("all");
 
   // Intake form
   const [auditName, setAuditName] = useState("");
@@ -115,20 +117,18 @@ export default function AppClawbackShield() {
     const targets = claims.filter(c => c.defense_status === "pending");
     if (!targets.length) return toast.info("All claims already analyzed.");
     setRunning({ kind: "analyze", pct: 0 });
-    let done = 0;
-    for (const c of targets) {
-      try {
-        const chartText = c.chart_file_path ? await fetchChartText(c.chart_file_path) : "";
-        await analyzeClaim(c.id, chartText);
-      } catch (e: any) {
-        console.error("claim analyze failed", c.id, e);
-      }
-      done++;
-      setRunning({ kind: "analyze", pct: Math.round((done / targets.length) * 100) });
-    }
+    const result = await batchAnalyzeClaims(targets, {
+      concurrency: 4,
+      onProgress: (done, total) => setRunning({ kind: "analyze", pct: Math.round((done / total) * 100) }),
+      onClaimError: (c, err) => console.error("claim analyze failed", c.id, err),
+    });
     await refreshAudit(audit.id);
     setRunning(null);
-    toast.success(`Analyzed ${done} claim${done === 1 ? "" : "s"}.`);
+    if (result.failed > 0) {
+      toast.warning(`Analyzed ${result.ok} · ${result.failed} failed. Retry the unanalyzed ones.`);
+    } else {
+      toast.success(`Analyzed ${result.ok} claim${result.ok === 1 ? "" : "s"}.`);
+    }
   }
 
   async function handleRunAttack() {
@@ -151,6 +151,24 @@ export default function AppClawbackShield() {
     } catch (e: any) { toast.error(e.message); }
   }
 
+  async function handleBulkChartZip(file: File) {
+    if (!user || !audit) return;
+    setRunning({ kind: "zip", pct: 0 });
+    try {
+      const res = await bulkAttachChartsFromZip(user.id, audit.id, file, (done, total) => {
+        setRunning({ kind: "zip", pct: Math.round((done / Math.max(1, total)) * 100) });
+      });
+      await refreshAudit(audit.id);
+      if (res.unmatched.length) {
+        toast.warning(`Matched ${res.matched}/${res.total}. ${res.unmatched.length} unmatched.`);
+      } else {
+        toast.success(`Attached ${res.matched} charts.`);
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Bulk upload failed");
+    } finally { setRunning(null); }
+  }
+
   function handleExport() {
     if (!audit) return;
     const blob = exportClawbackPacketPDF({ audit, claims, extrapolation: extrap });
@@ -171,8 +189,19 @@ export default function AppClawbackShield() {
   const totals = useMemo(() => {
     const racDisallowed = claims.reduce((s, c) => s + (Number(c.rac_disallowed_amount) || 0), 0);
     const analyzed = claims.filter(c => c.defense_status !== "pending").length;
-    return { racDisallowed, analyzed, total: claims.length };
+    const weak = claims.filter(c => c.defense_strength === "weak" || c.defense_strength === "conceded").length;
+    const withCharts = claims.filter(c => c.chart_file_path).length;
+    return { racDisallowed, analyzed, total: claims.length, weak, withCharts };
   }, [claims]);
+
+  const visibleClaims = useMemo(() => {
+    switch (filter) {
+      case "pending": return claims.filter(c => c.defense_status === "pending");
+      case "analyzed": return claims.filter(c => c.defense_status !== "pending");
+      case "weak": return claims.filter(c => c.defense_strength === "weak" || c.defense_strength === "conceded");
+      default: return claims;
+    }
+  }, [claims, filter]);
 
   // ─── List view ───
   if (!audit) {
@@ -299,7 +328,7 @@ export default function AppClawbackShield() {
           <CardContent className="py-3 flex items-center gap-3">
             <Loader2 className="h-4 w-4 animate-spin" />
             <div className="flex-1">
-              <div className="text-sm font-medium capitalize">{running.kind === "analyze" ? "Analyzing claims" : running.kind === "attack" ? "Running extrapolation attack" : "Working"}…</div>
+              <div className="text-sm font-medium">{running.kind === "analyze" ? "Analyzing claims" : running.kind === "attack" ? "Running extrapolation attack" : running.kind === "zip" ? "Mapping charts from ZIP" : "Working"}…</div>
               <Progress value={running.pct} className="h-1 mt-1" />
             </div>
           </CardContent>
@@ -326,6 +355,13 @@ export default function AppClawbackShield() {
             </div>
             {extrap.attack_summary && (
               <div className="text-sm border-l-2 border-primary pl-3 py-1">{extrap.attack_summary}</div>
+            )}
+            {extrap.details?.scenarios && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <Stat label="Best case (90% LCB)" value={fmtMoney(extrap.details.scenarios.best_case_lower_ci)} />
+                <Stat label="Expected (90% LCB)" value={fmtMoney(extrap.details.scenarios.expected_lower_ci)} accent />
+                <Stat label="Worst case (90% LCB)" value={fmtMoney(extrap.details.scenarios.worst_case_lower_ci)} />
+              </div>
             )}
             <Separator />
             <div>
@@ -376,16 +412,43 @@ export default function AppClawbackShield() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Contested Claims</CardTitle>
-              <CardDescription>{totals.analyzed} of {totals.total} analyzed · {fmtMoney(totals.racDisallowed)} disallowed by RAC</CardDescription>
+              <CardDescription>
+                {totals.analyzed} of {totals.total} analyzed · {totals.withCharts} with charts · {fmtMoney(totals.racDisallowed)} disallowed by RAC
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                <Archive className="h-3 w-3" />
+                <input
+                  type="file"
+                  accept=".zip,application/zip"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleBulkChartZip(f); e.currentTarget.value = ""; }}
+                />
+                <Button asChild variant="outline" size="sm" disabled={!!running}>
+                  <span className="cursor-pointer">Bulk-attach ZIP</span>
+                </Button>
+              </label>
+              <div className="inline-flex items-center gap-1 border rounded-md p-0.5">
+                {(["all","pending","analyzed","weak"] as const).map(f => (
+                  <button key={f} onClick={() => setFilter(f)}
+                    className={`text-xs px-2 py-1 rounded ${filter===f?"bg-primary text-primary-foreground":"text-muted-foreground hover:bg-muted"}`}>
+                    {f === "all" ? "All" : f === "pending" ? "Pending" : f === "analyzed" ? "Analyzed" : "Weak"}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 max-h-[600px] overflow-auto">
-            {claims.map((c) => (
+            {visibleClaims.map((c) => (
               <ClaimRow key={c.id} claim={c} onUploadChart={(f) => handleUploadChart(c, f)} />
             ))}
             {claims.length === 0 && <p className="text-sm text-muted-foreground">No claims in this audit.</p>}
+            {claims.length > 0 && visibleClaims.length === 0 && (
+              <p className="text-sm text-muted-foreground flex items-center gap-2"><Filter className="h-4 w-4" /> No claims match this filter.</p>
+            )}
           </div>
         </CardContent>
       </Card>
