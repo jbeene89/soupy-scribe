@@ -103,6 +103,36 @@ function parseCsvWithMapping(text: string, mapping: Record<TargetKey, string>): 
   return { kind: "ok", rows, errors };
 }
 
+function extractJsonArray(text: string): { ok: true; arr: any[] } | { ok: false; message: string } {
+  let parsed: any;
+  try { parsed = JSON.parse(text); } catch (e: any) { return { ok: false, message: e?.message || "Invalid JSON." }; }
+  const arr = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.versions) ? parsed.versions : null;
+  if (!arr) return { ok: false, message: "JSON must be an array of version objects, or { versions: [...] }." };
+  return { ok: true, arr };
+}
+
+function parseJsonWithMapping(text: string, mapping: Record<TargetKey, string>): ParseResult {
+  const got = extractJsonArray(text);
+  if (got.ok !== true) return { kind: "fatal", message: (got as { ok: false; message: string }).message };
+  const errors: { line: number; error: string }[] = [];
+  const rows: BulkVersionRow[] = [];
+  got.arr.forEach((r: any, i: number) => {
+    const obj = (r && typeof r === "object") ? r : {};
+    const remapped: Record<string, string> = {};
+    for (const f of TARGET_FIELDS) {
+      const src = mapping[f.key];
+      if (src && src !== NONE) {
+        const v = obj[src];
+        if (v != null) remapped[f.key] = String(v);
+      }
+    }
+    const c = coerceVersionRow(remapped);
+    if (c.ok === true) rows.push(c.row);
+    else errors.push({ line: i + 1, error: (c as { ok: false; error: string }).error });
+  });
+  return { kind: "ok", rows, errors };
+}
+
 export default function BulkImportVersionsDialog({ policyId, policyLabel, onImported }: Props) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<"csv" | "json">("csv");
@@ -110,6 +140,7 @@ export default function BulkImportVersionsDialog({ policyId, policyLabel, onImpo
   const [result, setResult] = useState<ParseResult | null>(null);
   const [importing, setImporting] = useState(false);
   const [mapping, setMapping] = useState<Record<TargetKey, string> | null>(null);
+  const [jsonMapping, setJsonMapping] = useState<Record<TargetKey, string> | null>(null);
 
   // Detect CSV headers from current text
   const csvHeaders = useMemo<string[]>(() => {
@@ -127,13 +158,31 @@ export default function BulkImportVersionsDialog({ policyId, policyLabel, onImpo
     } catch { return []; }
   }, [format, text]);
 
+  // Detect JSON keys (union across all objects in the array)
+  const jsonKeys = useMemo<string[]>(() => {
+    if (format !== "json" || !text.trim()) return [];
+    const got = extractJsonArray(text);
+    if (got.ok !== true) return [];
+    const set = new Set<string>();
+    for (const r of got.arr) {
+      if (r && typeof r === "object" && !Array.isArray(r)) Object.keys(r).forEach(k => set.add(k));
+    }
+    return Array.from(set);
+  }, [format, text]);
+
   // Auto-map whenever CSV headers change
   useEffect(() => {
     if (format === "csv" && csvHeaders.length > 0) setMapping(autoMap(csvHeaders));
     else setMapping(null);
   }, [csvHeaders, format]);
 
+  useEffect(() => {
+    if (format === "json" && jsonKeys.length > 0) setJsonMapping(autoMap(jsonKeys));
+    else setJsonMapping(null);
+  }, [jsonKeys, format]);
+
   const mappingComplete = !!mapping && TARGET_FIELDS.every(f => !f.required || (mapping[f.key] && mapping[f.key] !== NONE));
+  const jsonMappingComplete = !!jsonMapping && TARGET_FIELDS.every(f => !f.required || (jsonMapping[f.key] && jsonMapping[f.key] !== NONE));
 
   function reset() { setText(""); setResult(null); }
 
@@ -155,7 +204,13 @@ export default function BulkImportVersionsDialog({ policyId, policyLabel, onImpo
       if (!mappingComplete) { toast.error("Map all required columns (marked *)."); return; }
       setResult(parseCsvWithMapping(text, mapping));
     } else {
-      setResult(parseInput(format, text));
+      if (jsonMapping && jsonKeys.length > 0) {
+        if (!jsonMappingComplete) { toast.error("Map all required keys (marked *)."); return; }
+        setResult(parseJsonWithMapping(text, jsonMapping));
+      } else {
+        // Fallback: no detectable keys (e.g. invalid JSON) — let parseInput surface the fatal error.
+        setResult(parseInput(format, text));
+      }
     }
   }
 
@@ -250,6 +305,39 @@ export default function BulkImportVersionsDialog({ policyId, policyLabel, onImpo
             <Textarea rows={10} value={text} onChange={(e) => { setText(e.target.value); setResult(null); }}
               placeholder={`[\n  {\n    "version_label": "v6.2",\n    "effective_start": "2024-01-01",\n    "effective_end": null,\n    "policy_text": "Full text...",\n    "change_summary": "Tightened criteria",\n    "source_url": "https://..."\n  }\n]`}
               className="font-mono text-xs" />
+            {jsonKeys.length > 0 && jsonMapping && (
+              <div className="rounded border bg-muted/20 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium">Map your JSON keys</div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px]">{jsonKeys.length} key{jsonKeys.length === 1 ? "" : "s"} detected</Badge>
+                    <Button variant="ghost" size="sm" onClick={() => setJsonMapping(autoMap(jsonKeys))}>Auto-map</Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Pick which key in each object feeds each field. Required fields are marked *.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {TARGET_FIELDS.map(f => {
+                    const value = jsonMapping[f.key] || NONE;
+                    const missing = f.required && (value === NONE);
+                    return (
+                      <div key={f.key}>
+                        <Label className="text-xs flex items-center gap-1">
+                          {f.label}
+                          {missing && <span className="text-destructive">unmapped</span>}
+                        </Label>
+                        <Select value={value} onValueChange={(v) => { setJsonMapping({ ...jsonMapping, [f.key]: v }); setResult(null); }}>
+                          <SelectTrigger className={missing ? "border-destructive" : ""}><SelectValue placeholder="Choose key" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NONE}>{f.required ? "— select key —" : "— not in file —"}</SelectItem>
+                            {jsonKeys.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 
