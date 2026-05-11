@@ -32,6 +32,9 @@ import AppClawbackShield from "./pages/AppClawbackShield";
 import AppHCCSweep from "./pages/AppHCCSweep";
 import AppPolicyTimeMachine from "./pages/AppPolicyTimeMachine";
 import AppPolicyLibrary from "./pages/AppPolicyLibrary";
+import AppCompliance from "./pages/AppCompliance";
+import { PHIAcknowledgmentGate } from "@/components/compliance/PHIAcknowledgmentGate";
+import { IdleTimeoutGuard } from "@/components/compliance/IdleTimeoutGuard";
 
 const queryClient = new QueryClient();
 
@@ -56,7 +59,10 @@ const App = () => (
             {/* Protected admin routes */}
             <Route path="/app" element={
               <AdminProvider>
-                <AdminLayout />
+                <PHIAcknowledgmentGate>
+                  <IdleTimeoutGuard />
+                  <AdminLayout />
+                </PHIAcknowledgmentGate>
               </AdminProvider>
             }>
               <Route index element={<AppDashboard />} />
@@ -85,6 +91,7 @@ const App = () => (
               <Route path="hcc-sweep" element={<AppHCCSweep />} />
               <Route path="policy-time-machine" element={<AppPolicyTimeMachine />} />
               <Route path="policy-library" element={<AppPolicyLibrary />} />
+              <Route path="compliance" element={<AppCompliance />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
