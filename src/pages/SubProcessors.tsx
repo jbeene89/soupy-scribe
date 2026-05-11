@@ -12,11 +12,11 @@ interface SubProcessor {
 }
 
 const ROWS: SubProcessor[] = [
-  { name: 'Lovable Cloud (Supabase)', purpose: 'Application hosting, Postgres database, file storage, edge compute', data: 'All application data including encrypted PHI when applicable', region: 'US', baa: 'yes' },
-  { name: 'Google (Gemini API)',      purpose: 'LLM inference for clinical/coding analysis perspectives',           data: 'De-identified clinical text per request; not retained for training', region: 'US', baa: 'yes' },
-  { name: 'OpenAI (GPT API)',         purpose: 'LLM inference for adversarial / consensus perspectives',            data: 'De-identified clinical text per request; not retained for training', region: 'US', baa: 'yes' },
-  { name: 'Resend',                   purpose: 'Transactional email (account, audit notifications)',                data: 'Email address, account metadata. No PHI.',                          region: 'US', baa: 'na' },
-  { name: 'Cloudflare',               purpose: 'DNS, CDN, DDoS protection',                                         data: 'Request metadata only. No PHI in transit content.',                 region: 'Global edge', baa: 'na' },
+  { name: 'Lovable Cloud (Supabase, AWS us-east)', purpose: 'Application hosting, Postgres, encrypted file storage, edge compute', data: 'All application data, including PHI when authorized under a customer BAA. Encrypted at rest (AES-256) and in transit (TLS 1.2+).', region: 'US', baa: 'yes' },
+  { name: 'Google (Gemini API via Lovable AI Gateway)', purpose: 'LLM inference for clinical & coding analysis',           data: 'Text submitted for analysis. De-identification recommended via the built-in Safe Harbor scrub before submission. Not retained for model training.', region: 'US', baa: 'yes' },
+  { name: 'OpenAI (GPT API via Lovable AI Gateway)',    purpose: 'LLM inference for adversarial & consensus perspectives', data: 'Text submitted for analysis. De-identification recommended via the built-in Safe Harbor scrub before submission. Not retained for model training.', region: 'US', baa: 'yes' },
+  { name: 'Resend',                   purpose: 'Transactional email (account verification, audit notifications)', data: 'Email address, account metadata, notification subject/body. No PHI included by design.', region: 'US', baa: 'na' },
+  { name: 'Cloudflare',               purpose: 'DNS, CDN, DDoS / WAF protection',                                  data: 'Request metadata only. Application payloads (including any PHI) are TLS-encrypted end-to-end.', region: 'Global edge', baa: 'na' },
 ];
 
 export default function SubProcessors() {

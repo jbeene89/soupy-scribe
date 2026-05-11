@@ -39,6 +39,7 @@ import {
   Sparkles,
   Activity,
   Swords,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -66,6 +67,7 @@ const EXPERIMENTAL_NAV = [
   { title: 'Patient Advocate', path: '/app/advocate', icon: HeartHandshake },
   { title: 'Imaging Audit', path: '/app/imaging', icon: ScanSearch },
   { title: 'EHR Integration', path: '/app/ehr', icon: DatabaseIcon },
+  { title: 'HIPAA Compliance', path: '/app/compliance', icon: ShieldCheck },
 ];
 
 const PROVIDER_NAV = [
