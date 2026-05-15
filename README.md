@@ -65,6 +65,7 @@ Separates six concepts surfaced in `GovernancePanel`:
 - **Pre-Appeal Resolution** — curability assessment, rapid resolution checklist, provider submission builder, payer response simulation
 - **Defense Packet Builder** — minimal winning packet generator
 - **Governance Panel** + **Score Transparency Panel** — full reasoning visibility
+- **Appeal Drafts** — auto-generated per-violation appeal letters with role-specific rationale (Builder / Red Team / Analyst / Frame Breaker), supporting evidence, payer rebuttal, and confidence score. Backed by `generate-appeal-drafts` edge function; stored in `audit_cases.metadata.appealDrafts`.
 
 ### Provider Readiness
 - Documentation sufficiency, coding vulnerability, appeal viability
@@ -178,6 +179,7 @@ See [`mem://architecture/access-control`] for the public/protected split policy.
 | `imaging-analyze` | Imaging case analysis |
 | `imaging-ftd-review` | Imaging fitness-to-defend review |
 | `audit-the-auditor` | Payer denial-letter defect audit + DOI complaint draft |
+| `generate-appeal-drafts` | Auto-generated per-violation appeal defense drafts with role rationales |
 | `soupy-engine` | Engine health, ghost cases, gold set, calibration, payer profiles |
 | `send-transactional-email` | Outbound transactional email |
 | `process-email-queue` | Email queue worker |
