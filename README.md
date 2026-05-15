@@ -281,6 +281,12 @@ App runs at `http://localhost:8080`. Demo cases load by default; toggle to **Liv
 
 Versioned record of major shipped features. Routes are app-relative; module paths are repo-relative.
 
+### v0.11.0 — 2026-05-15 (Appeal Drafts)
+
+- **Auto-generated appeal defense drafts** ([`supabase/functions/generate-appeal-drafts/`](supabase/functions/generate-appeal-drafts/index.ts)) — per flagged violation, generates a formal letter body, four role-specific rationales (Builder / Red Team / Analyst / Frame Breaker), supporting evidence, payer rebuttal, key authorities, and a confidence score.
+- **Service layer** ([`src/lib/appealDraftService.ts`](src/lib/appealDraftService.ts)) — invoke + fetch helpers; drafts persisted to `audit_cases.metadata.appealDrafts`.
+- **UI panel** ([`src/components/AppealDraftsPanel.tsx`](src/components/AppealDraftsPanel.tsx)) — wired into `AuditDetail` as an "Appeal Drafts" tab. Generate-missing / regenerate-all, tabbed preview (Letter / Roles / Evidence / Rebuttal), copy + download. Disabled on demo cases.
+
 ### v0.10.1 — 2026-05-05 (Vendor Watch — persistence + Deals)
 
 - **Persistent prioritization** ([`src/hooks/useLocalState.ts`](src/hooks/useLocalState.ts)) — ROI sliders, pursue list, pinned items, per-finding notes, active sub-tab, and Deals pipeline state all persist via `localStorage`. Keys namespaced under `opsc.vendor.*`.
