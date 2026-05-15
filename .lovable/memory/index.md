@@ -1,2 +1,3 @@
 - [RAC Clawback Shield](mem://features/rac-clawback-shield) — Bulk retroactive audit defense, extrapolation attack, settlement leverage packet
 - [HIPAA Compliance](mem://architecture/hipaa-compliance) — PHI access log, ack gate, idle timeout, de-ID utility
+- [Appeal Drafts](mem://features/appeal-drafts) — Auto-generated per-violation appeal drafts with role rationales
