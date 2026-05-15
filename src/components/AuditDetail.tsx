@@ -35,6 +35,11 @@ import type { PreAppealResolution } from '@/lib/preAppealTypes';
 // Defense Packet Builder
 import { DefensePacketBuilder } from './DefensePacketBuilder';
 
+// Appeal Defense Drafts (auto-generated per violation)
+import { AppealDraftsPanel } from './AppealDraftsPanel';
+import { getStoredAppealDrafts } from '@/lib/appealDraftService';
+import type { AppealDraftsBundle } from '@/lib/appealDraftService';
+
 // Engine v3 services
 import {
   getDecisionTrace, getEvidenceSufficiency, getContradictions,
@@ -87,6 +92,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
   const [preAppealResolution, setPreAppealResolution] = useState<PreAppealResolution | null>(null);
   const [runningPreAppeal, setRunningPreAppeal] = useState(false);
   const [runningAnalysis, setRunningAnalysis] = useState(false);
+  const [appealDrafts, setAppealDrafts] = useState<AppealDraftsBundle | null>(null);
 
   useEffect(() => {
     if (!isLiveCase || !hasAnalyses) return;
@@ -100,6 +106,7 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
       getRegulatoryFlags(auditCase.id).then(setRegFlags),
       getStoredPreAppealResolution(auditCase.id).then(r => { if (r) setPreAppealResolution(r); }),
       getCodeCombinations(auditCase.id).then(setLiveCodeCombos),
+      getStoredAppealDrafts(auditCase.id).then(d => { if (d) setAppealDrafts(d); }),
     ]);
   }, [auditCase.id, isLiveCase, hasAnalyses]);
 
@@ -362,6 +369,14 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
             </TabsTrigger>
             <TabsTrigger value="defense-packet">
               Support Requirements
+            </TabsTrigger>
+            <TabsTrigger value="appeal-drafts">
+              Appeal Drafts
+              {appealDrafts && Object.keys(appealDrafts.drafts || {}).length > 0 && (
+                <Badge variant="outline" className="ml-1.5 text-[9px] px-1 py-0 border-accent/40 text-accent">
+                  {Object.keys(appealDrafts.drafts).length}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -722,6 +737,14 @@ export function AuditDetail({ auditCase, onBack, posture, onDecisionMade }: Audi
               evidenceSuff={evidenceSuff}
               contradictions={contradictions}
               winningPacket={winningPacket}
+            />
+          </TabsContent>
+
+          <TabsContent value="appeal-drafts">
+            <AppealDraftsPanel
+              auditCase={auditCase}
+              isLiveCase={isLiveCase}
+              initialBundle={appealDrafts}
             />
           </TabsContent>
         </Tabs>
