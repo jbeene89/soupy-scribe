@@ -1,0 +1,18 @@
+# SOUPY Audit
+
+> Multi-perspective AI claim audit engine for payers, providers, and behavioral health practices. Detects denial risk, missed revenue, and documentation gaps before submission.
+
+SOUPY Audit runs three modes — Payer (payment integrity), Provider (claim accuracy / pre-submission review), and Behavioral Health (therapy / psych testing / medication management). The engine produces scored readiness reports with curable vs non-curable flags, MDM review, undercoding detection, and downloadable defense packets.
+
+## Pages
+
+- [Home](/): Mode selection and free pre-submission claim check.
+- [Trust Center](/trust): Security posture, certifications, and data handling.
+- [Security](/security): Technical security controls and infrastructure.
+- [AI Governance](/ai-governance): Model usage, audit logging, and human-in-the-loop policy.
+- [Sub-Processors](/sub-processors): Third-party data processors.
+- [Status](/status): System status and incident history.
+
+## Optional
+
+- [Sign in](/auth): Account access for existing users.

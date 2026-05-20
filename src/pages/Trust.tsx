@@ -3,6 +3,7 @@ import { Shield, Lock, FileCheck, Database, Users, Activity, Cpu, ArrowLeft, Che
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SEO } from '@/components/SEO';
 
 type Status = 'available' | 'in_progress' | 'roadmap';
 
@@ -136,6 +137,8 @@ export default function Trust() {
   );
 
   return (
+    <>
+    <SEO title="Trust Center — SOUPY Audit" description="SOUPY Audit trust posture: security controls, certifications, data handling, and what is available, in-progress, and on the roadmap." path="/trust" />
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
       <header className="border-b border-border bg-card/30 backdrop-blur">
@@ -255,5 +258,6 @@ export default function Trust() {
         </div>
       </section>
     </div>
+    </>
   );
 }

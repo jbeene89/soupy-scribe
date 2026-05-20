@@ -2,9 +2,12 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ShieldAlert, Bug, Mail } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SEO } from '@/components/SEO';
 
 export default function Security() {
   return (
+    <>
+    <SEO title="Security — SOUPY Audit" description="SOUPY Audit security controls, vulnerability disclosure, and infrastructure protections for handling protected health information." path="/security" />
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/30 backdrop-blur">
         <div className="container max-w-4xl mx-auto px-6 py-6 flex items-center justify-between">
@@ -92,5 +95,6 @@ export default function Security() {
         </Card>
       </section>
     </div>
+    </>
   );
 }

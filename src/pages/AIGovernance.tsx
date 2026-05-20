@@ -3,6 +3,7 @@ import { ArrowLeft, Cpu, ShieldAlert, FileCheck, Users, Scale, AlertTriangle, Ch
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SEO } from '@/components/SEO';
 
 /* ──────────────────────────────────────────────────────────────────────
  * Model cards — one per perspective in the SOUPY parallel pipeline.
@@ -189,6 +190,8 @@ const FRAMEWORKS = [
  * ────────────────────────────────────────────────────────────────────── */
 export default function AIGovernance() {
   return (
+    <>
+    <SEO title="AI Governance — SOUPY Audit" description="How SOUPY Audit governs AI model usage: human-in-the-loop, audit logging, bias monitoring, and data isolation." path="/ai-governance" />
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/30 backdrop-blur">
         <div className="container max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
@@ -493,5 +496,6 @@ export default function AIGovernance() {
         </p>
       </section>
     </div>
+    </>
   );
 }
