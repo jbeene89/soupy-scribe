@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Shield, Stethoscope, ArrowRight, Brain, Scale, HeartPulse, Zap, CheckCircle2, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ShadowAuditInvite } from '@/components/ShadowAuditInvite';
 
 
 import type { AppMode } from '@/lib/providerTypes';
@@ -216,6 +217,10 @@ export function ModeSelectionGate({ onSelect }: Props) {
       <p className="mt-6 text-[10px] text-muted-foreground/60 animate-fade-in" style={{ animationDelay: '450ms' }}>
         You can switch modes at any time from within the application.
       </p>
+
+      <div className="mt-10 w-full max-w-3xl animate-fade-in" style={{ animationDelay: '600ms' }}>
+        <ShadowAuditInvite variant="dark" />
+      </div>
       </div>
 
 
