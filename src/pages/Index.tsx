@@ -27,6 +27,7 @@ import { SectionExportMenu } from '@/components/SectionExportMenu';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable';
 
 // Provider components
 import { AppModeToggle } from '@/components/provider/AppModeToggle';
