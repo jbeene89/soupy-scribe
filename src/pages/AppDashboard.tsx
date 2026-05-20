@@ -7,6 +7,7 @@ import { CaseUpload } from '@/components/CaseUpload';
 import { ProviderCaseUpload } from '@/components/provider/ProviderCaseUpload';
 import { PsychPracticeModule } from '@/components/psych/PsychPracticeModule';
 import { SystemImpactSummaryCard } from '@/components/system-impact/SystemImpactSummaryCard';
+import { ShadowAuditInvite } from '@/components/ShadowAuditInvite';
 import { Scale } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,7 +31,12 @@ export default function AppDashboard() {
 
   // Psych mode
   if (appMode === 'psych') {
-    return <PsychPracticeModule />;
+    return (
+      <div className="space-y-6">
+        <PsychPracticeModule />
+        <ShadowAuditInvite />
+      </div>
+    );
   }
 
   // Provider mode: show dashboard with case queue
@@ -65,6 +71,7 @@ export default function AppDashboard() {
             />
           </TabsContent>
         </Tabs>
+        <ShadowAuditInvite />
       </div>
     );
   }
@@ -106,6 +113,7 @@ export default function AppDashboard() {
         selectedCaseId={selectedCase?.id}
         onDeleteCase={handleDeleteCase}
       />
+      <ShadowAuditInvite />
     </div>
   );
 }
