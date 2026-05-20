@@ -45,6 +45,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <main>
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Landing />} />
@@ -96,6 +97,7 @@ const App = () => (
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </main>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
