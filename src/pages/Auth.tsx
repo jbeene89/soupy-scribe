@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Shield, LogIn, UserPlus } from "lucide-react";
 import { lovable } from "@/integrations/lovable";
+import { SEO } from '@/components/SEO';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -63,6 +64,8 @@ export default function Auth() {
   };
 
   return (
+    <>
+    <SEO title="Sign In — SOUPY Audit" description="Sign in or create an account to access SOUPY Audit cases, decisions, and audit history." path="/auth" />
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
@@ -119,5 +122,6 @@ export default function Auth() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }

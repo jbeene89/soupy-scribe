@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Server } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SEO } from '@/components/SEO';
 
 interface SubProcessor {
   name: string;
@@ -21,6 +22,8 @@ const ROWS: SubProcessor[] = [
 
 export default function SubProcessors() {
   return (
+    <>
+    <SEO title="Sub-Processors — SOUPY Audit" description="Third-party sub-processors used by SOUPY Audit for hosting, AI inference, and supporting services." path="/sub-processors" />
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/30 backdrop-blur">
         <div className="container max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
@@ -82,5 +85,6 @@ export default function SubProcessors() {
         </p>
       </section>
     </div>
+    </>
   );
 }

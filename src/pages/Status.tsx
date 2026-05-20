@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Activity, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SEO } from '@/components/SEO';
 
 type State = 'operational' | 'degraded' | 'outage';
 
@@ -31,6 +32,8 @@ export default function Status() {
   const allOperational = SERVICES.every(s => s.state === 'operational');
 
   return (
+    <>
+    <SEO title="System Status — SOUPY Audit" description="Live operational status of SOUPY Audit services: API, audit engine, AI gateway, and recent incident history." path="/status" />
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-card/30 backdrop-blur">
         <div className="container max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
@@ -118,5 +121,6 @@ export default function Status() {
         </p>
       </section>
     </div>
+    </>
   );
 }
