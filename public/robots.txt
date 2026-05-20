@@ -39,3 +39,5 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+Sitemap: https://soupyaudit.com/sitemap.xml
