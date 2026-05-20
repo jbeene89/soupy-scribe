@@ -136,6 +136,8 @@ export default function Trust() {
   );
 
   return (
+    <>
+    <SEO title="Trust Center — SOUPY Audit" description="SOUPY Audit trust posture: security controls, certifications, data handling, and what is available, in-progress, and on the roadmap." path="/trust" />
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
       <header className="border-b border-border bg-card/30 backdrop-blur">
