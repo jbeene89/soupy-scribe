@@ -3,6 +3,7 @@ import { Shield, Lock, FileCheck, Database, Users, Activity, Cpu, ArrowLeft, Che
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SEO } from '@/components/SEO';
 
 type Status = 'available' | 'in_progress' | 'roadmap';
 
@@ -257,5 +258,6 @@ export default function Trust() {
         </div>
       </section>
     </div>
+    </>
   );
 }
