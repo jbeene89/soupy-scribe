@@ -870,7 +870,7 @@ export default function AppRecovery() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="text-muted-foreground">{b.completed_count}/{b.encounter_count}</span>
-                            <span className="font-mono text-emerald-600 dark:text-emerald-400">{fmtMoney(b.total_dollars_recoverable)}</span>
+                            <span className="font-mono text-emerald-600 dark:text-emerald-400">{fmtMoney(displayBatchRecoverable(b))}</span>
                             <Trash2
                               className="h-3 w-3 text-muted-foreground hover:text-destructive"
                               onClick={(e) => { e.stopPropagation(); handleDeleteBatch(b.id); }}
