@@ -198,6 +198,7 @@ export default function AppRecovery() {
       return;
     }
     setBatchRunning(true);
+    const sourcesSnapshot = batchEncounters;
     try {
       const res = await runRecoveryBatch({
         batch_label: batchLabel || undefined,
@@ -210,6 +211,9 @@ export default function AppRecovery() {
         title: "Batch complete",
         description: `${res.batch.completed_count}/${res.batch.encounter_count} succeeded · ${fmtMoney(res.batch.total_dollars_recoverable)} recoverable`,
       });
+      // Cache source encounters keyed by batch id so user can retry failed
+      // without re-uploading the files.
+      setBatchSources(prev => ({ ...prev, [res.batch.id]: sourcesSnapshot }));
       setBatchEncounters([]);
       setBatchLabel("");
       await reloadBatches();
@@ -219,6 +223,82 @@ export default function AppRecovery() {
       toast({ title: "Batch failed", description: e.message, variant: "destructive" });
     } finally {
       setBatchRunning(false);
+    }
+  }
+
+  async function handleRetryFailed(batchId: string) {
+    const sources = batchSources[batchId];
+    if (!sources || sources.length === 0) {
+      toast({
+        title: "Source files not in memory",
+        description: "Use 'Add files to this batch' below and re-upload the missing patient folders. (Source files are only cached during this browser session.)",
+        variant: "destructive",
+      });
+      return;
+    }
+    const succeededRefs = new Set(batchRuns.filter(r => r.status === "completed" || r.status === "partial").map(r => r.patient_ref || ""));
+    const toRetry = sources.filter(s => !succeededRefs.has(s.patient_ref || ""));
+    if (toRetry.length === 0) {
+      toast({ title: "Nothing to retry", description: "All encounters in this batch already completed." });
+      return;
+    }
+    setAppendingToBatch(true);
+    try {
+      // First, clear out the existing failed rows so re-run doesn't double-list them.
+      await supabase.from("recovery_runs").delete().eq("batch_id", batchId).in("status", ["failed", "running"]);
+      const res = await runRecoveryBatch({
+        batch_id: batchId,
+        encounters: toRetry,
+        lenses: enabledLenses,
+        payer: batchPayer || null,
+        concurrency: batchTurbo ? 4 : 1,
+      });
+      toast({
+        title: "Retry complete",
+        description: `${toRetry.length} encounter${toRetry.length === 1 ? "" : "s"} re-run · batch now ${res.batch.completed_count}/${res.batch.encounter_count}`,
+      });
+      await reloadBatches();
+      await selectBatch(batchId);
+    } catch (e: any) {
+      toast({ title: "Retry failed", description: e.message, variant: "destructive" });
+    } finally {
+      setAppendingToBatch(false);
+    }
+  }
+
+  async function handleAppendFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length || !selectedBatchId) return;
+    setAppendingToBatch(true);
+    try {
+      const parsed = await parseFilesToEncounters(files);
+      if (parsed.encounters.length === 0) {
+        toast({ title: "No valid encounters in selection", variant: "destructive" });
+        return;
+      }
+      const res = await runRecoveryBatch({
+        batch_id: selectedBatchId,
+        encounters: parsed.encounters,
+        lenses: enabledLenses,
+        payer: batchPayer || null,
+        concurrency: batchTurbo ? 4 : 1,
+      });
+      // Merge new sources into cache too
+      setBatchSources(prev => ({
+        ...prev,
+        [selectedBatchId]: [...(prev[selectedBatchId] || []), ...parsed.encounters],
+      }));
+      toast({
+        title: "Added to batch",
+        description: `${parsed.encounters.length} new encounter${parsed.encounters.length === 1 ? "" : "s"} processed · batch now ${res.batch.completed_count}/${res.batch.encounter_count}`,
+      });
+      await reloadBatches();
+      await selectBatch(selectedBatchId);
+    } catch (err: any) {
+      toast({ title: "Append failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAppendingToBatch(false);
     }
   }
 
