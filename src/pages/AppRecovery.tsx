@@ -69,6 +69,11 @@ export default function AppRecovery() {
   const [batchPayer, setBatchPayer] = useState("");
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchTurbo, setBatchTurbo] = useState(false); // parallel mode
+  // In-memory cache: batch_id -> encounters that produced it. Lets us
+  // "Retry failed" without re-uploading files (lost on page refresh).
+  const [batchSources, setBatchSources] = useState<Record<string, BatchEncounterInput[]>>({});
+  const [appendingToBatch, setAppendingToBatch] = useState(false);
+  const appendInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { reloadRuns(); reloadBatches(); }, []);
 
@@ -105,6 +110,20 @@ export default function AppRecovery() {
   async function handleBatchFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+    try {
+      const parsed = await parseFilesToEncounters(files);
+      setBatchEncounters(prev => [...prev, ...parsed.encounters]);
+      toast({
+        title: "Loaded",
+        description: `${parsed.encounters.length} patient encounter${parsed.encounters.length === 1 ? "" : "s"} from ${parsed.partCount} file${parsed.partCount === 1 ? "" : "s"} (total queued: ${batchEncounters.length + parsed.encounters.length})`,
+      });
+    } catch (err: any) {
+      toast({ title: "Could not read files", description: err.message, variant: "destructive" });
+    }
+    e.target.value = "";
+  }
+
+  async function parseFilesToEncounters(files: File[]): Promise<{ encounters: BatchEncounterInput[]; partCount: number }> {
     const next: BatchEncounterInput[] = [];
     // Group key -> { parts: [{path, text}] }. One group = one patient encounter.
     const groups = new Map<string, { path: string; text: string }[]>();
@@ -126,7 +145,6 @@ export default function AppRecovery() {
       if (parts.length >= 2) return parts[0]; // first folder = patient
       return parts[0] || fullPath;
     }
-    try {
       for (const file of files) {
         const name = file.name.toLowerCase();
         if (name.endsWith(".zip")) {
@@ -170,17 +188,8 @@ export default function AppRecovery() {
           next.push({ patient_ref: key, encounter_text: trimmed });
         }
       }
-
-      setBatchEncounters(prev => [...prev, ...next]);
-      const partCount = Array.from(groups.values()).reduce((s, a) => s + a.length, 0);
-      toast({
-        title: "Loaded",
-        description: `${next.length} patient encounter${next.length === 1 ? "" : "s"} from ${partCount} file${partCount === 1 ? "" : "s"} (total queued: ${batchEncounters.length + next.length})`,
-      });
-    } catch (err: any) {
-      toast({ title: "Could not read files", description: err.message, variant: "destructive" });
-    }
-    e.target.value = "";
+    const partCount = Array.from(groups.values()).reduce((s, a) => s + a.length, 0);
+    return { encounters: next, partCount };
   }
 
   async function handleRunBatch() {
