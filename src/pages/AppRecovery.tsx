@@ -6,21 +6,29 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, DollarSign, AlertTriangle, CheckCircle2, ChevronRight, Trash2, Sparkles } from "lucide-react";
+import { Loader2, DollarSign, AlertTriangle, CheckCircle2, ChevronRight, Trash2, Sparkles, FolderUp, ShieldCheck, ShieldAlert, ShieldX } from "lucide-react";
 import {
   CATEGORY_LABELS,
   LENS_LABELS,
   type RecoveryFinding,
   type RecoveryLensId,
   type RecoveryRun,
+  type RecoveryBatch,
+  type BatchEncounterInput,
   deleteRecoveryRun,
+  deleteBatch,
   listFindings,
   listRecoveryRuns,
+  listBatches,
+  listRunsInBatch,
   runRecovery,
+  runRecoveryBatch,
   setFindingResolved,
 } from "@/lib/recoveryService";
 import { readTextMaybeGzipped } from "@/lib/gunzip";
+import JSZip from "jszip";
 
 const ALL_LENSES: RecoveryLensId[] = [
   "hcc","cdi","counterfactual","modifier","bundling","contract","clawback_exposure","policy_time","supply",
@@ -48,8 +56,18 @@ export default function AppRecovery() {
   // Filter
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [showOnlyPrimary, setShowOnlyPrimary] = useState(true);
+  const [hideDemoted, setHideDemoted] = useState(true);
 
-  useEffect(() => { reloadRuns(); }, []);
+  // Batch state
+  const [batches, setBatches] = useState<RecoveryBatch[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [batchRuns, setBatchRuns] = useState<RecoveryRun[]>([]);
+  const [batchEncounters, setBatchEncounters] = useState<BatchEncounterInput[]>([]);
+  const [batchLabel, setBatchLabel] = useState("");
+  const [batchPayer, setBatchPayer] = useState("");
+  const [batchRunning, setBatchRunning] = useState(false);
+
+  useEffect(() => { reloadRuns(); reloadBatches(); }, []);
 
   async function reloadRuns() {
     try {
@@ -58,6 +76,100 @@ export default function AppRecovery() {
       if (r.length && !selectedRunId) selectRun(r[0].id);
     } catch (e: any) {
       toast({ title: "Could not load runs", description: e.message, variant: "destructive" });
+    }
+  }
+
+  async function reloadBatches() {
+    try {
+      const b = await listBatches();
+      setBatches(b);
+      if (b.length && !selectedBatchId) selectBatch(b[0].id);
+    } catch (e: any) {
+      toast({ title: "Could not load batches", description: e.message, variant: "destructive" });
+    }
+  }
+
+  async function selectBatch(id: string) {
+    setSelectedBatchId(id);
+    try {
+      const r = await listRunsInBatch(id);
+      setBatchRuns(r);
+    } catch (e: any) {
+      toast({ title: "Could not load batch runs", description: e.message, variant: "destructive" });
+    }
+  }
+
+  async function handleBatchFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const next: BatchEncounterInput[] = [];
+    try {
+      for (const file of files) {
+        const name = file.name.toLowerCase();
+        if (name.endsWith(".zip")) {
+          const zip = await JSZip.loadAsync(file);
+          for (const entry of Object.values(zip.files)) {
+            if (entry.dir) continue;
+            const ename = entry.name.toLowerCase();
+            if (!/\.(txt|md|csv|tsv|json|ndjson|xml)$/.test(ename)) continue;
+            const text = await entry.async("string");
+            if (text.trim().length >= 40) {
+              next.push({ patient_ref: entry.name.split("/").pop() || entry.name, encounter_text: text });
+            }
+          }
+        } else {
+          const text = await readTextMaybeGzipped(file);
+          if (text.trim().length >= 40) {
+            next.push({ patient_ref: file.name, encounter_text: text });
+          }
+        }
+      }
+      setBatchEncounters(prev => [...prev, ...next]);
+      toast({ title: "Loaded", description: `${next.length} encounter${next.length === 1 ? "" : "s"} queued (total ${batchEncounters.length + next.length})` });
+    } catch (err: any) {
+      toast({ title: "Could not read files", description: err.message, variant: "destructive" });
+    }
+    e.target.value = "";
+  }
+
+  async function handleRunBatch() {
+    if (batchEncounters.length === 0) {
+      toast({ title: "No encounters", description: "Upload files or a zip first.", variant: "destructive" });
+      return;
+    }
+    setBatchRunning(true);
+    try {
+      const res = await runRecoveryBatch({
+        batch_label: batchLabel || undefined,
+        encounters: batchEncounters,
+        lenses: enabledLenses,
+        payer: batchPayer || null,
+      });
+      toast({
+        title: "Batch complete",
+        description: `${res.batch.completed_count}/${res.batch.encounter_count} succeeded · ${fmtMoney(res.batch.total_dollars_recoverable)} recoverable`,
+      });
+      setBatchEncounters([]);
+      setBatchLabel("");
+      await reloadBatches();
+      await selectBatch(res.batch.id);
+      await reloadRuns();
+    } catch (e: any) {
+      toast({ title: "Batch failed", description: e.message, variant: "destructive" });
+    } finally {
+      setBatchRunning(false);
+    }
+  }
+
+  async function handleDeleteBatch(id: string) {
+    if (!confirm("Delete this batch and all its runs/findings?")) return;
+    try {
+      await deleteBatch(id);
+      if (selectedBatchId === id) { setSelectedBatchId(null); setBatchRuns([]); }
+      await reloadBatches();
+      await reloadRuns();
+    } catch (e: any) {
+      toast({ title: "Delete failed", description: e.message, variant: "destructive" });
     }
   }
 
@@ -147,23 +259,26 @@ export default function AppRecovery() {
     return findings.filter(f => {
       if (categoryFilter !== "all" && f.category !== categoryFilter) return false;
       if (showOnlyPrimary && !f.is_primary_in_cluster) return false;
+      if (hideDemoted && f.adversarial_verdict !== "kept") return false;
       return true;
     });
-  }, [findings, categoryFilter, showOnlyPrimary]);
+  }, [findings, categoryFilter, showOnlyPrimary, hideDemoted]);
 
   const rollup = useMemo(() => {
-    const primaries = findings.filter(f => f.is_primary_in_cluster);
+    const primaries = findings.filter(f => f.is_primary_in_cluster && f.adversarial_verdict === "kept");
     return {
       atRisk: primaries.reduce((s, f) => s + Number(f.dollars_at_risk || 0), 0),
       recoverable: primaries.reduce((s, f) => s + Number(f.dollars_recoverable || 0), 0),
       count: primaries.length,
-      duplicates: findings.length - primaries.length,
+      duplicates: findings.filter(f => !f.is_primary_in_cluster && f.adversarial_verdict === "kept").length,
+      demoted: findings.filter(f => f.adversarial_verdict === "demoted").length,
+      removed: findings.filter(f => f.adversarial_verdict === "removed").length,
     };
   }, [findings]);
 
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const f of findings.filter(x => x.is_primary_in_cluster)) {
+    for (const f of findings.filter(x => x.is_primary_in_cluster && x.adversarial_verdict === "kept")) {
       map[f.category] = (map[f.category] || 0) + Number(f.dollars_recoverable || 0);
     }
     return map;
@@ -177,10 +292,17 @@ export default function AppRecovery() {
           Revenue Recovery Cockpit
         </h1>
         <p className="text-sm text-muted-foreground">
-          Every uploaded encounter is scanned in parallel by every revenue-leak lens. Findings are deduped and ranked by recoverable dollars.
+          Every encounter is scanned in parallel by every revenue-leak lens, deduped across lenses, and put through an adversarial second-pass before counting toward the rollup.
         </p>
       </header>
 
+      <Tabs defaultValue="single">
+        <TabsList>
+          <TabsTrigger value="single">Single Encounter</TabsTrigger>
+          <TabsTrigger value="batch"><FolderUp className="h-3.5 w-3.5 mr-1" />Batch / Portfolio</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="single" className="mt-4">
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_2fr] gap-6">
         {/* Input column */}
         <Card>
