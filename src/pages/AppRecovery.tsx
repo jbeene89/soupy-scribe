@@ -615,14 +615,31 @@ export default function AppRecovery() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block border-2 border-dashed border-border hover:border-primary/50 rounded-md p-6 text-center cursor-pointer transition-colors">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block border-2 border-dashed border-border hover:border-primary/50 rounded-md p-4 text-center cursor-pointer transition-colors">
                     <FolderUp className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                    <div className="text-sm font-medium">Drop encounters or zip</div>
-                    <div className="text-[11px] text-muted-foreground mt-1">.txt, .csv, .json, .xml, .gz, or .zip with any of those</div>
-                    <input type="file" multiple accept=".txt,.csv,.tsv,.json,.ndjson,.xml,.md,.gz,.zip,text/*" className="hidden" onChange={handleBatchFiles} />
+                    <div className="text-sm font-medium">Files or .zip</div>
+                    <div className="text-[11px] text-muted-foreground mt-1">Multiple files, or a zip containing patient folders</div>
+                    <input type="file" multiple accept=".txt,.csv,.tsv,.json,.ndjson,.xml,.md,.html,.log,.gz,.zip,text/*" className="hidden" onChange={handleBatchFiles} />
+                  </label>
+                  <label className="block border-2 border-dashed border-border hover:border-primary/50 rounded-md p-4 text-center cursor-pointer transition-colors">
+                    <FolderUp className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                    <div className="text-sm font-medium">Pick a folder</div>
+                    <div className="text-[11px] text-muted-foreground mt-1">Choose your 100-patient root folder — subfolders (admission, labs, notes…) auto-group per patient</div>
+                    <input
+                      type="file"
+                      // @ts-expect-error non-standard but widely supported
+                      webkitdirectory=""
+                      directory=""
+                      multiple
+                      className="hidden"
+                      onChange={handleBatchFiles}
+                    />
                   </label>
                 </div>
+                <p className="text-[10px] text-muted-foreground -mt-2">
+                  Structure expected: <span className="font-mono">patient_001/admission/*, patient_001/labs/*, patient_002/...</span> — everything under one patient folder is concatenated into a single encounter.
+                </p>
 
                 {batchEncounters.length > 0 && (
                   <div className="border rounded-md max-h-48 overflow-y-auto">
