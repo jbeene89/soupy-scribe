@@ -193,3 +193,67 @@ export async function deleteRecoveryRun(id: string) {
   const { error } = await supabase.from("recovery_runs").delete().eq("id", id);
   if (error) throw error;
 }
+
+/**
+ * Mark any runs in this batch that are still "running" (i.e. the edge function
+ * died or timed out mid-encounter) as "failed", then recompute the batch totals
+ * from the surviving completed runs so the rollup reflects reality.
+ */
+export async function finalizeStuckBatch(batchId: string): Promise<{
+  stuckFixed: number;
+  totalRecoverable: number;
+  totalAtRisk: number;
+  completed: number;
+  failed: number;
+}> {
+  // 1. Flip stuck rows
+  const { data: stuck, error: stuckErr } = await supabase
+    .from("recovery_runs")
+    .update({ status: "failed", error: "Run did not complete (timed out or worker crashed). Marked failed by finalize." })
+    .eq("batch_id", batchId)
+    .eq("status", "running")
+    .select("id");
+  if (stuckErr) throw stuckErr;
+
+  // 2. Pull all runs in batch and recompute
+  const { data: runs, error: runsErr } = await supabase
+    .from("recovery_runs")
+    .select("status,total_dollars_at_risk,total_dollars_recoverable")
+    .eq("batch_id", batchId);
+  if (runsErr) throw runsErr;
+
+  let totalRecoverable = 0;
+  let totalAtRisk = 0;
+  let completed = 0;
+  let failed = 0;
+  for (const r of runs || []) {
+    if (r.status === "completed" || r.status === "partial") {
+      completed++;
+      totalRecoverable += Number(r.total_dollars_recoverable || 0);
+      totalAtRisk += Number(r.total_dollars_at_risk || 0);
+    } else if (r.status === "failed") {
+      failed++;
+    }
+  }
+
+  const batchStatus = failed === 0 ? "completed" : completed === 0 ? "failed" : "partial";
+  const { error: updErr } = await supabase
+    .from("recovery_batches")
+    .update({
+      status: batchStatus,
+      completed_count: completed,
+      failed_count: failed,
+      total_dollars_recoverable: +totalRecoverable.toFixed(2),
+      total_dollars_at_risk: +totalAtRisk.toFixed(2),
+    })
+    .eq("id", batchId);
+  if (updErr) throw updErr;
+
+  return {
+    stuckFixed: stuck?.length || 0,
+    totalRecoverable,
+    totalAtRisk,
+    completed,
+    failed,
+  };
+}
