@@ -213,27 +213,46 @@ export async function finalizeStuckBatch(batchId: string): Promise<{
     .from("recovery_runs")
     .update({ status: "failed", error: "Run did not complete (timed out or worker crashed). Marked failed by finalize." })
     .eq("batch_id", batchId)
-    .eq("status", "running")
+    .in("status", ["running", "pending", "queued"])
     .select("id");
   if (stuckErr) throw stuckErr;
 
-  // 2. Pull all runs in batch and recompute
+  // 2. Pull all runs in batch and recompute. Use findings as the financial
+  // source of truth because older batch rows may have $0 totals even when the
+  // per-encounter findings are present.
   const { data: runs, error: runsErr } = await supabase
     .from("recovery_runs")
-    .select("status,total_dollars_at_risk,total_dollars_recoverable")
+    .select("id,status,total_dollars_at_risk,total_dollars_recoverable")
     .eq("batch_id", batchId);
   if (runsErr) throw runsErr;
+
+  const runIds = (runs || []).map((r: any) => r.id).filter(Boolean);
+  const perRunRecoverable = new Map<string, number>();
+  const perRunAtRisk = new Map<string, number>();
+  if (runIds.length) {
+    const { data: findings, error: findingsErr } = await supabase
+      .from("recovery_findings")
+      .select("run_id,dollars_at_risk,dollars_recoverable,is_primary_in_cluster,adversarial_verdict")
+      .in("run_id", runIds);
+    if (findingsErr) throw findingsErr;
+    for (const f of findings || []) {
+      if (!f.is_primary_in_cluster || f.adversarial_verdict !== "kept") continue;
+      perRunRecoverable.set(f.run_id, (perRunRecoverable.get(f.run_id) || 0) + Number(f.dollars_recoverable || 0));
+      perRunAtRisk.set(f.run_id, (perRunAtRisk.get(f.run_id) || 0) + Number(f.dollars_at_risk || 0));
+    }
+  }
 
   let totalRecoverable = 0;
   let totalAtRisk = 0;
   let completed = 0;
   let failed = 0;
   for (const r of runs || []) {
-    if (r.status === "completed" || r.status === "partial") {
+    const status = String(r.status || "").toLowerCase();
+    if (status === "completed" || status === "partial") {
       completed++;
-      totalRecoverable += Number(r.total_dollars_recoverable || 0);
-      totalAtRisk += Number(r.total_dollars_at_risk || 0);
-    } else if (r.status === "failed") {
+      totalRecoverable += perRunRecoverable.get(r.id) ?? Number(r.total_dollars_recoverable || 0);
+      totalAtRisk += perRunAtRisk.get(r.id) ?? Number(r.total_dollars_at_risk || 0);
+    } else if (status === "failed") {
       failed++;
     }
   }
