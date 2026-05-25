@@ -20,6 +20,7 @@ import {
   type BatchEncounterInput,
   deleteRecoveryRun,
   deleteBatch,
+  finalizeStuckBatch,
   listFindings,
   listRecoveryRuns,
   listBatches,
