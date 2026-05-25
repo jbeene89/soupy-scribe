@@ -374,8 +374,10 @@ Deno.serve(async (req) => {
       let totalAtRisk = 0, totalRecoverable = 0, completed = 0, failed = 0;
       const runSummaries: any[] = [];
 
-      // Sequential to stay under model rate limits — concurrency 1 is safe; bump later if needed
-      for (const enc of encounters) {
+      // Concurrency from client (1 = sequential / rate-limit-safe, higher = turbo)
+      const concurrency = Math.min(8, Math.max(1, Number(body.concurrency) || 1));
+
+      async function processOne(enc: any) {
         try {
           const result = await runSingleEncounter(sb, user.id, apiKey, {
             encounter_text: String(enc.encounter_text),
@@ -395,6 +397,17 @@ Deno.serve(async (req) => {
           runSummaries.push({ patient_ref: enc.patient_ref, status: "failed", error: String(e?.message || e).slice(0, 300) });
         }
       }
+
+      // Simple worker-pool: N workers pull from a shared queue
+      const queue = [...encounters];
+      const workers = Array.from({ length: concurrency }, async () => {
+        while (queue.length) {
+          const enc = queue.shift();
+          if (!enc) break;
+          await processOne(enc);
+        }
+      });
+      await Promise.all(workers);
 
       const batchStatus = failed === 0 ? "completed" : completed === 0 ? "failed" : "partial";
       const { data: updatedBatch } = await sb.from("recovery_batches").update({
