@@ -418,6 +418,25 @@ export default function AppRecovery() {
     };
   }, [findings]);
 
+  const selectedBatchRollup = useMemo(() => {
+    const done = batchRuns.filter(r => {
+      const status = String(r.status || "").toLowerCase();
+      return status === "completed" || status === "partial";
+    });
+    return {
+      completed: done.length,
+      recoverable: done.reduce((s, r) => s + Number(r.total_dollars_recoverable || 0), 0),
+      atRisk: done.reduce((s, r) => s + Number(r.total_dollars_at_risk || 0), 0),
+      failed: batchRuns.filter(r => String(r.status || "").toLowerCase() === "failed").length,
+    };
+  }, [batchRuns]);
+
+  function displayBatchRecoverable(batch: RecoveryBatch) {
+    return batch.id === selectedBatchId && selectedBatchRollup.recoverable > 0
+      ? selectedBatchRollup.recoverable
+      : batch.total_dollars_recoverable;
+  }
+
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
     for (const f of findings.filter(x => x.is_primary_in_cluster && x.adversarial_verdict === "kept")) {
@@ -851,7 +870,7 @@ export default function AppRecovery() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="text-muted-foreground">{b.completed_count}/{b.encounter_count}</span>
-                            <span className="font-mono text-emerald-600 dark:text-emerald-400">{fmtMoney(b.total_dollars_recoverable)}</span>
+                            <span className="font-mono text-emerald-600 dark:text-emerald-400">{fmtMoney(displayBatchRecoverable(b))}</span>
                             <Trash2
                               className="h-3 w-3 text-muted-foreground hover:text-destructive"
                               onClick={(e) => { e.stopPropagation(); handleDeleteBatch(b.id); }}
@@ -870,10 +889,10 @@ export default function AppRecovery() {
                 return (
                   <>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                      <StatCard icon={<DollarSign className="h-4 w-4" />} label="Portfolio Recoverable" value={fmtMoney(b.total_dollars_recoverable)} tone="emerald" />
-                      <StatCard icon={<AlertTriangle className="h-4 w-4" />} label="Portfolio At-Risk" value={fmtMoney(b.total_dollars_at_risk)} tone="amber" />
-                      <StatCard label="Encounters" value={`${b.completed_count}/${b.encounter_count}`} sub={b.failed_count ? `${b.failed_count} failed` : "all succeeded"} />
-                      <StatCard label="Avg / Encounter" value={fmtMoney(b.completed_count ? b.total_dollars_recoverable / b.completed_count : 0)} tone="emerald" />
+                      <StatCard icon={<DollarSign className="h-4 w-4" />} label="Portfolio Recoverable" value={fmtMoney(selectedBatchRollup.recoverable || b.total_dollars_recoverable)} tone="emerald" />
+                      <StatCard icon={<AlertTriangle className="h-4 w-4" />} label="Portfolio At-Risk" value={fmtMoney(selectedBatchRollup.atRisk || b.total_dollars_at_risk)} tone="amber" />
+                      <StatCard label="Encounters" value={`${selectedBatchRollup.completed || b.completed_count}/${batchRuns.length || b.encounter_count}`} sub={selectedBatchRollup.failed || b.failed_count ? `${selectedBatchRollup.failed || b.failed_count} failed` : "all succeeded"} />
+                      <StatCard label="Avg / Encounter" value={fmtMoney((selectedBatchRollup.completed || b.completed_count) ? (selectedBatchRollup.recoverable || b.total_dollars_recoverable) / (selectedBatchRollup.completed || b.completed_count) : 0)} tone="emerald" />
                     </div>
 
                     <div className="flex justify-end">
@@ -938,6 +957,8 @@ export default function AppRecovery() {
                           try {
                             toast({ title: "Building PDF…", description: "Pulling findings across all encounters." });
                             await exportRecoveryBatchPDF(b);
+                            await reloadBatches();
+                            await selectBatch(b.id);
                           } catch (e: any) {
                             toast({ title: "Export failed", description: e.message, variant: "destructive" });
                           }

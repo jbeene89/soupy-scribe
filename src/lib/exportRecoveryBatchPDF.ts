@@ -71,6 +71,14 @@ export async function exportRecoveryBatchPDF(batch: RecoveryBatch) {
     }
   }
 
+  // Last-resort guard: if older batch metadata is stale and statuses are odd,
+  // never export a $0 rollup when verified primary findings have real dollars.
+  if (liveRecoverable === 0 && perRunRecoverable.size > 0) {
+    liveRecoverable = Array.from(perRunRecoverable.values()).reduce((sum, value) => sum + value, 0);
+    liveAtRisk = Array.from(perRunAtRisk.values()).reduce((sum, value) => sum + value, 0);
+    liveCompleted = Math.max(liveCompleted, perRunRecoverable.size);
+  }
+
   // By-lens rollup
   const byLens: Record<string, { count: number; dollars: number }> = {};
   for (const f of keptPrimary) {
@@ -106,7 +114,7 @@ export async function exportRecoveryBatchPDF(batch: RecoveryBatch) {
   addScoreCards(ctx, [
     { label: "Recoverable", value: fmtMoney(liveRecoverable), color: "green" },
     { label: "At Risk", value: fmtMoney(liveAtRisk), color: "amber" },
-    { label: "Encounters", value: `${liveCompleted}/${runs.length || batch.encounter_count}`, sublabel: encSub, color: "blue" },
+    { label: "Encounters", value: `${liveCompleted}/${Math.max(runs.length, batch.encounter_count || 0)}`, sublabel: encSub, color: "blue" },
     { label: "Avg / Encounter", value: fmtMoney(avg), color: "green" },
   ]);
 
