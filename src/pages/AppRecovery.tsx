@@ -957,6 +957,8 @@ export default function AppRecovery() {
                           try {
                             toast({ title: "Building PDF…", description: "Pulling findings across all encounters." });
                             await exportRecoveryBatchPDF(b);
+                            await reloadBatches();
+                            await selectBatch(b.id);
                           } catch (e: any) {
                             toast({ title: "Export failed", description: e.message, variant: "destructive" });
                           }
