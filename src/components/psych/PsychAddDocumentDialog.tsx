@@ -142,7 +142,7 @@ export function PsychAddDocumentDialog({
                   }
                 }}
                 label="Drop one or more documents here"
-                sublabel="PDF, Word (.docx), or text files · up to 20MB each"
+                sublabel="PDF, Word (.docx), or text files · up to 100MB each"
               />
             </div>
 

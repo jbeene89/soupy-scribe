@@ -36,7 +36,7 @@ type State =
   | { kind: "ready"; fileName: string; meta: string }
   | { kind: "error"; message: string };
 
-const MAX_SIZE = 20 * 1024 * 1024;
+const MAX_SIZE = 100 * 1024 * 1024;
 
 async function fileToDataUrl(file: File): Promise<string> {
   return await new Promise((resolve, reject) => {
@@ -71,7 +71,7 @@ export function ClaimFileDropzone({ onIngested, busy }: ClaimFileDropzoneProps) 
 
   const handleFile = async (file: File) => {
     if (file.size > MAX_SIZE) {
-      const msg = `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max 20MB.`;
+      const msg = `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max 100MB.`;
       setState({ kind: "error", message: msg });
       toast.error(msg);
       return;
@@ -196,7 +196,7 @@ export function ClaimFileDropzone({ onIngested, busy }: ClaimFileDropzoneProps) 
           <p className="text-sm font-medium text-foreground">
             Drop a claim PDF, EOB, remit, denial letter, or screenshot
           </p>
-          <p className="text-xs text-muted-foreground">PDF, image, Word, or text · up to 20MB</p>
+          <p className="text-xs text-muted-foreground">PDF, image, Word, or text · up to 100MB</p>
           <Button type="button" variant="outline" size="sm" className="mt-1" onClick={(e) => { e.stopPropagation(); onPick(); }}>
             Choose file
           </Button>

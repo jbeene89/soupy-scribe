@@ -34,7 +34,7 @@ interface NoteDropzoneProps {
   busy?: boolean;
 }
 
-const MAX_SIZE = 20 * 1024 * 1024;
+const MAX_SIZE = 100 * 1024 * 1024;
 
 async function fileToDataUrl(file: File): Promise<string> {
   return await new Promise((resolve, reject) => {
@@ -69,7 +69,7 @@ async function pdfPagesToImages(file: File, maxPages = MAX_NOTE_VISION_PAGES, ma
 }
 
 async function ingest(file: File): Promise<IngestedNote> {
-  if (file.size > MAX_SIZE) throw new Error(`${file.name} is too large (max 20MB).`);
+  if (file.size > MAX_SIZE) throw new Error(`${file.name} is too large (max 100MB).`);
   const name = file.name.toLowerCase();
   const type = file.type.toLowerCase();
   const isPdf = type === "application/pdf" || name.endsWith(".pdf");
@@ -195,7 +195,7 @@ export function NoteDropzone({ note, onSet, onClear, busy }: NoteDropzoneProps) 
           <FileUp className="h-4 w-4 text-violet-600" />
           <div className="text-left">
             <p className="text-xs font-medium text-foreground">Attach the clinical note for this claim</p>
-            <p className="text-[10px] text-muted-foreground">PDF, DOCX, TXT, or screenshot · 20MB max</p>
+            <p className="text-[10px] text-muted-foreground">PDF, DOCX, TXT, or screenshot · 100MB max</p>
           </div>
         </div>
       )}

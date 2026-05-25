@@ -27,7 +27,7 @@ export function PsychMultiFileDropzone({
   onFilesChange,
   onFirstFileName,
   label = 'Drop one or more documents here',
-  sublabel = 'PDF, Word (.docx), or text files · up to 20MB each',
+  sublabel = 'PDF, Word (.docx), or text files · up to 100MB each',
 }: PsychMultiFileDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [extracting, setExtracting] = useState<string[]>([]);
