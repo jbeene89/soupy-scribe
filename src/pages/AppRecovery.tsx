@@ -418,6 +418,19 @@ export default function AppRecovery() {
     };
   }, [findings]);
 
+  const selectedBatchRollup = useMemo(() => {
+    const done = batchRuns.filter(r => {
+      const status = String(r.status || "").toLowerCase();
+      return status === "completed" || status === "partial";
+    });
+    return {
+      completed: done.length,
+      recoverable: done.reduce((s, r) => s + Number(r.total_dollars_recoverable || 0), 0),
+      atRisk: done.reduce((s, r) => s + Number(r.total_dollars_at_risk || 0), 0),
+      failed: batchRuns.filter(r => String(r.status || "").toLowerCase() === "failed").length,
+    };
+  }, [batchRuns]);
+
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
     for (const f of findings.filter(x => x.is_primary_in_cluster && x.adversarial_verdict === "kept")) {
