@@ -11,6 +11,7 @@ import {
 import {
   listFindings,
   listRunsInBatch,
+  finalizeStuckBatch,
   type RecoveryBatch,
   type RecoveryFinding,
   type RecoveryRun,
@@ -22,6 +23,9 @@ function fmtMoney(n: number | null | undefined): string {
 }
 
 export async function exportRecoveryBatchPDF(batch: RecoveryBatch) {
+  // Auto-finalize any stuck runs first so the rollup reflects reality.
+  try { await finalizeStuckBatch(batch.id); } catch { /* non-fatal */ }
+
   // Pull all runs + all primary/kept findings across the batch
   const runs: RecoveryRun[] = await listRunsInBatch(batch.id);
   const allFindings: (RecoveryFinding & { _patient_ref?: string | null })[] = [];
@@ -37,23 +41,33 @@ export async function exportRecoveryBatchPDF(batch: RecoveryBatch) {
     .sort((a, b) => Number(b.dollars_recoverable || 0) - Number(a.dollars_recoverable || 0))
     .slice(0, 25);
 
-  // Recompute rollup from the live runs so the PDF stays accurate even when
-  // the batch.total_* fields are stale (e.g. one encounter is still "running"
-  // because the worker died mid-batch).
+  // Per-run rollup from findings (source of truth — survives stale run totals
+  // and status-string mismatches).
+  const perRunRecoverable = new Map<string, number>();
+  const perRunAtRisk = new Map<string, number>();
+  for (const f of keptPrimary) {
+    perRunRecoverable.set(f.run_id, (perRunRecoverable.get(f.run_id) || 0) + Number(f.dollars_recoverable || 0));
+    perRunAtRisk.set(f.run_id, (perRunAtRisk.get(f.run_id) || 0) + Number(f.dollars_at_risk || 0));
+  }
+
   let liveRecoverable = 0;
   let liveAtRisk = 0;
   let liveCompleted = 0;
   let liveFailed = 0;
   let liveStuck = 0;
   for (const r of runs) {
-    if (r.status === "completed" || r.status === "partial") {
-      liveCompleted++;
-      liveRecoverable += Number(r.total_dollars_recoverable || 0);
-      liveAtRisk += Number(r.total_dollars_at_risk || 0);
-    } else if (r.status === "failed") {
+    const status = String(r.status || "").toLowerCase();
+    const recov = perRunRecoverable.get(r.id) ?? Number(r.total_dollars_recoverable || 0);
+    const risk = perRunAtRisk.get(r.id) ?? Number(r.total_dollars_at_risk || 0);
+    if (status === "failed") {
       liveFailed++;
-    } else if (r.status === "running") {
+    } else if (status === "running" || status === "pending" || status === "queued") {
       liveStuck++;
+    } else {
+      // completed / partial / anything else with findings → count as done
+      liveCompleted++;
+      liveRecoverable += recov;
+      liveAtRisk += risk;
     }
   }
 
@@ -129,12 +143,14 @@ export async function exportRecoveryBatchPDF(batch: RecoveryBatch) {
     ],
     runs.map(r => {
       const count = allFindings.filter(f => f.run_id === r.id && f.is_primary_in_cluster && f.adversarial_verdict === "kept").length;
+      const recov = perRunRecoverable.get(r.id) ?? Number(r.total_dollars_recoverable || 0);
+      const risk = perRunAtRisk.get(r.id) ?? Number(r.total_dollars_at_risk || 0);
       return [
         r.patient_ref || "—",
         r.status,
         String(count),
-        fmtMoney(r.total_dollars_at_risk),
-        fmtMoney(r.total_dollars_recoverable),
+        fmtMoney(risk),
+        fmtMoney(recov),
       ];
     }),
   );
