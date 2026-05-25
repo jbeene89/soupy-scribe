@@ -883,10 +883,10 @@ export default function AppRecovery() {
                 return (
                   <>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                      <StatCard icon={<DollarSign className="h-4 w-4" />} label="Portfolio Recoverable" value={fmtMoney(b.total_dollars_recoverable)} tone="emerald" />
-                      <StatCard icon={<AlertTriangle className="h-4 w-4" />} label="Portfolio At-Risk" value={fmtMoney(b.total_dollars_at_risk)} tone="amber" />
-                      <StatCard label="Encounters" value={`${b.completed_count}/${b.encounter_count}`} sub={b.failed_count ? `${b.failed_count} failed` : "all succeeded"} />
-                      <StatCard label="Avg / Encounter" value={fmtMoney(b.completed_count ? b.total_dollars_recoverable / b.completed_count : 0)} tone="emerald" />
+                      <StatCard icon={<DollarSign className="h-4 w-4" />} label="Portfolio Recoverable" value={fmtMoney(selectedBatchRollup.recoverable || b.total_dollars_recoverable)} tone="emerald" />
+                      <StatCard icon={<AlertTriangle className="h-4 w-4" />} label="Portfolio At-Risk" value={fmtMoney(selectedBatchRollup.atRisk || b.total_dollars_at_risk)} tone="amber" />
+                      <StatCard label="Encounters" value={`${selectedBatchRollup.completed || b.completed_count}/${batchRuns.length || b.encounter_count}`} sub={selectedBatchRollup.failed || b.failed_count ? `${selectedBatchRollup.failed || b.failed_count} failed` : "all succeeded"} />
+                      <StatCard label="Avg / Encounter" value={fmtMoney((selectedBatchRollup.completed || b.completed_count) ? (selectedBatchRollup.recoverable || b.total_dollars_recoverable) / (selectedBatchRollup.completed || b.completed_count) : 0)} tone="emerald" />
                     </div>
 
                     <div className="flex justify-end">
