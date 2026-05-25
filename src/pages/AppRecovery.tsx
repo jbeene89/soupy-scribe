@@ -532,6 +532,198 @@ export default function AppRecovery() {
           )}
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="batch" className="mt-4">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_2fr] gap-6">
+            {/* Batch input */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">New Batch Scan</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <Label className="text-xs">Batch Label</Label>
+                    <Input value={batchLabel} onChange={e => setBatchLabel(e.target.value)} placeholder="e.g. May Q2 2026 Cardiology pilot" />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-xs">Payer (applied to all)</Label>
+                    <Input value={batchPayer} onChange={e => setBatchPayer(e.target.value)} placeholder="e.g. Medicare" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block border-2 border-dashed border-border hover:border-primary/50 rounded-md p-6 text-center cursor-pointer transition-colors">
+                    <FolderUp className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                    <div className="text-sm font-medium">Drop encounters or zip</div>
+                    <div className="text-[11px] text-muted-foreground mt-1">.txt, .csv, .json, .xml, .gz, or .zip with any of those</div>
+                    <input type="file" multiple accept=".txt,.csv,.tsv,.json,.ndjson,.xml,.md,.gz,.zip,text/*" className="hidden" onChange={handleBatchFiles} />
+                  </label>
+                </div>
+
+                {batchEncounters.length > 0 && (
+                  <div className="border rounded-md max-h-48 overflow-y-auto">
+                    <div className="flex items-center justify-between px-2 py-1.5 border-b bg-muted/30">
+                      <span className="text-[11px] font-medium">{batchEncounters.length} queued</span>
+                      <button onClick={() => setBatchEncounters([])} className="text-[10px] text-destructive hover:underline">Clear all</button>
+                    </div>
+                    <ul className="text-[11px] divide-y">
+                      {batchEncounters.map((e, i) => (
+                        <li key={i} className="px-2 py-1 flex justify-between items-center">
+                          <span className="truncate font-mono">{e.patient_ref || `encounter-${i + 1}`}</span>
+                          <span className="flex items-center gap-2 shrink-0">
+                            <span className="text-muted-foreground">{e.encounter_text.length.toLocaleString()} ch</span>
+                            <button onClick={() => setBatchEncounters(prev => prev.filter((_, j) => j !== i))}>
+                              <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                            </button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div>
+                  <Label className="text-xs mb-2 block">Active Lenses</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ALL_LENSES.map(l => (
+                      <button
+                        key={l}
+                        onClick={() => toggleLens(l)}
+                        className={`text-[11px] rounded-md px-2 py-1 border transition-colors ${
+                          enabledLenses.includes(l)
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                        }`}
+                      >
+                        {LENS_LABELS[l]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Button onClick={handleRunBatch} disabled={batchRunning || batchEncounters.length === 0} className="w-full">
+                  {batchRunning ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Running {batchEncounters.length} encounters…</>
+                  ) : (
+                    <>Run Batch ({batchEncounters.length} encounters × {enabledLenses.length} lenses)</>
+                  )}
+                </Button>
+                {batchRunning && (
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Sequential to respect rate limits — large batches may take several minutes.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Batch results */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Portfolio Batches</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {batches.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No batches yet — upload encounters above.</p>
+                  ) : (
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {batches.map(b => (
+                        <button
+                          key={b.id}
+                          onClick={() => selectBatch(b.id)}
+                          className={`w-full flex items-center justify-between text-left px-3 py-2 rounded-md border text-xs transition-colors ${
+                            selectedBatchId === b.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <ChevronRight className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{b.label || "(unlabeled)"}</span>
+                            <Badge variant={b.status === "completed" ? "default" : b.status === "partial" ? "secondary" : b.status === "running" ? "outline" : "destructive"} className="text-[9px]">
+                              {b.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-muted-foreground">{b.completed_count}/{b.encounter_count}</span>
+                            <span className="font-mono text-emerald-600 dark:text-emerald-400">{fmtMoney(b.total_dollars_recoverable)}</span>
+                            <Trash2
+                              className="h-3 w-3 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteBatch(b.id); }}
+                            />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {selectedBatchId && (() => {
+                const b = batches.find(x => x.id === selectedBatchId);
+                if (!b) return null;
+                return (
+                  <>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      <StatCard icon={<DollarSign className="h-4 w-4" />} label="Portfolio Recoverable" value={fmtMoney(b.total_dollars_recoverable)} tone="emerald" />
+                      <StatCard icon={<AlertTriangle className="h-4 w-4" />} label="Portfolio At-Risk" value={fmtMoney(b.total_dollars_at_risk)} tone="amber" />
+                      <StatCard label="Encounters" value={`${b.completed_count}/${b.encounter_count}`} sub={b.failed_count ? `${b.failed_count} failed` : "all succeeded"} />
+                      <StatCard label="Avg / Encounter" value={fmtMoney(b.completed_count ? b.total_dollars_recoverable / b.completed_count : 0)} tone="emerald" />
+                    </div>
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Encounters in this batch</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        {batchRuns.length === 0 ? (
+                          <p className="p-4 text-sm text-muted-foreground">No runs.</p>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead className="bg-muted/50 text-muted-foreground">
+                                <tr>
+                                  <th className="text-left p-2 font-medium">Patient Ref</th>
+                                  <th className="text-left p-2 font-medium">Status</th>
+                                  <th className="text-right p-2 font-medium">$ Recoverable</th>
+                                  <th className="text-right p-2 font-medium">$ At-Risk</th>
+                                  <th className="text-center p-2 font-medium"></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {batchRuns.map(r => (
+                                  <tr key={r.id} className="border-t">
+                                    <td className="p-2 font-mono truncate max-w-xs">{r.patient_ref || "—"}</td>
+                                    <td className="p-2">
+                                      <Badge variant={r.status === "completed" ? "default" : r.status === "partial" ? "secondary" : "destructive"} className="text-[9px]">
+                                        {r.status}
+                                      </Badge>
+                                    </td>
+                                    <td className="p-2 text-right font-mono text-emerald-600 dark:text-emerald-400">{fmtMoney(r.total_dollars_recoverable)}</td>
+                                    <td className="p-2 text-right font-mono text-amber-600">{fmtMoney(r.total_dollars_at_risk)}</td>
+                                    <td className="p-2 text-center">
+                                      <button
+                                        className="text-[10px] text-primary hover:underline"
+                                        onClick={() => { selectRun(r.id); const trigger = document.querySelector<HTMLElement>('[role="tab"][data-state="inactive"][value="single"]'); trigger?.click(); }}
+                                      >
+                                        Open →
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
