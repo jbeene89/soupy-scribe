@@ -144,6 +144,170 @@ function normalize(s: any): string {
 }
 
 /**
+ * Adversarial second-pass: send all candidate findings + encounter to the
+ * model and ask it to grade each finding as kept / demoted / removed.
+ * - kept: solid, evidence holds up
+ * - demoted: real issue but dollar amount or confidence is overstated → excluded from rollup
+ * - removed: not supported by the chart → excluded from rollup, hidden by default
+ */
+async function adversarialReview(
+  rows: any[],
+  encounterText: string,
+  apiKey: string,
+): Promise<Record<number, { verdict: string; note: string }>> {
+  if (rows.length === 0) return {};
+  const compact = rows.map((r, i) => ({
+    i,
+    lens: r.lens,
+    title: r.title,
+    code: r.code,
+    evidence: r.evidence_snippet,
+    dollars: r.dollars_recoverable,
+    confidence: r.confidence,
+  }));
+  const sys =
+    "You are an adversarial reviewer of revenue-recovery findings. For each finding, " +
+    "decide: 'kept' (evidence holds, dollar plausible), 'demoted' (real issue but inflated " +
+    "$ or weak evidence), or 'removed' (not actually supported by the chart). Be strict. " +
+    "Return JSON only.";
+  const user = `ENCOUNTER:
+${encounterText.slice(0, 50000)}
+
+FINDINGS:
+${JSON.stringify(compact, null, 2)}
+
+Return JSON: {"verdicts":[{"i":<index>,"verdict":"kept"|"demoted"|"removed","note":"<one-sentence reason>"}]}`;
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [{ role: "system", content: sys }, { role: "user", content: user }],
+        response_format: { type: "json_object" },
+      }),
+    });
+    if (!res.ok) return {};
+    const json = await res.json();
+    const parsed = JSON.parse(json.choices?.[0]?.message?.content || "{}");
+    const out: Record<number, { verdict: string; note: string }> = {};
+    for (const v of parsed.verdicts || []) {
+      const verdict = ["kept", "demoted", "removed"].includes(v.verdict) ? v.verdict : "kept";
+      out[Number(v.i)] = { verdict, note: String(v.note || "").slice(0, 500) };
+    }
+    return out;
+  } catch (e) {
+    console.error("adversarial review failed", e);
+    return {};
+  }
+}
+
+async function runSingleEncounter(
+  sb: any,
+  userId: string,
+  apiKey: string,
+  params: {
+    encounter_text: string;
+    patient_ref: string | null;
+    payer: string | null;
+    date_of_service: string | null;
+    lenses: LensId[];
+    notes: string | null;
+    batch_id: string | null;
+  },
+) {
+  const { encounter_text, patient_ref, payer, date_of_service, lenses, notes, batch_id } = params;
+
+  const { data: run, error: runErr } = await sb.from("recovery_runs").insert({
+    user_id: userId,
+    batch_id,
+    patient_ref,
+    payer,
+    date_of_service,
+    encounter_excerpt: String(encounter_text).slice(0, 4000),
+    lenses_run: lenses,
+    status: "running",
+    notes,
+  }).select("*").single();
+  if (runErr) throw runErr;
+
+  const results = await Promise.allSettled(
+    lenses.map((l) => runLens(l, encounter_text, payer, date_of_service, apiKey)),
+  );
+
+  const rows: any[] = [];
+  const errors: Record<string, string> = {};
+  results.forEach((r, i) => {
+    const lens = lenses[i];
+    if (r.status === "fulfilled") {
+      for (const f of r.value) {
+        const evidence = String(f.evidence_snippet || "").trim();
+        if (!evidence) continue; // enforce evidence requirement
+        rows.push({
+          run_id: run.id,
+          user_id: userId,
+          lens,
+          category: LENS_CATEGORY[lens] || "pre-bill",
+          title: String(f.title || "(untitled)").slice(0, 240),
+          description: String(f.description || "").slice(0, 4000),
+          evidence_snippet: evidence.slice(0, 2000),
+          code: String(f.code || "").slice(0, 64) || null,
+          confidence: ["high", "medium", "low"].includes(f.confidence) ? f.confidence : "medium",
+          dollars_at_risk: Math.max(0, Number(f.dollars_at_risk) || 0),
+          dollars_recoverable: Math.max(0, Number(f.dollars_recoverable) || 0),
+          recommended_action: String(f.recommended_action || "").slice(0, 2000),
+        });
+      }
+    } else {
+      errors[lens] = String(r.reason?.message || r.reason).slice(0, 400);
+    }
+  });
+
+  // Adversarial pass
+  const verdicts = await adversarialReview(rows, encounter_text, apiKey);
+  const checkedAt = new Date().toISOString();
+  rows.forEach((r, i) => {
+    const v = verdicts[i];
+    r.adversarial_verdict = v?.verdict || "kept";
+    r.adversarial_note = v?.note || null;
+    r.adversarial_checked_at = checkedAt;
+  });
+
+  const clustered = clusterFindings(rows);
+
+  if (clustered.length) {
+    const { error: insErr } = await sb.from("recovery_findings").insert(clustered);
+    if (insErr) throw insErr;
+  }
+
+  // Rollup: only primary AND kept findings count
+  let totalAtRisk = 0, totalRecoverable = 0;
+  for (const r of clustered) {
+    if (r.is_primary_in_cluster && r.adversarial_verdict === "kept") {
+      totalAtRisk += Number(r.dollars_at_risk || 0);
+      totalRecoverable += Number(r.dollars_recoverable || 0);
+    }
+  }
+
+  const status = Object.keys(errors).length ? (clustered.length ? "partial" : "failed") : "completed";
+  const { data: updated } = await sb.from("recovery_runs").update({
+    total_dollars_at_risk: +totalAtRisk.toFixed(2),
+    total_dollars_recoverable: +totalRecoverable.toFixed(2),
+    status,
+    error: Object.keys(errors).length ? JSON.stringify(errors) : null,
+    metadata: {
+      lens_errors: errors,
+      finding_count: clustered.length,
+      kept_count: clustered.filter((r) => r.adversarial_verdict === "kept").length,
+      demoted_count: clustered.filter((r) => r.adversarial_verdict === "demoted").length,
+      removed_count: clustered.filter((r) => r.adversarial_verdict === "removed").length,
+    },
+  }).eq("id", run.id).select("*").single();
+
+  return { run: updated, findings: clustered, errors, totalAtRisk, totalRecoverable, status };
+}
+
+/**
  * Cluster findings that point to the same root issue (same code or fuzzy title)
  * across lenses. Within a cluster, keep the max dollar amount as primary so we
  * don't double-count. Other rows stay visible but flagged is_primary_in_cluster=false.
