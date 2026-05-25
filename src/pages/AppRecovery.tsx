@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, DollarSign, AlertTriangle, CheckCircle2, ChevronRight, Trash2, Sparkles, FolderUp, ShieldCheck, ShieldAlert, ShieldX } from "lucide-react";
+import { Loader2, DollarSign, AlertTriangle, CheckCircle2, ChevronRight, Trash2, Sparkles, FolderUp, ShieldCheck, ShieldAlert, ShieldX, Download } from "lucide-react";
+import { exportRecoveryBatchPDF } from "@/lib/exportRecoveryBatchPDF";
 import {
   CATEGORY_LABELS,
   LENS_LABELS,
@@ -775,6 +776,24 @@ export default function AppRecovery() {
                       <StatCard icon={<AlertTriangle className="h-4 w-4" />} label="Portfolio At-Risk" value={fmtMoney(b.total_dollars_at_risk)} tone="amber" />
                       <StatCard label="Encounters" value={`${b.completed_count}/${b.encounter_count}`} sub={b.failed_count ? `${b.failed_count} failed` : "all succeeded"} />
                       <StatCard label="Avg / Encounter" value={fmtMoney(b.completed_count ? b.total_dollars_recoverable / b.completed_count : 0)} tone="emerald" />
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            toast({ title: "Building PDF…", description: "Pulling findings across all encounters." });
+                            await exportRecoveryBatchPDF(b);
+                          } catch (e: any) {
+                            toast({ title: "Export failed", description: e.message, variant: "destructive" });
+                          }
+                        }}
+                      >
+                        <Download className="h-3.5 w-3.5 mr-1.5" />
+                        Export Portfolio PDF
+                      </Button>
                     </div>
 
                     <Card>
