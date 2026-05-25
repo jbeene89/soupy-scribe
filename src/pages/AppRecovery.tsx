@@ -778,6 +778,24 @@ export default function AppRecovery() {
                       <StatCard label="Avg / Encounter" value={fmtMoney(b.completed_count ? b.total_dollars_recoverable / b.completed_count : 0)} tone="emerald" />
                     </div>
 
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            toast({ title: "Building PDF…", description: "Pulling findings across all encounters." });
+                            await exportRecoveryBatchPDF(b);
+                          } catch (e: any) {
+                            toast({ title: "Export failed", description: e.message, variant: "destructive" });
+                          }
+                        }}
+                      >
+                        <Download className="h-3.5 w-3.5 mr-1.5" />
+                        Export Portfolio PDF
+                      </Button>
+                    </div>
+
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base">Encounters in this batch</CardTitle>
