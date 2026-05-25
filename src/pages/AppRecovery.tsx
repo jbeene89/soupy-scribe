@@ -509,6 +509,23 @@ export default function AppRecovery() {
                                 <Badge variant={f.confidence === "high" ? "default" : f.confidence === "medium" ? "secondary" : "outline"} className="text-[9px]">
                                   {f.confidence}
                                 </Badge>
+                                <div className="mt-1">
+                                  {f.adversarial_verdict === "kept" && (
+                                    <span title={f.adversarial_note || "Survived adversarial review"} className="inline-flex items-center gap-0.5 text-[9px] text-emerald-600">
+                                      <ShieldCheck className="h-2.5 w-2.5" />kept
+                                    </span>
+                                  )}
+                                  {f.adversarial_verdict === "demoted" && (
+                                    <span title={f.adversarial_note || "Demoted by adversarial review"} className="inline-flex items-center gap-0.5 text-[9px] text-amber-600">
+                                      <ShieldAlert className="h-2.5 w-2.5" />demoted
+                                    </span>
+                                  )}
+                                  {f.adversarial_verdict === "removed" && (
+                                    <span title={f.adversarial_note || "Removed by adversarial review"} className="inline-flex items-center gap-0.5 text-[9px] text-destructive">
+                                      <ShieldX className="h-2.5 w-2.5" />removed
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="p-2 align-top text-center">
                                 <button
