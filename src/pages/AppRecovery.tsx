@@ -780,6 +780,29 @@ export default function AppRecovery() {
                     </div>
 
                     <div className="flex justify-end">
+                      {batchRuns.some(r => r.status === "running") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mr-2"
+                          onClick={async () => {
+                            try {
+                              const res = await finalizeStuckBatch(b.id);
+                              toast({
+                                title: "Batch finalized",
+                                description: `${res.stuckFixed} stuck run${res.stuckFixed === 1 ? "" : "s"} marked failed · ${fmtMoney(res.totalRecoverable)} recoverable across ${res.completed} completed`,
+                              });
+                              await reloadBatches();
+                              await selectBatch(b.id);
+                            } catch (e: any) {
+                              toast({ title: "Finalize failed", description: e.message, variant: "destructive" });
+                            }
+                          }}
+                        >
+                          <ShieldAlert className="h-3.5 w-3.5 mr-1.5" />
+                          Finalize stuck runs ({batchRuns.filter(r => r.status === "running").length})
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
