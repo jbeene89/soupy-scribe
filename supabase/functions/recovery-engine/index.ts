@@ -345,100 +345,99 @@ Deno.serve(async (req) => {
     if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const body = await req.json();
-    const {
-      encounter_text = "",
-      patient_ref = null,
-      payer = null,
-      date_of_service = null,
-      lenses = ["hcc","cdi","counterfactual","modifier","bundling","contract","clawback_exposure","policy_time","supply"] as LensId[],
-      notes = null,
-    } = body || {};
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
-    if (!encounter_text || String(encounter_text).trim().length < 40) {
+    const DEFAULT_LENSES: LensId[] = ["hcc","cdi","counterfactual","modifier","bundling","contract","clawback_exposure","policy_time","supply"];
+    const lenses = (Array.isArray(body?.lenses) && body.lenses.length ? body.lenses : DEFAULT_LENSES) as LensId[];
+
+    // ============ BATCH MODE ============
+    if (Array.isArray(body?.encounters) && body.encounters.length) {
+      const label = String(body.batch_label || `Batch ${new Date().toISOString().slice(0, 16).replace("T", " ")}`).slice(0, 240);
+      const encounters = body.encounters.filter((e: any) =>
+        e && typeof e.encounter_text === "string" && e.encounter_text.trim().length >= 40
+      );
+      if (!encounters.length) {
+        return new Response(JSON.stringify({ error: "No valid encounters (each needs ≥40 chars of text)" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: batch, error: batchErr } = await sb.from("recovery_batches").insert({
+        user_id: user.id,
+        label,
+        status: "running",
+        encounter_count: encounters.length,
+      }).select("*").single();
+      if (batchErr) throw batchErr;
+
+      let totalAtRisk = 0, totalRecoverable = 0, completed = 0, failed = 0;
+      const runSummaries: any[] = [];
+
+      // Sequential to stay under model rate limits — concurrency 1 is safe; bump later if needed
+      for (const enc of encounters) {
+        try {
+          const result = await runSingleEncounter(sb, user.id, apiKey, {
+            encounter_text: String(enc.encounter_text),
+            patient_ref: enc.patient_ref || null,
+            payer: enc.payer || body.payer || null,
+            date_of_service: enc.date_of_service || body.date_of_service || null,
+            lenses,
+            notes: enc.notes || null,
+            batch_id: batch.id,
+          });
+          totalAtRisk += result.totalAtRisk;
+          totalRecoverable += result.totalRecoverable;
+          if (result.status === "failed") failed++; else completed++;
+          runSummaries.push({ run_id: result.run.id, patient_ref: enc.patient_ref, status: result.status, recoverable: result.totalRecoverable });
+        } catch (e: any) {
+          failed++;
+          runSummaries.push({ patient_ref: enc.patient_ref, status: "failed", error: String(e?.message || e).slice(0, 300) });
+        }
+      }
+
+      const batchStatus = failed === 0 ? "completed" : completed === 0 ? "failed" : "partial";
+      const { data: updatedBatch } = await sb.from("recovery_batches").update({
+        status: batchStatus,
+        completed_count: completed,
+        failed_count: failed,
+        total_dollars_at_risk: +totalAtRisk.toFixed(2),
+        total_dollars_recoverable: +totalRecoverable.toFixed(2),
+        metadata: { runs: runSummaries },
+      }).eq("id", batch.id).select("*").single();
+
+      return new Response(JSON.stringify({
+        success: true,
+        mode: "batch",
+        batch: updatedBatch,
+        runs: runSummaries,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ============ SINGLE MODE ============
+    const encounter_text = String(body?.encounter_text || "");
+    if (encounter_text.trim().length < 40) {
       return new Response(JSON.stringify({ error: "encounter_text required (min 40 chars)" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
-
-    // Create run row
-    const { data: run, error: runErr } = await sb.from("recovery_runs").insert({
-      user_id: user.id,
-      patient_ref,
-      payer,
-      date_of_service,
-      encounter_excerpt: String(encounter_text).slice(0, 4000),
-      lenses_run: lenses,
-      status: "running",
-      notes,
-    }).select("*").single();
-    if (runErr) throw runErr;
-
-    // Fan out lenses in parallel
-    const results = await Promise.allSettled(
-      lenses.map((l: LensId) => runLens(l, encounter_text, payer, date_of_service, apiKey)),
-    );
-
-    const rows: any[] = [];
-    const errors: Record<string, string> = {};
-    results.forEach((r, i) => {
-      const lens = lenses[i] as LensId;
-      if (r.status === "fulfilled") {
-        for (const f of r.value) {
-          rows.push({
-            run_id: run.id,
-            user_id: user.id,
-            lens,
-            category: LENS_CATEGORY[lens] || "pre-bill",
-            title: String(f.title || "(untitled)").slice(0, 240),
-            description: String(f.description || "").slice(0, 4000),
-            evidence_snippet: String(f.evidence_snippet || "").slice(0, 2000),
-            code: String(f.code || "").slice(0, 64) || null,
-            confidence: ["high","medium","low"].includes(f.confidence) ? f.confidence : "medium",
-            dollars_at_risk: Math.max(0, Number(f.dollars_at_risk) || 0),
-            dollars_recoverable: Math.max(0, Number(f.dollars_recoverable) || 0),
-            recommended_action: String(f.recommended_action || "").slice(0, 2000),
-          });
-        }
-      } else {
-        errors[lens] = String(r.reason?.message || r.reason).slice(0, 400);
-      }
+    const result = await runSingleEncounter(sb, user.id, apiKey, {
+      encounter_text,
+      patient_ref: body.patient_ref || null,
+      payer: body.payer || null,
+      date_of_service: body.date_of_service || null,
+      lenses,
+      notes: body.notes || null,
+      batch_id: null,
     });
-
-    const clustered = clusterFindings(rows);
-
-    // Insert findings
-    if (clustered.length) {
-      const { error: insErr } = await sb.from("recovery_findings").insert(clustered);
-      if (insErr) throw insErr;
-    }
-
-    // Rollup: only primary-in-cluster counts toward totals (prevents double-count)
-    let totalAtRisk = 0, totalRecoverable = 0;
-    for (const r of clustered) {
-      if (r.is_primary_in_cluster) {
-        totalAtRisk += Number(r.dollars_at_risk || 0);
-        totalRecoverable += Number(r.dollars_recoverable || 0);
-      }
-    }
-
-    const status = Object.keys(errors).length ? (clustered.length ? "partial" : "failed") : "completed";
-    const { data: updated, error: updErr } = await sb.from("recovery_runs").update({
-      total_dollars_at_risk: +totalAtRisk.toFixed(2),
-      total_dollars_recoverable: +totalRecoverable.toFixed(2),
-      status,
-      error: Object.keys(errors).length ? JSON.stringify(errors) : null,
-      metadata: { lens_errors: errors, finding_count: clustered.length },
-    }).eq("id", run.id).select("*").single();
-    if (updErr) throw updErr;
 
     return new Response(JSON.stringify({
       success: true,
-      run: updated,
-      findings: clustered,
-      lens_errors: errors,
+      mode: "single",
+      run: result.run,
+      findings: result.findings,
+      lens_errors: result.errors,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("recovery-engine error", e);
