@@ -2337,8 +2337,59 @@ export type Database = {
           },
         ]
       }
+      recovery_batches: {
+        Row: {
+          completed_count: number
+          created_at: string
+          encounter_count: number
+          error: string | null
+          failed_count: number
+          id: string
+          label: string | null
+          metadata: Json
+          status: string
+          total_dollars_at_risk: number
+          total_dollars_recoverable: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_count?: number
+          created_at?: string
+          encounter_count?: number
+          error?: string | null
+          failed_count?: number
+          id?: string
+          label?: string | null
+          metadata?: Json
+          status?: string
+          total_dollars_at_risk?: number
+          total_dollars_recoverable?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_count?: number
+          created_at?: string
+          encounter_count?: number
+          error?: string | null
+          failed_count?: number
+          id?: string
+          label?: string | null
+          metadata?: Json
+          status?: string
+          total_dollars_at_risk?: number
+          total_dollars_recoverable?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       recovery_findings: {
         Row: {
+          adversarial_checked_at: string | null
+          adversarial_note: string | null
+          adversarial_verdict: string
           category: string
           code: string | null
           confidence: string
@@ -2363,6 +2414,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          adversarial_checked_at?: string | null
+          adversarial_note?: string | null
+          adversarial_verdict?: string
           category?: string
           code?: string | null
           confidence?: string
@@ -2387,6 +2441,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          adversarial_checked_at?: string | null
+          adversarial_note?: string | null
+          adversarial_verdict?: string
           category?: string
           code?: string | null
           confidence?: string
@@ -2422,6 +2479,7 @@ export type Database = {
       }
       recovery_runs: {
         Row: {
+          batch_id: string | null
           created_at: string
           date_of_service: string | null
           encounter_excerpt: string | null
@@ -2439,6 +2497,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          batch_id?: string | null
           created_at?: string
           date_of_service?: string | null
           encounter_excerpt?: string | null
@@ -2456,6 +2515,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          batch_id?: string | null
           created_at?: string
           date_of_service?: string | null
           encounter_excerpt?: string | null
@@ -2472,7 +2532,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "recovery_runs_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "recovery_batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       regulatory_flags: {
         Row: {
