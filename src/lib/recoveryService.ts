@@ -115,6 +115,7 @@ export interface RunBatchInput {
   lenses?: RecoveryLensId[];
   payer?: string | null;
   date_of_service?: string | null;
+  concurrency?: number;
 }
 
 export async function runRecovery(input: RunRecoveryInput) {
