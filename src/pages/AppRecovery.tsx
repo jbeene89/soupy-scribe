@@ -643,6 +643,31 @@ export default function AppRecovery() {
                   Structure expected: <span className="font-mono">patient_001/admission/*, patient_001/labs/*, patient_002/...</span> — everything under one patient folder is concatenated into a single encounter.
                 </p>
 
+                <div className="flex items-center justify-between rounded-md border p-3">
+                  <div>
+                    <div className="text-xs font-medium">Turbo mode (parallel)</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {batchTurbo
+                        ? "Runs 4 patients at a time — ~4x faster, may hit AI rate limits on huge batches."
+                        : "Runs one patient at a time — slower but rate-limit safe."}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBatchTurbo(v => !v)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                      batchTurbo ? "bg-primary" : "bg-muted"
+                    }`}
+                    aria-pressed={batchTurbo}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow ring-0 transition-transform ${
+                        batchTurbo ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
                 {batchEncounters.length > 0 && (
                   <div className="border rounded-md max-h-48 overflow-y-auto">
                     <div className="flex items-center justify-between px-2 py-1.5 border-b bg-muted/30">
