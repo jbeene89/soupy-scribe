@@ -358,9 +358,17 @@ Deno.serve(async (req) => {
     // ============ BATCH MODE ============
     if (Array.isArray(body?.encounters) && body.encounters.length) {
       const label = String(body.batch_label || `Batch ${new Date().toISOString().slice(0, 16).replace("T", " ")}`).slice(0, 240);
-      const encounters = body.encounters.filter((e: any) =>
-        e && typeof e.encounter_text === "string" && e.encounter_text.trim().length >= 40
-      );
+      // Hard cap each encounter to 80k chars (model only reads 60k anyway).
+      // Without this, large MIMIC-style concatenated CSVs OOM the edge worker.
+      const MAX_ENC_CHARS = 80_000;
+      const encounters = body.encounters
+        .filter((e: any) => e && typeof e.encounter_text === "string" && e.encounter_text.trim().length >= 40)
+        .map((e: any) => ({
+          ...e,
+          encounter_text: e.encounter_text.length > MAX_ENC_CHARS
+            ? e.encounter_text.slice(0, MAX_ENC_CHARS) + `\n\n[…truncated from ${e.encounter_text.length.toLocaleString()} to ${MAX_ENC_CHARS.toLocaleString()} chars for analysis]`
+            : e.encounter_text,
+        }));
       if (!encounters.length) {
         return new Response(JSON.stringify({ error: "No valid encounters (each needs ≥40 chars of text)" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -160,7 +160,14 @@ export default function AppRecovery() {
           .map(p => `===== ${p.path} =====\n${p.text}`)
           .join("\n\n");
         if (concat.trim().length >= 40) {
-          next.push({ patient_ref: key, encounter_text: concat });
+          // Cap per-encounter to 80k chars. Edge function has memory limits,
+          // and the model only reads the first 60k anyway. Without this,
+          // MIMIC-style folders with full chartevents/inputevents OOM the worker.
+          const MAX = 80_000;
+          const trimmed = concat.length > MAX
+            ? concat.slice(0, MAX) + `\n\n[…truncated from ${concat.length.toLocaleString()} chars]`
+            : concat;
+          next.push({ patient_ref: key, encounter_text: trimmed });
         }
       }
 
