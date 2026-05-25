@@ -31,6 +31,7 @@ import {
 } from "@/lib/recoveryService";
 import { readTextMaybeGzipped } from "@/lib/gunzip";
 import JSZip from "jszip";
+import { supabase } from "@/integrations/supabase/client";
 
 const ALL_LENSES: RecoveryLensId[] = [
   "hcc","cdi","counterfactual","modifier","bundling","contract","clawback_exposure","policy_time","supply",
