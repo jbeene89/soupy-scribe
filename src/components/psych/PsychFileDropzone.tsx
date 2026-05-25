@@ -86,7 +86,7 @@ export function PsychFileDropzone({
           ref={inputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.tsv,.rtf,.json,.ndjson,.xml,.hl7,.png,.jpg,.jpeg,.webp,.tif,.tiff,.dcm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/dicom,text/*,image/*"
+          accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.tsv,.rtf,.json,.ndjson,.xml,.hl7,.png,.jpg,.jpeg,.webp,.tif,.tiff,.dcm,.gz,.csv.gz,.tsv.gz,.json.gz,.ndjson.gz,.txt.gz,.xml.gz,application/gzip,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/dicom,text/*,image/*"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) handleFile(file);

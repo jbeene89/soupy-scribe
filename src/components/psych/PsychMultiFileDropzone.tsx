@@ -128,7 +128,7 @@ export function PsychMultiFileDropzone({
           type="file"
           multiple
           className="hidden"
-          accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.tsv,.rtf,.json,.xml,.hl7,.png,.jpg,.jpeg,.webp,.tif,.tiff,.dcm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/dicom,text/*,image/*"
+          accept=".pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.tsv,.rtf,.json,.xml,.hl7,.png,.jpg,.jpeg,.webp,.tif,.tiff,.dcm,.gz,.csv.gz,.tsv.gz,.json.gz,.ndjson.gz,.txt.gz,.xml.gz,application/gzip,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/dicom,text/*,image/*"
           onChange={(e) => {
             if (e.target.files?.length) handleFiles(e.target.files);
             e.target.value = '';
