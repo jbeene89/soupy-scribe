@@ -114,7 +114,7 @@ export async function exportRecoveryBatchPDF(batch: RecoveryBatch) {
   addScoreCards(ctx, [
     { label: "Recoverable", value: fmtMoney(liveRecoverable), color: "green" },
     { label: "At Risk", value: fmtMoney(liveAtRisk), color: "amber" },
-    { label: "Encounters", value: `${liveCompleted}/${runs.length || batch.encounter_count}`, sublabel: encSub, color: "blue" },
+    { label: "Encounters", value: `${liveCompleted}/${Math.max(runs.length, batch.encounter_count || 0)}`, sublabel: encSub, color: "blue" },
     { label: "Avg / Encounter", value: fmtMoney(avg), color: "green" },
   ]);
 
