@@ -40,6 +40,7 @@ import {
   Activity,
   Swords,
   ShieldCheck,
+  Banknote,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -58,6 +59,7 @@ const PAYER_NAV = [
 
 const EXPERIMENTAL_NAV = [
   { title: 'Strategic Tools', path: '/app/strategic-tools', icon: Sparkles },
+  { title: 'Recovery Cockpit', path: '/app/recovery', icon: Banknote },
   { title: 'Ops Center', path: '/app/ops-center', icon: Activity },
   { title: 'Clawback Shield', path: '/app/clawback-shield', icon: Swords },
   { title: 'OR Readiness', path: '/app/or-readiness', icon: ShieldAlert },
