@@ -2337,6 +2337,143 @@ export type Database = {
           },
         ]
       }
+      recovery_findings: {
+        Row: {
+          category: string
+          code: string | null
+          confidence: string
+          created_at: string
+          dedup_cluster_key: string | null
+          description: string | null
+          dollars_at_risk: number
+          dollars_recoverable: number
+          evidence_snippet: string | null
+          id: string
+          is_primary_in_cluster: boolean
+          lens: string
+          metadata: Json
+          recommended_action: string | null
+          resolved: boolean
+          resolved_at: string | null
+          resolved_note: string | null
+          run_id: string
+          source_ref: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          code?: string | null
+          confidence?: string
+          created_at?: string
+          dedup_cluster_key?: string | null
+          description?: string | null
+          dollars_at_risk?: number
+          dollars_recoverable?: number
+          evidence_snippet?: string | null
+          id?: string
+          is_primary_in_cluster?: boolean
+          lens: string
+          metadata?: Json
+          recommended_action?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_note?: string | null
+          run_id: string
+          source_ref?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          code?: string | null
+          confidence?: string
+          created_at?: string
+          dedup_cluster_key?: string | null
+          description?: string | null
+          dollars_at_risk?: number
+          dollars_recoverable?: number
+          evidence_snippet?: string | null
+          id?: string
+          is_primary_in_cluster?: boolean
+          lens?: string
+          metadata?: Json
+          recommended_action?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_note?: string | null
+          run_id?: string
+          source_ref?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_findings_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "recovery_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recovery_runs: {
+        Row: {
+          created_at: string
+          date_of_service: string | null
+          encounter_excerpt: string | null
+          error: string | null
+          id: string
+          lenses_run: string[]
+          metadata: Json
+          notes: string | null
+          patient_ref: string | null
+          payer: string | null
+          status: string
+          total_dollars_at_risk: number
+          total_dollars_recoverable: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_of_service?: string | null
+          encounter_excerpt?: string | null
+          error?: string | null
+          id?: string
+          lenses_run?: string[]
+          metadata?: Json
+          notes?: string | null
+          patient_ref?: string | null
+          payer?: string | null
+          status?: string
+          total_dollars_at_risk?: number
+          total_dollars_recoverable?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date_of_service?: string | null
+          encounter_excerpt?: string | null
+          error?: string | null
+          id?: string
+          lenses_run?: string[]
+          metadata?: Json
+          notes?: string | null
+          patient_ref?: string | null
+          payer?: string | null
+          status?: string
+          total_dollars_at_risk?: number
+          total_dollars_recoverable?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       regulatory_flags: {
         Row: {
           case_id: string | null
