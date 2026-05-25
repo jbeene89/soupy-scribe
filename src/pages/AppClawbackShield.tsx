@@ -90,7 +90,8 @@ export default function AppClawbackShield() {
     if (!auditName.trim()) return toast.error("Audit name required.");
     setRunning({ kind: "ingest", pct: 30 });
     try {
-      const csvText = await csvFile.text();
+      const { readTextMaybeGzipped } = await import("@/lib/gunzip");
+      const csvText = await readTextMaybeGzipped(csvFile);
       const res = await ingestAudit({
         auditMeta: {
           auditName,
@@ -250,7 +251,7 @@ export default function AppClawbackShield() {
             </div>
             <div>
               <Label>Claims roster CSV *</Label>
-              <Input type="file" accept=".csv,text/csv" onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)} />
+              <Input type="file" accept=".csv,.csv.gz,.gz,text/csv,application/gzip" onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)} />
               <p className="text-xs text-muted-foreground mt-1">
                 Expected columns (any subset): claim_number, date_of_service, billed_amount, disallowed_amount, cpt_codes, icd_codes, finding_code, finding_text.
               </p>

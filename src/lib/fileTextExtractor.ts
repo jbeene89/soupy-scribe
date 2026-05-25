@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 import { ingestFhir, looksLikeFhir } from './fhirIngest';
 import { parseHl7v2, isHl7v2 } from './hl7v2Ingest';
 import { parseX12, isX12 } from './x12Ingest';
+import { isGzipped, gunzipToText } from './gunzip';
 
 // Configure pdf.js worker (Vite-friendly: use the bundled worker)
 // We use the legacy build for max compatibility.
@@ -32,6 +33,24 @@ export async function extractTextFromFile(file: File): Promise<ExtractionResult>
 
   const name = file.name.toLowerCase();
   const type = file.type.toLowerCase();
+
+  // Gzipped text payloads (e.g. MIMIC `.csv.gz`, `.json.gz`, `.ndjson.gz`).
+  if (isGzipped(file)) {
+    const text = await gunzipToText(file);
+    const inner = name.replace(/\.(gz|gzip)$/i, '');
+    if (inner.endsWith('.json') || inner.endsWith('.ndjson')) {
+      if (looksLikeFhir(text)) {
+        try {
+          const fhir = ingestFhir(text);
+          return {
+            text: `[FHIR ${fhir.format} · ${fhir.totalResources} resources]\n` + fhir.text,
+            warning: fhir.warnings.length ? fhir.warnings.join(' ') : undefined,
+          };
+        } catch { /* fall through */ }
+      }
+    }
+    return { text: cleanText(text) };
+  }
 
   // PDF
   if (type === 'application/pdf' || name.endsWith('.pdf')) {
