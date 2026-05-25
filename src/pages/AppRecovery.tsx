@@ -186,6 +186,7 @@ export default function AppRecovery() {
         encounters: batchEncounters,
         lenses: enabledLenses,
         payer: batchPayer || null,
+        concurrency: batchTurbo ? 4 : 1,
       });
       toast({
         title: "Batch complete",
