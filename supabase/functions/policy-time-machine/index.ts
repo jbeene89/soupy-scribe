@@ -82,10 +82,10 @@ Deno.serve(async (req) => {
 - Active-on-DOS version: ${active_policy_version || "(unknown / for you to infer from text)"} ${active_policy_date ? `(eff ${active_policy_date})` : ""}
 
 CITED POLICY TEXT (what payer applied):
-${String(cited_policy_text).slice(0, 12000)}
+${String(cited_policy_text).slice(0, 120000)}
 
 ACTIVE-ON-DOS POLICY TEXT (what was in force at DOS):
-${active_policy_text ? String(active_policy_text).slice(0, 12000) : "(NOT PROVIDED — assess based on cited text and your knowledge of typical policy versioning; lower severity if unable to verify.)"}
+${active_policy_text ? String(active_policy_text).slice(0, 120000) : "(NOT PROVIDED — assess based on cited text and your knowledge of typical policy versioning; lower severity if unable to verify.)"}
 
 Produce the JSON timeline assessment.`;
 
