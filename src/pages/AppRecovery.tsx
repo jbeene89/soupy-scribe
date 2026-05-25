@@ -103,6 +103,26 @@ export default function AppRecovery() {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     const next: BatchEncounterInput[] = [];
+    // Group key -> { parts: [{path, text}] }. One group = one patient encounter.
+    const groups = new Map<string, { path: string; text: string }[]>();
+    const TEXT_RE = /\.(txt|md|csv|tsv|json|ndjson|xml|html?|log)$/i;
+
+    function addPart(groupKey: string, path: string, text: string) {
+      if (!text || text.trim().length < 5) return;
+      const arr = groups.get(groupKey) || [];
+      arr.push({ path, text });
+      groups.set(groupKey, arr);
+    }
+
+    // Pick a stable "patient" group key from a path. If the path has nested
+    // folders (e.g. patient_001/admission/note.txt), use the top-level folder.
+    // For files inside a sub-section folder like "admission/", we still group
+    // by the parent patient folder above it. Falls back to filename.
+    function patientKeyFromPath(fullPath: string): string {
+      const parts = fullPath.split("/").filter(Boolean);
+      if (parts.length >= 2) return parts[0]; // first folder = patient
+      return parts[0] || fullPath;
+    }
     try {
       for (const file of files) {
         const name = file.name.toLowerCase();
@@ -111,21 +131,42 @@ export default function AppRecovery() {
           for (const entry of Object.values(zip.files)) {
             if (entry.dir) continue;
             const ename = entry.name.toLowerCase();
-            if (!/\.(txt|md|csv|tsv|json|ndjson|xml)$/.test(ename)) continue;
+            if (!TEXT_RE.test(ename)) continue;
             const text = await entry.async("string");
-            if (text.trim().length >= 40) {
-              next.push({ patient_ref: entry.name.split("/").pop() || entry.name, encounter_text: text });
-            }
+            const key = patientKeyFromPath(entry.name);
+            addPart(key, entry.name, text);
           }
         } else {
           const text = await readTextMaybeGzipped(file);
-          if (text.trim().length >= 40) {
-            next.push({ patient_ref: file.name, encounter_text: text });
-          }
+          // webkitRelativePath is set when user picks a folder
+          const rel = (file as any).webkitRelativePath || file.name;
+          const relTrimmed = rel.includes("/")
+            ? rel.split("/").slice(1).join("/") || rel  // strip top "root" wrapper from folder picker
+            : rel;
+          const key = patientKeyFromPath(relTrimmed);
+          addPart(key, rel, text);
         }
       }
+
+      // Flatten groups into one encounter per patient, concatenating parts
+      // with clear section dividers so the model can still tell admission
+      // notes from labs from discharge.
+      for (const [key, parts] of groups.entries()) {
+        parts.sort((a, b) => a.path.localeCompare(b.path));
+        const concat = parts
+          .map(p => `===== ${p.path} =====\n${p.text}`)
+          .join("\n\n");
+        if (concat.trim().length >= 40) {
+          next.push({ patient_ref: key, encounter_text: concat });
+        }
+      }
+
       setBatchEncounters(prev => [...prev, ...next]);
-      toast({ title: "Loaded", description: `${next.length} encounter${next.length === 1 ? "" : "s"} queued (total ${batchEncounters.length + next.length})` });
+      const partCount = Array.from(groups.values()).reduce((s, a) => s + a.length, 0);
+      toast({
+        title: "Loaded",
+        description: `${next.length} patient encounter${next.length === 1 ? "" : "s"} from ${partCount} file${partCount === 1 ? "" : "s"} (total queued: ${batchEncounters.length + next.length})`,
+      });
     } catch (err: any) {
       toast({ title: "Could not read files", description: err.message, variant: "destructive" });
     }
@@ -574,14 +615,31 @@ export default function AppRecovery() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block border-2 border-dashed border-border hover:border-primary/50 rounded-md p-6 text-center cursor-pointer transition-colors">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block border-2 border-dashed border-border hover:border-primary/50 rounded-md p-4 text-center cursor-pointer transition-colors">
                     <FolderUp className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                    <div className="text-sm font-medium">Drop encounters or zip</div>
-                    <div className="text-[11px] text-muted-foreground mt-1">.txt, .csv, .json, .xml, .gz, or .zip with any of those</div>
-                    <input type="file" multiple accept=".txt,.csv,.tsv,.json,.ndjson,.xml,.md,.gz,.zip,text/*" className="hidden" onChange={handleBatchFiles} />
+                    <div className="text-sm font-medium">Files or .zip</div>
+                    <div className="text-[11px] text-muted-foreground mt-1">Multiple files, or a zip containing patient folders</div>
+                    <input type="file" multiple accept=".txt,.csv,.tsv,.json,.ndjson,.xml,.md,.html,.log,.gz,.zip,text/*" className="hidden" onChange={handleBatchFiles} />
+                  </label>
+                  <label className="block border-2 border-dashed border-border hover:border-primary/50 rounded-md p-4 text-center cursor-pointer transition-colors">
+                    <FolderUp className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                    <div className="text-sm font-medium">Pick a folder</div>
+                    <div className="text-[11px] text-muted-foreground mt-1">Choose your 100-patient root folder — subfolders (admission, labs, notes…) auto-group per patient</div>
+                    <input
+                      type="file"
+                      // @ts-expect-error non-standard but widely supported
+                      webkitdirectory=""
+                      directory=""
+                      multiple
+                      className="hidden"
+                      onChange={handleBatchFiles}
+                    />
                   </label>
                 </div>
+                <p className="text-[10px] text-muted-foreground -mt-2">
+                  Structure expected: <span className="font-mono">patient_001/admission/*, patient_001/labs/*, patient_002/...</span> — everything under one patient folder is concatenated into a single encounter.
+                </p>
 
                 {batchEncounters.length > 0 && (
                   <div className="border rounded-md max-h-48 overflow-y-auto">
