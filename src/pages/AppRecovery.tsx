@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +31,7 @@ import {
 } from "@/lib/recoveryService";
 import { readTextMaybeGzipped } from "@/lib/gunzip";
 import JSZip from "jszip";
+import { supabase } from "@/integrations/supabase/client";
 
 const ALL_LENSES: RecoveryLensId[] = [
   "hcc","cdi","counterfactual","modifier","bundling","contract","clawback_exposure","policy_time","supply",
@@ -69,6 +70,11 @@ export default function AppRecovery() {
   const [batchPayer, setBatchPayer] = useState("");
   const [batchRunning, setBatchRunning] = useState(false);
   const [batchTurbo, setBatchTurbo] = useState(false); // parallel mode
+  // In-memory cache: batch_id -> encounters that produced it. Lets us
+  // "Retry failed" without re-uploading files (lost on page refresh).
+  const [batchSources, setBatchSources] = useState<Record<string, BatchEncounterInput[]>>({});
+  const [appendingToBatch, setAppendingToBatch] = useState(false);
+  const appendInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { reloadRuns(); reloadBatches(); }, []);
 
@@ -105,6 +111,20 @@ export default function AppRecovery() {
   async function handleBatchFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+    try {
+      const parsed = await parseFilesToEncounters(files);
+      setBatchEncounters(prev => [...prev, ...parsed.encounters]);
+      toast({
+        title: "Loaded",
+        description: `${parsed.encounters.length} patient encounter${parsed.encounters.length === 1 ? "" : "s"} from ${parsed.partCount} file${parsed.partCount === 1 ? "" : "s"} (total queued: ${batchEncounters.length + parsed.encounters.length})`,
+      });
+    } catch (err: any) {
+      toast({ title: "Could not read files", description: err.message, variant: "destructive" });
+    }
+    e.target.value = "";
+  }
+
+  async function parseFilesToEncounters(files: File[]): Promise<{ encounters: BatchEncounterInput[]; partCount: number }> {
     const next: BatchEncounterInput[] = [];
     // Group key -> { parts: [{path, text}] }. One group = one patient encounter.
     const groups = new Map<string, { path: string; text: string }[]>();
@@ -126,7 +146,6 @@ export default function AppRecovery() {
       if (parts.length >= 2) return parts[0]; // first folder = patient
       return parts[0] || fullPath;
     }
-    try {
       for (const file of files) {
         const name = file.name.toLowerCase();
         if (name.endsWith(".zip")) {
@@ -170,17 +189,8 @@ export default function AppRecovery() {
           next.push({ patient_ref: key, encounter_text: trimmed });
         }
       }
-
-      setBatchEncounters(prev => [...prev, ...next]);
-      const partCount = Array.from(groups.values()).reduce((s, a) => s + a.length, 0);
-      toast({
-        title: "Loaded",
-        description: `${next.length} patient encounter${next.length === 1 ? "" : "s"} from ${partCount} file${partCount === 1 ? "" : "s"} (total queued: ${batchEncounters.length + next.length})`,
-      });
-    } catch (err: any) {
-      toast({ title: "Could not read files", description: err.message, variant: "destructive" });
-    }
-    e.target.value = "";
+    const partCount = Array.from(groups.values()).reduce((s, a) => s + a.length, 0);
+    return { encounters: next, partCount };
   }
 
   async function handleRunBatch() {
@@ -189,6 +199,7 @@ export default function AppRecovery() {
       return;
     }
     setBatchRunning(true);
+    const sourcesSnapshot = batchEncounters;
     try {
       const res = await runRecoveryBatch({
         batch_label: batchLabel || undefined,
@@ -201,6 +212,9 @@ export default function AppRecovery() {
         title: "Batch complete",
         description: `${res.batch.completed_count}/${res.batch.encounter_count} succeeded · ${fmtMoney(res.batch.total_dollars_recoverable)} recoverable`,
       });
+      // Cache source encounters keyed by batch id so user can retry failed
+      // without re-uploading the files.
+      setBatchSources(prev => ({ ...prev, [res.batch.id]: sourcesSnapshot }));
       setBatchEncounters([]);
       setBatchLabel("");
       await reloadBatches();
@@ -210,6 +224,82 @@ export default function AppRecovery() {
       toast({ title: "Batch failed", description: e.message, variant: "destructive" });
     } finally {
       setBatchRunning(false);
+    }
+  }
+
+  async function handleRetryFailed(batchId: string) {
+    const sources = batchSources[batchId];
+    if (!sources || sources.length === 0) {
+      toast({
+        title: "Source files not in memory",
+        description: "Use 'Add files to this batch' below and re-upload the missing patient folders. (Source files are only cached during this browser session.)",
+        variant: "destructive",
+      });
+      return;
+    }
+    const succeededRefs = new Set(batchRuns.filter(r => r.status === "completed" || r.status === "partial").map(r => r.patient_ref || ""));
+    const toRetry = sources.filter(s => !succeededRefs.has(s.patient_ref || ""));
+    if (toRetry.length === 0) {
+      toast({ title: "Nothing to retry", description: "All encounters in this batch already completed." });
+      return;
+    }
+    setAppendingToBatch(true);
+    try {
+      // First, clear out the existing failed rows so re-run doesn't double-list them.
+      await supabase.from("recovery_runs").delete().eq("batch_id", batchId).in("status", ["failed", "running"]);
+      const res = await runRecoveryBatch({
+        batch_id: batchId,
+        encounters: toRetry,
+        lenses: enabledLenses,
+        payer: batchPayer || null,
+        concurrency: batchTurbo ? 4 : 1,
+      });
+      toast({
+        title: "Retry complete",
+        description: `${toRetry.length} encounter${toRetry.length === 1 ? "" : "s"} re-run · batch now ${res.batch.completed_count}/${res.batch.encounter_count}`,
+      });
+      await reloadBatches();
+      await selectBatch(batchId);
+    } catch (e: any) {
+      toast({ title: "Retry failed", description: e.message, variant: "destructive" });
+    } finally {
+      setAppendingToBatch(false);
+    }
+  }
+
+  async function handleAppendFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length || !selectedBatchId) return;
+    setAppendingToBatch(true);
+    try {
+      const parsed = await parseFilesToEncounters(files);
+      if (parsed.encounters.length === 0) {
+        toast({ title: "No valid encounters in selection", variant: "destructive" });
+        return;
+      }
+      const res = await runRecoveryBatch({
+        batch_id: selectedBatchId,
+        encounters: parsed.encounters,
+        lenses: enabledLenses,
+        payer: batchPayer || null,
+        concurrency: batchTurbo ? 4 : 1,
+      });
+      // Merge new sources into cache too
+      setBatchSources(prev => ({
+        ...prev,
+        [selectedBatchId]: [...(prev[selectedBatchId] || []), ...parsed.encounters],
+      }));
+      toast({
+        title: "Added to batch",
+        description: `${parsed.encounters.length} new encounter${parsed.encounters.length === 1 ? "" : "s"} processed · batch now ${res.batch.completed_count}/${res.batch.encounter_count}`,
+      });
+      await reloadBatches();
+      await selectBatch(selectedBatchId);
+    } catch (err: any) {
+      toast({ title: "Append failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAppendingToBatch(false);
     }
   }
 
@@ -787,6 +877,37 @@ export default function AppRecovery() {
                     </div>
 
                     <div className="flex justify-end">
+                      {(b.failed_count > 0 || batchRuns.some(r => r.status === "failed")) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mr-2"
+                          disabled={appendingToBatch}
+                          onClick={() => handleRetryFailed(b.id)}
+                          title={batchSources[b.id] ? "Re-run failed encounters from cached upload" : "Source files not cached — use Add files instead"}
+                        >
+                          {appendingToBatch ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+                          Retry failed ({batchRuns.filter(r => r.status === "failed").length})
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mr-2"
+                        disabled={appendingToBatch}
+                        onClick={() => appendInputRef.current?.click()}
+                      >
+                        {appendingToBatch ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <FolderUp className="h-3.5 w-3.5 mr-1.5" />}
+                        Add files to this batch
+                      </Button>
+                      <input
+                        ref={appendInputRef}
+                        type="file"
+                        multiple
+                        accept=".zip,.txt,.md,.csv,.tsv,.json,.ndjson,.xml,.html,.htm,.log,.gz"
+                        className="hidden"
+                        onChange={handleAppendFiles}
+                      />
                       {batchRuns.some(r => r.status === "running") && (
                         <Button
                           size="sm"
