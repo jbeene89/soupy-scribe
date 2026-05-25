@@ -431,6 +431,12 @@ export default function AppRecovery() {
     };
   }, [batchRuns]);
 
+  function displayBatchRecoverable(batch: RecoveryBatch) {
+    return batch.id === selectedBatchId && selectedBatchRollup.recoverable > 0
+      ? selectedBatchRollup.recoverable
+      : batch.total_dollars_recoverable;
+  }
+
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
     for (const f of findings.filter(x => x.is_primary_in_cluster && x.adversarial_verdict === "kept")) {
