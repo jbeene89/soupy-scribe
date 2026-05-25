@@ -127,6 +127,7 @@ ${FINDING_SCHEMA}`;
       ],
       response_format: { type: "json_object" },
     }),
+    signal: AbortSignal.timeout(90_000), // 90s per lens — prevents a hung gateway call from holding the whole encounter
   });
   if (!res.ok) {
     const body = await res.text();
@@ -186,6 +187,7 @@ Return JSON: {"verdicts":[{"i":<index>,"verdict":"kept"|"demoted"|"removed","not
         messages: [{ role: "system", content: sys }, { role: "user", content: user }],
         response_format: { type: "json_object" },
       }),
+      signal: AbortSignal.timeout(90_000),
     });
     if (!res.ok) return {};
     const json = await res.json();
@@ -214,9 +216,10 @@ async function runSingleEncounter(
     lenses: LensId[];
     notes: string | null;
     batch_id: string | null;
+    onRunCreated?: (id: string) => void;
   },
 ) {
-  const { encounter_text, patient_ref, payer, date_of_service, lenses, notes, batch_id } = params;
+  const { encounter_text, patient_ref, payer, date_of_service, lenses, notes, batch_id, onRunCreated } = params;
 
   const { data: run, error: runErr } = await sb.from("recovery_runs").insert({
     user_id: userId,
@@ -230,6 +233,7 @@ async function runSingleEncounter(
     notes,
   }).select("*").single();
   if (runErr) throw runErr;
+  if (onRunCreated) onRunCreated(run.id);
 
   const results = await Promise.allSettled(
     lenses.map((l) => runLens(l, encounter_text, payer, date_of_service, apiKey)),
@@ -378,6 +382,7 @@ Deno.serve(async (req) => {
       const concurrency = Math.min(8, Math.max(1, Number(body.concurrency) || 1));
 
       async function processOne(enc: any) {
+        let runIdForFailure: string | null = null;
         try {
           const result = await runSingleEncounter(sb, user.id, apiKey, {
             encounter_text: String(enc.encounter_text),
@@ -387,6 +392,7 @@ Deno.serve(async (req) => {
             lenses,
             notes: enc.notes || null,
             batch_id: batch.id,
+            onRunCreated: (id: string) => { runIdForFailure = id; },
           });
           totalAtRisk += result.totalAtRisk;
           totalRecoverable += result.totalRecoverable;
@@ -394,6 +400,14 @@ Deno.serve(async (req) => {
           runSummaries.push({ run_id: result.run.id, patient_ref: enc.patient_ref, status: result.status, recoverable: result.totalRecoverable });
         } catch (e: any) {
           failed++;
+          const msg = String(e?.message || e).slice(0, 300);
+          // CRITICAL: if the run row was already inserted, mark it failed so it
+          // doesn't stay stuck on "running" forever (the previous bug).
+          if (runIdForFailure) {
+            try {
+              await sb.from("recovery_runs").update({ status: "failed", error: msg }).eq("id", runIdForFailure);
+            } catch (_) { /* best effort */ }
+          }
           runSummaries.push({ patient_ref: enc.patient_ref, status: "failed", error: String(e?.message || e).slice(0, 300) });
         }
       }

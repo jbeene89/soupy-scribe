@@ -37,6 +37,26 @@ export async function exportRecoveryBatchPDF(batch: RecoveryBatch) {
     .sort((a, b) => Number(b.dollars_recoverable || 0) - Number(a.dollars_recoverable || 0))
     .slice(0, 25);
 
+  // Recompute rollup from the live runs so the PDF stays accurate even when
+  // the batch.total_* fields are stale (e.g. one encounter is still "running"
+  // because the worker died mid-batch).
+  let liveRecoverable = 0;
+  let liveAtRisk = 0;
+  let liveCompleted = 0;
+  let liveFailed = 0;
+  let liveStuck = 0;
+  for (const r of runs) {
+    if (r.status === "completed" || r.status === "partial") {
+      liveCompleted++;
+      liveRecoverable += Number(r.total_dollars_recoverable || 0);
+      liveAtRisk += Number(r.total_dollars_at_risk || 0);
+    } else if (r.status === "failed") {
+      liveFailed++;
+    } else if (r.status === "running") {
+      liveStuck++;
+    }
+  }
+
   // By-lens rollup
   const byLens: Record<string, { count: number; dollars: number }> = {};
   for (const f of keptPrimary) {
@@ -62,11 +82,17 @@ export async function exportRecoveryBatchPDF(batch: RecoveryBatch) {
 
   // Executive metrics
   addSectionHeader(ctx, "Portfolio Rollup");
-  const avg = batch.completed_count ? batch.total_dollars_recoverable / batch.completed_count : 0;
+  const avg = liveCompleted ? liveRecoverable / liveCompleted : 0;
+  const encSub =
+    liveStuck > 0
+      ? `${liveStuck} stuck${liveFailed ? ` · ${liveFailed} failed` : ""}`
+      : liveFailed
+        ? `${liveFailed} failed`
+        : "all succeeded";
   addScoreCards(ctx, [
-    { label: "Recoverable", value: fmtMoney(batch.total_dollars_recoverable), color: "green" },
-    { label: "At Risk", value: fmtMoney(batch.total_dollars_at_risk), color: "amber" },
-    { label: "Encounters", value: `${batch.completed_count}/${batch.encounter_count}`, sublabel: batch.failed_count ? `${batch.failed_count} failed` : "all succeeded", color: "blue" },
+    { label: "Recoverable", value: fmtMoney(liveRecoverable), color: "green" },
+    { label: "At Risk", value: fmtMoney(liveAtRisk), color: "amber" },
+    { label: "Encounters", value: `${liveCompleted}/${runs.length || batch.encounter_count}`, sublabel: encSub, color: "blue" },
     { label: "Avg / Encounter", value: fmtMoney(avg), color: "green" },
   ]);
 
