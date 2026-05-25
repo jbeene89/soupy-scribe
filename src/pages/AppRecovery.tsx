@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, DollarSign, AlertTriangle, CheckCircle2, ChevronRight, Trash2, Sparkles, FolderUp, ShieldCheck, ShieldAlert, ShieldX } from "lucide-react";
+import { Loader2, DollarSign, AlertTriangle, CheckCircle2, ChevronRight, Trash2, Sparkles, FolderUp, ShieldCheck, ShieldAlert, ShieldX, Download } from "lucide-react";
+import { exportRecoveryBatchPDF } from "@/lib/exportRecoveryBatchPDF";
 import {
   CATEGORY_LABELS,
   LENS_LABELS,
