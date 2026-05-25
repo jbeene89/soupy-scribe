@@ -877,6 +877,37 @@ export default function AppRecovery() {
                     </div>
 
                     <div className="flex justify-end">
+                      {(b.failed_count > 0 || batchRuns.some(r => r.status === "failed")) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mr-2"
+                          disabled={appendingToBatch}
+                          onClick={() => handleRetryFailed(b.id)}
+                          title={batchSources[b.id] ? "Re-run failed encounters from cached upload" : "Source files not cached — use Add files instead"}
+                        >
+                          {appendingToBatch ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+                          Retry failed ({batchRuns.filter(r => r.status === "failed").length})
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mr-2"
+                        disabled={appendingToBatch}
+                        onClick={() => appendInputRef.current?.click()}
+                      >
+                        {appendingToBatch ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <FolderUp className="h-3.5 w-3.5 mr-1.5" />}
+                        Add files to this batch
+                      </Button>
+                      <input
+                        ref={appendInputRef}
+                        type="file"
+                        multiple
+                        accept=".zip,.txt,.md,.csv,.tsv,.json,.ndjson,.xml,.html,.htm,.log,.gz"
+                        className="hidden"
+                        onChange={handleAppendFiles}
+                      />
                       {batchRuns.some(r => r.status === "running") && (
                         <Button
                           size="sm"
