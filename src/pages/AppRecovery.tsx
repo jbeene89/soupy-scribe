@@ -66,6 +66,7 @@ export default function AppRecovery() {
   const [batchLabel, setBatchLabel] = useState("");
   const [batchPayer, setBatchPayer] = useState("");
   const [batchRunning, setBatchRunning] = useState(false);
+  const [batchTurbo, setBatchTurbo] = useState(false); // parallel mode
 
   useEffect(() => { reloadRuns(); reloadBatches(); }, []);
 
