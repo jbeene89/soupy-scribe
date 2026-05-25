@@ -459,6 +459,10 @@ export default function AppRecovery() {
                   <input type="checkbox" checked={showOnlyPrimary} onChange={e => setShowOnlyPrimary(e.target.checked)} />
                   <span className="text-muted-foreground">Hide duplicate-cluster rows (no double-count)</span>
                 </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={hideDemoted} onChange={e => setHideDemoted(e.target.checked)} />
+                  <span className="text-muted-foreground">Hide adversarially demoted/removed ({rollup.demoted + rollup.removed})</span>
+                </label>
               </div>
 
               {/* Findings table */}
