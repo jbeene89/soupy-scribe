@@ -216,9 +216,10 @@ async function runSingleEncounter(
     lenses: LensId[];
     notes: string | null;
     batch_id: string | null;
+    onRunCreated?: (id: string) => void;
   },
 ) {
-  const { encounter_text, patient_ref, payer, date_of_service, lenses, notes, batch_id } = params;
+  const { encounter_text, patient_ref, payer, date_of_service, lenses, notes, batch_id, onRunCreated } = params;
 
   const { data: run, error: runErr } = await sb.from("recovery_runs").insert({
     user_id: userId,
@@ -232,6 +233,7 @@ async function runSingleEncounter(
     notes,
   }).select("*").single();
   if (runErr) throw runErr;
+  if (onRunCreated) onRunCreated(run.id);
 
   const results = await Promise.allSettled(
     lenses.map((l) => runLens(l, encounter_text, payer, date_of_service, apiKey)),
