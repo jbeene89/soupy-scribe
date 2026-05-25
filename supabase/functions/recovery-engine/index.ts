@@ -89,7 +89,7 @@ const FINDING_SCHEMA = `Return JSON: {
     {
       "title": "<short headline>",
       "description": "<1-3 sentences>",
-      "evidence_snippet": "<short quote from the encounter or empty>",
+      "evidence_snippet": "<MUST be a verbatim quote from the encounter; if no quote supports it, OMIT this finding entirely>",
       "code": "<ICD-10 / CPT / HCC / contract term, or empty>",
       "confidence": "high" | "medium" | "low",
       "dollars_at_risk": <number, dollars currently exposed>,
@@ -98,7 +98,7 @@ const FINDING_SCHEMA = `Return JSON: {
     }
   ]
 }
-Be conservative. If nothing applies, return {"findings": []}.`;
+Be conservative. NEVER fabricate a finding without a verbatim evidence quote. If nothing applies, return {"findings": []}.`;
 
 async function runLens(
   lens: LensId,
