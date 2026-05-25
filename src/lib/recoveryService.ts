@@ -116,6 +116,8 @@ export interface RunBatchInput {
   payer?: string | null;
   date_of_service?: string | null;
   concurrency?: number;
+  /** If provided, encounters are appended to an existing batch instead of creating a new one. */
+  batch_id?: string;
 }
 
 export async function runRecovery(input: RunRecoveryInput) {
