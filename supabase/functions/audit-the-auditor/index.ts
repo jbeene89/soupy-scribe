@@ -104,7 +104,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const userPrompt = `DENIAL LETTER / EOB TEXT:\n\n${letterText.slice(0, 40000)}\n\n${additionalContext ? `ADDITIONAL CONTEXT FROM PROVIDER:\n${additionalContext.slice(0, 4000)}\n\n` : ""}Audit this payer communication. Be neutral and specific.`;
+    const userPrompt = `DENIAL LETTER / EOB TEXT:\n\n${letterText.slice(0, 200000)}\n\n${additionalContext ? `ADDITIONAL CONTEXT FROM PROVIDER:\n${additionalContext.slice(0, 40000)}\n\n` : ""}Audit this payer communication. Be neutral and specific.`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

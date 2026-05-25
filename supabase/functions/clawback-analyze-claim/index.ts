@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
 - RAC finding text: ${claim.rac_finding_text || "(none)"}
 
 CHART DOCUMENTATION
-${chartText && chartText.trim().length > 0 ? chartText.slice(0, 18000) : "(No chart documentation provided.)"}
+${chartText && chartText.trim().length > 0 ? chartText.slice(0, 200000) : "(No chart documentation provided.)"}
 
 Produce the JSON defense assessment.`;
 

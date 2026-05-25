@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
 ${JSON.stringify(historical_problem_list, null, 2)}
 
 CURRENT ENCOUNTER NOTE:
-${String(current_encounter_text).slice(0, 18000)}
+${String(current_encounter_text).slice(0, 200000)}
 
 Identify dropped HCC suspects. Return JSON only.`;
 
