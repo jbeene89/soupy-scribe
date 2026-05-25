@@ -375,15 +375,40 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { data: batch, error: batchErr } = await sb.from("recovery_batches").insert({
-        user_id: user.id,
-        label,
-        status: "running",
-        encounter_count: encounters.length,
-      }).select("*").single();
-      if (batchErr) throw batchErr;
+      // If client passes an existing batch_id, attach new encounters to it
+      // (retry / append flow). Otherwise create a fresh batch.
+      let batch: any;
+      const existingBatchId = typeof body.batch_id === "string" ? body.batch_id : null;
+      if (existingBatchId) {
+        const { data: existing, error: exErr } = await sb
+          .from("recovery_batches")
+          .select("*")
+          .eq("id", existingBatchId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (exErr) throw exErr;
+        if (!existing) {
+          return new Response(JSON.stringify({ error: "Batch not found or not owned by you" }), {
+            status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        batch = existing;
+        // Bump the planned count + flip back to running while we process.
+        await sb.from("recovery_batches").update({
+          status: "running",
+          encounter_count: (existing.encounter_count || 0) + encounters.length,
+        }).eq("id", batch.id);
+      } else {
+        const { data: created, error: batchErr } = await sb.from("recovery_batches").insert({
+          user_id: user.id,
+          label,
+          status: "running",
+          encounter_count: encounters.length,
+        }).select("*").single();
+        if (batchErr) throw batchErr;
+        batch = created;
+      }
 
-      let totalAtRisk = 0, totalRecoverable = 0, completed = 0, failed = 0;
       const runSummaries: any[] = [];
 
       // Concurrency from client (1 = sequential / rate-limit-safe, higher = turbo)
@@ -402,12 +427,8 @@ Deno.serve(async (req) => {
             batch_id: batch.id,
             onRunCreated: (id: string) => { runIdForFailure = id; },
           });
-          totalAtRisk += result.totalAtRisk;
-          totalRecoverable += result.totalRecoverable;
-          if (result.status === "failed") failed++; else completed++;
           runSummaries.push({ run_id: result.run.id, patient_ref: enc.patient_ref, status: result.status, recoverable: result.totalRecoverable });
         } catch (e: any) {
-          failed++;
           const msg = String(e?.message || e).slice(0, 300);
           // CRITICAL: if the run row was already inserted, mark it failed so it
           // doesn't stay stuck on "running" forever (the previous bug).
@@ -431,6 +452,21 @@ Deno.serve(async (req) => {
       });
       await Promise.all(workers);
 
+      // Recompute totals from ALL runs in the batch (handles append + retry).
+      const { data: allRuns } = await sb
+        .from("recovery_runs")
+        .select("status,total_dollars_at_risk,total_dollars_recoverable")
+        .eq("batch_id", batch.id);
+      let totalAtRisk = 0, totalRecoverable = 0, completed = 0, failed = 0;
+      for (const r of allRuns || []) {
+        if (r.status === "completed" || r.status === "partial") {
+          completed++;
+          totalAtRisk += Number(r.total_dollars_at_risk || 0);
+          totalRecoverable += Number(r.total_dollars_recoverable || 0);
+        } else if (r.status === "failed") {
+          failed++;
+        }
+      }
       const batchStatus = failed === 0 ? "completed" : completed === 0 ? "failed" : "partial";
       const { data: updatedBatch } = await sb.from("recovery_batches").update({
         status: batchStatus,
