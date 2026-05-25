@@ -23,7 +23,7 @@ type State =
 export function PsychFileDropzone({
   onTextExtracted,
   label = 'Drop a session note, superbill, or claim PDF here',
-  sublabel = 'PDF, Word, text, or FHIR (.json/.ndjson) · up to 20MB',
+  sublabel = 'PDF, Word, text, or FHIR (.json/.ndjson) · up to 100MB',
 }: PsychFileDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>({ kind: 'idle' });

@@ -44,7 +44,7 @@ interface ClaimMultiFileDropzoneProps {
   maxFiles?: number;
 }
 
-const MAX_SIZE = 20 * 1024 * 1024;
+const MAX_SIZE = 100 * 1024 * 1024;
 
 async function fileToDataUrl(file: File): Promise<string> {
   return await new Promise((resolve, reject) => {
@@ -80,7 +80,7 @@ async function pdfPagesToImages(file: File, maxPages = MAX_VISION_PAGES, maxWidt
 
 async function ingestOne(file: File): Promise<IngestedFile> {
   if (file.size > MAX_SIZE) {
-    throw new Error(`${file.name} is too large (max 20MB).`);
+    throw new Error(`${file.name} is too large (max 100MB).`);
   }
   const id = `f-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const name = file.name.toLowerCase();
@@ -216,7 +216,7 @@ export function ClaimMultiFileDropzone({
               Drop claim PDFs, EOBs, remits, denial letters, or screenshots
             </p>
             <p className="text-xs text-muted-foreground">
-              Up to {maxFiles} files · 20MB each · each file is parsed separately
+              Up to {maxFiles} files · 100MB each · each file is parsed separately
             </p>
             <Button
               type="button"

@@ -23,11 +23,11 @@ export type ExtractionResult = {
   warning?: string;
 };
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 export async function extractTextFromFile(file: File): Promise<ExtractionResult> {
   if (file.size > MAX_FILE_SIZE) {
-    throw new Error(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max is 20MB.`);
+    throw new Error(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max is 100MB.`);
   }
 
   const name = file.name.toLowerCase();
