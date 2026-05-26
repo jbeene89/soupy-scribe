@@ -128,6 +128,30 @@ export default function AppRecovery() {
     }
   }
 
+  // Poll a running batch until it finishes (or 10 minutes elapse), refreshing
+  // the UI as runs complete. Used because the edge function now returns
+  // immediately and processes encounters in the background to avoid the 150s
+  // gateway idle timeout.
+  async function pollBatchUntilDone(batchId: string) {
+    const start = Date.now();
+    const MAX_MS = 10 * 60 * 1000;
+    let lastStatus = "running";
+    while (Date.now() - start < MAX_MS) {
+      await new Promise(r => setTimeout(r, 4000));
+      try {
+        await reloadBatches();
+        if (selectedBatchId === batchId || !selectedBatchId) {
+          await selectBatch(batchId);
+        }
+        const fresh = (await listBatches()).find(b => b.id === batchId);
+        if (!fresh) break;
+        lastStatus = fresh.status;
+        if (fresh.status !== "running" && fresh.status !== "pending") break;
+      } catch { /* keep polling */ }
+    }
+    return lastStatus;
+  }
+
   async function handleBatchFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
