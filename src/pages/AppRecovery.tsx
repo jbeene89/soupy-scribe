@@ -267,10 +267,46 @@ export default function AppRecovery() {
         return g.size > 0 ? g : null;
       }
 
+      // In-text PID split: scan each text part for inline patient markers and
+      // split a single file into many encounters. Catches dumps like
+      //   "Patient ID: 12345\n...notes...\nPatient ID: 12346\n..."
+      // or "MRN: 998877", "===== Patient 42 =====", "Patient #42", etc.
+      function tryInTextPidSplit(): Grouping | null {
+        const g: Grouping = new Map();
+        // Anchored to line start; case-insensitive; tolerates ===/### wrappers.
+        const MARKER_RE = /^[\s#=*\->]*\b(?:patient(?:\s*id)?|pt\s*id|mrn|subject(?:\s*id)?|hadm(?:\s*id)?|encounter(?:\s*id)?|enc\s*id)\b\s*[:#\-]?\s*([A-Za-z0-9_\-]{2,})/gim;
+        for (const part of allParts) {
+          if (part.isCsv) continue; // CSVs handled by tryCsvRowSplit
+          const text = part.text;
+          const hits: { id: string; index: number }[] = [];
+          let m: RegExpExecArray | null;
+          MARKER_RE.lastIndex = 0;
+          while ((m = MARKER_RE.exec(text)) !== null) {
+            hits.push({ id: m[1].trim(), index: m.index });
+          }
+          // Need at least 2 distinct PIDs in one file to call this a multi-patient dump.
+          const distinct = new Set(hits.map(h => h.id));
+          if (distinct.size < 2) continue;
+          for (let i = 0; i < hits.length; i++) {
+            const start = hits[i].index;
+            const end = i + 1 < hits.length ? hits[i + 1].index : text.length;
+            const slice = text.slice(start, end).trim();
+            if (slice.length < 40) continue;
+            const key = `id_${hits[i].id}`;
+            const arr = g.get(key) || [];
+            arr.push({ path: `${part.path}#${hits[i].id}`, text: slice });
+            g.set(key, arr);
+          }
+        }
+        return g.size > 0 ? g : null;
+      }
+
       // Pick the strategy that gives the most patients (≥2 to beat "lump it all").
       const candidates: { name: string; g: Grouping }[] = [];
       const csv = tryCsvRowSplit();
       if (csv && csv.size >= 2) candidates.push({ name: "csv-rows", g: csv });
+      const inText = tryInTextPidSplit();
+      if (inText && inText.size >= 2) candidates.push({ name: "in-text-pid", g: inText });
       const folder = tryFolderGrouping();
       if (folder.size >= 2) candidates.push({ name: "folder", g: folder });
       const fname = tryFilenameIdGrouping();
