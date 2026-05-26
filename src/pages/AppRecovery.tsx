@@ -68,6 +68,7 @@ export default function AppRecovery() {
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [batchRuns, setBatchRuns] = useState<RecoveryRun[]>([]);
   const [batchFindings, setBatchFindings] = useState<RecoveryFinding[]>([]);
+  const [batchFindingsLoaded, setBatchFindingsLoaded] = useState(false);
   const [batchEncounters, setBatchEncounters] = useState<BatchEncounterInput[]>([]);
   const [batchLabel, setBatchLabel] = useState("");
   const [batchPayer, setBatchPayer] = useState("");
@@ -108,20 +109,37 @@ export default function AppRecovery() {
       setBatchRuns(r);
       // Pull findings across all runs in this batch so we can recompute the
       // true rollup and warn the user when the stored batch totals are stale.
+      const ids = r.map(x => x.id);
+      if (!ids.length) {
+        setBatchFindings([]);
+        setBatchFindingsLoaded(true);
+        return;
+      }
+      // Chunk the IN() query so large batches don't blow past PostgREST URL
+      // limits, and surface failures instead of silently leaving state empty
+      // (which used to produce a bogus "$0 recomputed" mismatch warning).
+      const CHUNK = 50;
+      const all: RecoveryFinding[] = [];
       try {
-        const ids = r.map(x => x.id);
-        if (ids.length) {
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          const slice = ids.slice(i, i + CHUNK);
           const { data, error } = await supabase
             .from("recovery_findings")
             .select("*")
-            .in("run_id", ids);
+            .in("run_id", slice);
           if (error) throw error;
-          setBatchFindings((data || []) as any);
-        } else {
-          setBatchFindings([]);
+          if (data) all.push(...(data as any));
         }
-      } catch {
+        setBatchFindings(all);
+        setBatchFindingsLoaded(true);
+      } catch (e: any) {
         setBatchFindings([]);
+        setBatchFindingsLoaded(false);
+        toast({
+          title: "Could not load findings for batch",
+          description: e.message || "Unknown error — totals comparison disabled.",
+          variant: "destructive",
+        });
       }
     } catch (e: any) {
       toast({ title: "Could not load batch runs", description: e.message, variant: "destructive" });
@@ -620,6 +638,15 @@ export default function AppRecovery() {
   );
   const batchTotalsMismatch = useMemo(() => {
     if (!selectedBatchObj) return null;
+    // Don't fire a mismatch warning until the findings have actually been
+    // loaded — otherwise we'd compare stored totals to a $0 rollup computed
+    // from an empty client cache and scare the user for no reason.
+    if (!batchFindingsLoaded) return null;
+    // If we somehow ended up with zero findings client-side but the per-run
+    // totals stored on the run rows are non-zero, it's a load gap, not a
+    // real stale-metadata mismatch. Suppress.
+    const runSumRecov = batchRuns.reduce((s, r) => s + Number(r.total_dollars_recoverable || 0), 0);
+    if (batchFindings.length === 0 && runSumRecov > 0) return null;
     const stored = Number(selectedBatchObj.total_dollars_recoverable || 0);
     const real = trueBatchRollup.liveRecoverable;
     const storedRisk = Number(selectedBatchObj.total_dollars_at_risk || 0);
@@ -629,7 +656,7 @@ export default function AppRecovery() {
     // Ignore rounding noise under $1.
     if (recovDiff < 1 && riskDiff < 1) return null;
     return { stored, real, storedRisk, realRisk, recovDiff, riskDiff };
-  }, [selectedBatchObj, trueBatchRollup]);
+  }, [selectedBatchObj, trueBatchRollup, batchFindingsLoaded, batchFindings.length, batchRuns]);
 
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
