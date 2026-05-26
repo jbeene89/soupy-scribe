@@ -126,26 +126,14 @@ export default function AppRecovery() {
 
   async function parseFilesToEncounters(files: File[]): Promise<{ encounters: BatchEncounterInput[]; partCount: number }> {
     const next: BatchEncounterInput[] = [];
-    // Group key -> { parts: [{path, text}] }. One group = one patient encounter.
-    const groups = new Map<string, { path: string; text: string }[]>();
+    // Collect every text part first, then auto-detect how to split into patients.
+    // We try several strategies in order: (1) CSV row-split by patient ID column,
+    // (2) folder-per-patient grouping, (3) filename patient-ID extraction,
+    // (4) one-encounter-per-file fallback. Whichever yields the most patients wins.
+    const allParts: { path: string; text: string; isCsv: boolean }[] = [];
     const TEXT_RE = /\.(txt|md|csv|tsv|json|ndjson|xml|html?|log)$/i;
+    const CSV_RE = /\.(csv|tsv)$/i;
 
-    function addPart(groupKey: string, path: string, text: string) {
-      if (!text || text.trim().length < 5) return;
-      const arr = groups.get(groupKey) || [];
-      arr.push({ path, text });
-      groups.set(groupKey, arr);
-    }
-
-    // Pick a stable "patient" group key from a path. If the path has nested
-    // folders (e.g. patient_001/admission/note.txt), use the top-level folder.
-    // For files inside a sub-section folder like "admission/", we still group
-    // by the parent patient folder above it. Falls back to filename.
-    function patientKeyFromPath(fullPath: string): string {
-      const parts = fullPath.split("/").filter(Boolean);
-      if (parts.length >= 2) return parts[0]; // first folder = patient
-      return parts[0] || fullPath;
-    }
       for (const file of files) {
         const name = file.name.toLowerCase();
         if (name.endsWith(".zip")) {
@@ -155,33 +143,131 @@ export default function AppRecovery() {
             const ename = entry.name.toLowerCase();
             if (!TEXT_RE.test(ename)) continue;
             const text = await entry.async("string");
-            const key = patientKeyFromPath(entry.name);
-            addPart(key, entry.name, text);
+            if (text && text.trim().length >= 5) {
+              allParts.push({ path: entry.name, text, isCsv: CSV_RE.test(ename) });
+            }
           }
         } else {
           const text = await readTextMaybeGzipped(file);
-          // webkitRelativePath is set when user picks a folder
           const rel = (file as any).webkitRelativePath || file.name;
-          const relTrimmed = rel.includes("/")
-            ? rel.split("/").slice(1).join("/") || rel  // strip top "root" wrapper from folder picker
-            : rel;
-          const key = patientKeyFromPath(relTrimmed);
-          addPart(key, rel, text);
+          if (text && text.trim().length >= 5) {
+            allParts.push({ path: rel, text, isCsv: CSV_RE.test(name) });
+          }
         }
       }
 
-      // Flatten groups into one encounter per patient, concatenating parts
-      // with clear section dividers so the model can still tell admission
-      // notes from labs from discharge.
+      // -------- AUTO-DETECT STRATEGY --------
+      // Strip the top "root" wrapper from folder-picker paths so the first
+      // real folder under the chosen root is what we group on.
+      function stripRoot(p: string): string {
+        const parts = p.split("/").filter(Boolean);
+        return parts.length >= 2 ? parts.slice(1).join("/") : p;
+      }
+
+      // Try to find a patient ID in a filename. Catches patient_001, pt-12345,
+      // subject 9876, or a lone long numeric token like _10023_.
+      const ID_RE = /(?:patient|pt|subject|subj|mrn|hadm|enc|encounter)[\s_\-]?#?(\d{2,})/i;
+      const NUM_RE = /(?:^|[_\-\s\/])(\d{5,})(?:[_\-\s\.]|$)/;
+      function patientIdFromFilename(p: string): string | null {
+        const base = p.split("/").pop() || p;
+        const m1 = base.match(ID_RE);
+        if (m1) return m1[0].replace(/[\s#]/g, "_").toLowerCase();
+        const m2 = base.match(NUM_RE);
+        if (m2) return `id_${m2[1]}`;
+        return null;
+      }
+
+      type Grouping = Map<string, { path: string; text: string }[]>;
+      function tryFolderGrouping(): Grouping {
+        const g: Grouping = new Map();
+        for (const part of allParts) {
+          const rel = stripRoot(part.path);
+          const segs = rel.split("/").filter(Boolean);
+          const key = segs.length >= 2 ? segs[0] : (segs[0] || part.path);
+          const arr = g.get(key) || [];
+          arr.push({ path: part.path, text: part.text });
+          g.set(key, arr);
+        }
+        return g;
+      }
+      function tryFilenameIdGrouping(): Grouping {
+        const g: Grouping = new Map();
+        for (const part of allParts) {
+          const id = patientIdFromFilename(part.path);
+          if (!id) continue;
+          const arr = g.get(id) || [];
+          arr.push({ path: part.path, text: part.text });
+          g.set(id, arr);
+        }
+        return g;
+      }
+      function tryFilePerEncounter(): Grouping {
+        const g: Grouping = new Map();
+        for (const part of allParts) {
+          const base = (part.path.split("/").pop() || part.path).replace(/\.[^.]+$/, "");
+          g.set(base, [{ path: part.path, text: part.text }]);
+        }
+        return g;
+      }
+      // CSV row-split: if a single CSV has a patient-ID column, each unique ID
+      // becomes one encounter (rows concatenated).
+      function tryCsvRowSplit(): Grouping | null {
+        const csvs = allParts.filter(p => p.isCsv);
+        if (csvs.length === 0) return null;
+        const g: Grouping = new Map();
+        const ID_COLS = /^(patient[_\s]?id|subject[_\s]?id|subject|hadm[_\s]?id|encounter[_\s]?id|mrn|pat[_\s]?id)$/i;
+        for (const csv of csvs) {
+          // Detect delimiter (tab vs comma)
+          const firstLine = csv.text.split(/\r?\n/, 1)[0] || "";
+          const delim = firstLine.split("\t").length > firstLine.split(",").length ? "\t" : ",";
+          const lines = csv.text.split(/\r?\n/);
+          if (lines.length < 2) continue;
+          const header = lines[0].split(delim).map(h => h.trim().replace(/^"|"$/g, ""));
+          const idIdx = header.findIndex(h => ID_COLS.test(h));
+          if (idIdx < 0) continue;
+          const rowsById = new Map<string, string[]>();
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (!line.trim()) continue;
+            const cols = line.split(delim);
+            const id = (cols[idIdx] || "").trim().replace(/^"|"$/g, "");
+            if (!id) continue;
+            const arr = rowsById.get(id) || [];
+            arr.push(line);
+            rowsById.set(id, arr);
+          }
+          for (const [id, rows] of rowsById.entries()) {
+            const key = `id_${id}`;
+            const text = [lines[0], ...rows].join("\n");
+            const arr = g.get(key) || [];
+            arr.push({ path: `${csv.path}#${id}`, text });
+            g.set(key, arr);
+          }
+        }
+        return g.size > 0 ? g : null;
+      }
+
+      // Pick the strategy that gives the most patients (≥2 to beat "lump it all").
+      const candidates: { name: string; g: Grouping }[] = [];
+      const csv = tryCsvRowSplit();
+      if (csv && csv.size >= 2) candidates.push({ name: "csv-rows", g: csv });
+      const folder = tryFolderGrouping();
+      if (folder.size >= 2) candidates.push({ name: "folder", g: folder });
+      const fname = tryFilenameIdGrouping();
+      if (fname.size >= 2) candidates.push({ name: "filename-id", g: fname });
+      const filePer = tryFilePerEncounter();
+      candidates.push({ name: "file-per", g: filePer });
+      // Winner = most groups; tie-break by earlier strategy (more semantic).
+      candidates.sort((a, b) => b.g.size - a.g.size);
+      const groups = candidates[0]?.g || folder;
+
+      // Flatten groups into one encounter per patient.
       for (const [key, parts] of groups.entries()) {
         parts.sort((a, b) => a.path.localeCompare(b.path));
         const concat = parts
           .map(p => `===== ${p.path} =====\n${p.text}`)
           .join("\n\n");
         if (concat.trim().length >= 40) {
-          // Cap per-encounter to 80k chars. Edge function has memory limits,
-          // and the model only reads the first 60k anyway. Without this,
-          // MIMIC-style folders with full chartevents/inputevents OOM the worker.
           const MAX = 80_000;
           const trimmed = concat.length > MAX
             ? concat.slice(0, MAX) + `\n\n[…truncated from ${concat.length.toLocaleString()} chars]`
@@ -189,7 +275,7 @@ export default function AppRecovery() {
           next.push({ patient_ref: key, encounter_text: trimmed });
         }
       }
-    const partCount = Array.from(groups.values()).reduce((s, a) => s + a.length, 0);
+    const partCount = allParts.length;
     return { encounters: next, partCount };
   }
 
