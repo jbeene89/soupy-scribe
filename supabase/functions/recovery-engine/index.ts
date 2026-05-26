@@ -371,8 +371,11 @@ Deno.serve(async (req) => {
     if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const body = await req.json();
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+    const apiKey = Deno.env.get("LOVABLE_API_KEY") || "";
+    const hasCustom = !!(Deno.env.get("CUSTOM_INFERENCE_URL") && Deno.env.get("CUSTOM_INFERENCE_API_KEY") && Deno.env.get("CUSTOM_INFERENCE_MODEL"));
+    if (!apiKey && !hasCustom) {
+      throw new Error("No inference provider configured (set LOVABLE_API_KEY or CUSTOM_INFERENCE_URL + CUSTOM_INFERENCE_API_KEY + CUSTOM_INFERENCE_MODEL)");
+    }
 
     const DEFAULT_LENSES: LensId[] = ["hcc","cdi","counterfactual","modifier","bundling","contract","clawback_exposure","policy_time","supply"];
     const lenses = (Array.isArray(body?.lenses) && body.lenses.length ? body.lenses : DEFAULT_LENSES) as LensId[];
