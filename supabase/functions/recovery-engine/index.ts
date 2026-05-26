@@ -114,11 +114,21 @@ const FINDING_SCHEMA = `Return JSON: {
       "confidence": "high" | "medium" | "low",
       "dollars_at_risk": <number, dollars currently exposed>,
       "dollars_recoverable": <number, dollars recoverable if action taken>,
-      "recommended_action": "<concrete next step>"
+      "recommended_action": "<concrete next step>",
+      "estimation": {
+        "method": "<short label, e.g. 'CMS MPFS national avg', 'RAF weight x benchmark', 'NCCI MUE x unit rate', 'contract carve-out gap', 'implant pass-through', 'historical denial avg'>",
+        "reference_rate": <number, the per-unit dollar rate or weight used, or 0 if N/A>,
+        "reference_source": "<short citation, e.g. 'CMS 2024 MPFS', 'HCC v24 risk model', 'NCCI Q1 2025 edits', 'payer policy XYZ', or 'internal benchmark'>",
+        "units": <number, e.g. unit count, RAF delta, line count>,
+        "multiplier": <number, e.g. payer mix factor, confidence haircut — default 1>,
+        "formula": "<one-line math, e.g. '350 (MPFS) x 1 unit x 1.0 = 350'>",
+        "assumptions": ["<assumption 1>", "<assumption 2>"]
+      }
     }
   ]
 }
-Be conservative. NEVER fabricate a finding without a verbatim evidence quote. If nothing applies, return {"findings": []}.`;
+Be conservative. NEVER fabricate a finding without a verbatim evidence quote.
+The "estimation" object is REQUIRED — explain exactly how the dollar number was derived so a human auditor can re-derive it. Use 0 for any numeric field that does not apply, and "internal benchmark" if you cannot cite a specific source. If nothing applies, return {"findings": []}.`;
 
 // Best-effort payer detection from free text. Returns canonical payer label
 // when a strong match is found, otherwise null. Order matters: more specific
@@ -363,6 +373,22 @@ async function runSingleEncounter(
           dollars_at_risk: Math.max(0, Number(f.dollars_at_risk) || 0),
           dollars_recoverable: Math.max(0, Number(f.dollars_recoverable) || 0),
           recommended_action: String(f.recommended_action || "").slice(0, 2000),
+          metadata: (() => {
+            const e = f.estimation && typeof f.estimation === "object" ? f.estimation : {};
+            return {
+              estimation: {
+                method: String(e.method || "").slice(0, 240) || null,
+                reference_rate: Number(e.reference_rate) || 0,
+                reference_source: String(e.reference_source || "").slice(0, 240) || null,
+                units: Number(e.units) || 0,
+                multiplier: Number(e.multiplier) || 1,
+                formula: String(e.formula || "").slice(0, 500) || null,
+                assumptions: Array.isArray(e.assumptions)
+                  ? e.assumptions.slice(0, 8).map((a: any) => String(a).slice(0, 300))
+                  : [],
+              },
+            };
+          })(),
         });
       }
     } else {
