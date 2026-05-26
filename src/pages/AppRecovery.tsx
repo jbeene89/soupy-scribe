@@ -124,7 +124,7 @@ export default function AppRecovery() {
     e.target.value = "";
   }
 
-  async function parseFilesToEncounters(files: File[]): Promise<{ encounters: BatchEncounterInput[]; partCount: number }> {
+  async function parseFilesToEncounters(files: File[]): Promise<{ encounters: BatchEncounterInput[]; partCount: number; strategy: string }> {
     const next: BatchEncounterInput[] = [];
     // Collect every text part first, then auto-detect how to split into patients.
     // We try several strategies in order: (1) CSV row-split by patient ID column,
@@ -259,7 +259,9 @@ export default function AppRecovery() {
       candidates.push({ name: "file-per", g: filePer });
       // Winner = most groups; tie-break by earlier strategy (more semantic).
       candidates.sort((a, b) => b.g.size - a.g.size);
-      const groups = candidates[0]?.g || folder;
+      const winner = candidates[0];
+      const groups = winner?.g || folder;
+      const strategy = winner?.name || "folder";
 
       // Flatten groups into one encounter per patient.
       for (const [key, parts] of groups.entries()) {
@@ -276,7 +278,7 @@ export default function AppRecovery() {
         }
       }
     const partCount = allParts.length;
-    return { encounters: next, partCount };
+    return { encounters: next, partCount, strategy };
   }
 
   async function handleRunBatch() {
