@@ -1020,6 +1020,26 @@ export default function AppRecovery() {
                 if (!b) return null;
                 return (
                   <>
+                    {batchTotalsMismatch && (
+                      <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Stored batch totals don't match the findings</AlertTitle>
+                        <AlertDescription className="space-y-1">
+                          <div className="text-sm">
+                            Stored on batch row: <span className="font-mono">{fmtMoney(batchTotalsMismatch.stored)}</span> recoverable
+                            {" · "}
+                            <span className="font-mono">{fmtMoney(batchTotalsMismatch.storedRisk)}</span> at-risk.
+                            <br />
+                            Recomputed from primary/kept findings: <span className="font-mono">{fmtMoney(batchTotalsMismatch.real)}</span> recoverable
+                            {" · "}
+                            <span className="font-mono">{fmtMoney(batchTotalsMismatch.realRisk)}</span> at-risk.
+                          </div>
+                          <div className="text-xs opacity-80">
+                            The PDF export uses the recomputed numbers — that's why an export can read $0 even when this card shows a value, or vice versa. Click <span className="font-medium">Finalize stuck runs</span> or re-run failed encounters to sync the stored totals.
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                       <StatCard icon={<DollarSign className="h-4 w-4" />} label="Portfolio Recoverable" value={fmtMoney(selectedBatchRollup.recoverable || b.total_dollars_recoverable)} tone="emerald" />
                       <StatCard icon={<AlertTriangle className="h-4 w-4" />} label="Portfolio At-Risk" value={fmtMoney(selectedBatchRollup.atRisk || b.total_dollars_at_risk)} tone="amber" />
