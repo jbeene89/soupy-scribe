@@ -136,11 +136,12 @@ ${encounterText.slice(0, 60000)}
 
 ${FINDING_SCHEMA}`;
 
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const inf = getInferenceConfig(apiKey);
+  const res = await fetch(inf.url, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${inf.key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: inf.model,
       messages: [
         { role: "system", content: cfg.system },
         { role: "user", content: userPrompt },
@@ -199,11 +200,12 @@ ${JSON.stringify(compact, null, 2)}
 
 Return JSON: {"verdicts":[{"i":<index>,"verdict":"kept"|"demoted"|"removed","note":"<one-sentence reason>"}]}`;
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const inf = getInferenceConfig(apiKey);
+    const res = await fetch(inf.url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${inf.key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: inf.model,
         messages: [{ role: "system", content: sys }, { role: "user", content: user }],
         response_format: { type: "json_object" },
       }),
