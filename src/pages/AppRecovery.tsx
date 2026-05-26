@@ -377,8 +377,8 @@ export default function AppRecovery() {
         concurrency: batchTurbo ? 4 : 1,
       });
       toast({
-        title: "Batch complete",
-        description: `${res.batch.completed_count}/${res.batch.encounter_count} succeeded · ${fmtMoney(res.batch.total_dollars_recoverable)} recoverable`,
+        title: "Batch started",
+        description: `${batchEncounters.length} encounter${batchEncounters.length === 1 ? "" : "s"} queued — processing in background. This view will update as each one finishes.`,
       });
       // Cache source encounters keyed by batch id so user can retry failed
       // without re-uploading the files.
@@ -387,7 +387,7 @@ export default function AppRecovery() {
       setBatchLabel("");
       await reloadBatches();
       await selectBatch(res.batch.id);
-      await reloadRuns();
+      pollBatchUntilDone(res.batch.id).then(() => reloadRuns());
     } catch (e: any) {
       toast({ title: "Batch failed", description: e.message, variant: "destructive" });
     } finally {
@@ -423,11 +423,12 @@ export default function AppRecovery() {
         concurrency: batchTurbo ? 4 : 1,
       });
       toast({
-        title: "Retry complete",
-        description: `${toRetry.length} encounter${toRetry.length === 1 ? "" : "s"} re-run · batch now ${res.batch.completed_count}/${res.batch.encounter_count}`,
+        title: "Retry started",
+        description: `${toRetry.length} encounter${toRetry.length === 1 ? "" : "s"} re-queued — processing in background.`,
       });
       await reloadBatches();
       await selectBatch(batchId);
+      pollBatchUntilDone(batchId);
     } catch (e: any) {
       toast({ title: "Retry failed", description: e.message, variant: "destructive" });
     } finally {
@@ -460,10 +461,11 @@ export default function AppRecovery() {
       }));
       toast({
         title: "Added to batch",
-        description: `${parsed.encounters.length} new encounter${parsed.encounters.length === 1 ? "" : "s"} processed · batch now ${res.batch.completed_count}/${res.batch.encounter_count}`,
+        description: `${parsed.encounters.length} new encounter${parsed.encounters.length === 1 ? "" : "s"} queued — processing in background.`,
       });
       await reloadBatches();
       await selectBatch(selectedBatchId);
+      pollBatchUntilDone(selectedBatchId);
     } catch (err: any) {
       toast({ title: "Append failed", description: err.message, variant: "destructive" });
     } finally {
