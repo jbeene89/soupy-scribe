@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, DollarSign, AlertTriangle, CheckCircle2, ChevronRight, Trash2, Sparkles, FolderUp, ShieldCheck, ShieldAlert, ShieldX, Download } from "lucide-react";
 import { exportRecoveryBatchPDF } from "@/lib/exportRecoveryBatchPDF";
+import { computeBatchRollup } from "@/lib/recoveryRollup";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   CATEGORY_LABELS,
   LENS_LABELS,
@@ -65,6 +67,7 @@ export default function AppRecovery() {
   const [batches, setBatches] = useState<RecoveryBatch[]>([]);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [batchRuns, setBatchRuns] = useState<RecoveryRun[]>([]);
+  const [batchFindings, setBatchFindings] = useState<RecoveryFinding[]>([]);
   const [batchEncounters, setBatchEncounters] = useState<BatchEncounterInput[]>([]);
   const [batchLabel, setBatchLabel] = useState("");
   const [batchPayer, setBatchPayer] = useState("");
@@ -103,6 +106,23 @@ export default function AppRecovery() {
     try {
       const r = await listRunsInBatch(id);
       setBatchRuns(r);
+      // Pull findings across all runs in this batch so we can recompute the
+      // true rollup and warn the user when the stored batch totals are stale.
+      try {
+        const ids = r.map(x => x.id);
+        if (ids.length) {
+          const { data, error } = await supabase
+            .from("recovery_findings")
+            .select("*")
+            .in("run_id", ids);
+          if (error) throw error;
+          setBatchFindings((data || []) as any);
+        } else {
+          setBatchFindings([]);
+        }
+      } catch {
+        setBatchFindings([]);
+      }
     } catch (e: any) {
       toast({ title: "Could not load batch runs", description: e.message, variant: "destructive" });
     }
@@ -524,6 +544,30 @@ export default function AppRecovery() {
       ? selectedBatchRollup.recoverable
       : batch.total_dollars_recoverable;
   }
+
+  // True rollup derived from primary/kept findings — source of truth that the
+  // PDF export uses. If this diverges from the batch row's stored totals,
+  // surface a warning so the user knows why an export could read $0.
+  const trueBatchRollup = useMemo(
+    () => computeBatchRollup(batchRuns, batchFindings),
+    [batchRuns, batchFindings],
+  );
+  const selectedBatchObj = useMemo(
+    () => batches.find(b => b.id === selectedBatchId) || null,
+    [batches, selectedBatchId],
+  );
+  const batchTotalsMismatch = useMemo(() => {
+    if (!selectedBatchObj) return null;
+    const stored = Number(selectedBatchObj.total_dollars_recoverable || 0);
+    const real = trueBatchRollup.liveRecoverable;
+    const storedRisk = Number(selectedBatchObj.total_dollars_at_risk || 0);
+    const realRisk = trueBatchRollup.liveAtRisk;
+    const recovDiff = Math.abs(stored - real);
+    const riskDiff = Math.abs(storedRisk - realRisk);
+    // Ignore rounding noise under $1.
+    if (recovDiff < 1 && riskDiff < 1) return null;
+    return { stored, real, storedRisk, realRisk, recovDiff, riskDiff };
+  }, [selectedBatchObj, trueBatchRollup]);
 
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
@@ -976,6 +1020,26 @@ export default function AppRecovery() {
                 if (!b) return null;
                 return (
                   <>
+                    {batchTotalsMismatch && (
+                      <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Stored batch totals don't match the findings</AlertTitle>
+                        <AlertDescription className="space-y-1">
+                          <div className="text-sm">
+                            Stored on batch row: <span className="font-mono">{fmtMoney(batchTotalsMismatch.stored)}</span> recoverable
+                            {" · "}
+                            <span className="font-mono">{fmtMoney(batchTotalsMismatch.storedRisk)}</span> at-risk.
+                            <br />
+                            Recomputed from primary/kept findings: <span className="font-mono">{fmtMoney(batchTotalsMismatch.real)}</span> recoverable
+                            {" · "}
+                            <span className="font-mono">{fmtMoney(batchTotalsMismatch.realRisk)}</span> at-risk.
+                          </div>
+                          <div className="text-xs opacity-80">
+                            The PDF export uses the recomputed numbers — that's why an export can read $0 even when this card shows a value, or vice versa. Click <span className="font-medium">Finalize stuck runs</span> or re-run failed encounters to sync the stored totals.
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                       <StatCard icon={<DollarSign className="h-4 w-4" />} label="Portfolio Recoverable" value={fmtMoney(selectedBatchRollup.recoverable || b.total_dollars_recoverable)} tone="emerald" />
                       <StatCard icon={<AlertTriangle className="h-4 w-4" />} label="Portfolio At-Risk" value={fmtMoney(selectedBatchRollup.atRisk || b.total_dollars_at_risk)} tone="amber" />
