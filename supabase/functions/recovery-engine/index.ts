@@ -13,6 +13,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ===== Inference provider routing =====
+// If CUSTOM_INFERENCE_URL is set (e.g. an AMD Developer Cloud GPU running
+// vLLM / Ollama / TGI with an OpenAI-compatible /v1/chat/completions API),
+// route all model calls there instead of Lovable AI Gateway. Falls back to
+// Lovable AI when the custom secrets are not configured.
+function getInferenceConfig(lovableKey: string) {
+  const customUrl = Deno.env.get("CUSTOM_INFERENCE_URL");
+  const customKey = Deno.env.get("CUSTOM_INFERENCE_API_KEY");
+  const customModel = Deno.env.get("CUSTOM_INFERENCE_MODEL");
+  if (customUrl && customKey && customModel) {
+    return { url: customUrl, key: customKey, model: customModel, provider: "custom" as const };
+  }
+  return {
+    url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+    key: lovableKey,
+    model: "google/gemini-2.5-flash",
+    provider: "lovable" as const,
+  };
+}
+
 type LensId =
   | "hcc"
   | "cdi"
