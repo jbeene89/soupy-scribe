@@ -545,6 +545,30 @@ export default function AppRecovery() {
       : batch.total_dollars_recoverable;
   }
 
+  // True rollup derived from primary/kept findings — source of truth that the
+  // PDF export uses. If this diverges from the batch row's stored totals,
+  // surface a warning so the user knows why an export could read $0.
+  const trueBatchRollup = useMemo(
+    () => computeBatchRollup(batchRuns, batchFindings),
+    [batchRuns, batchFindings],
+  );
+  const selectedBatchObj = useMemo(
+    () => batches.find(b => b.id === selectedBatchId) || null,
+    [batches, selectedBatchId],
+  );
+  const batchTotalsMismatch = useMemo(() => {
+    if (!selectedBatchObj) return null;
+    const stored = Number(selectedBatchObj.total_dollars_recoverable || 0);
+    const real = trueBatchRollup.liveRecoverable;
+    const storedRisk = Number(selectedBatchObj.total_dollars_at_risk || 0);
+    const realRisk = trueBatchRollup.liveAtRisk;
+    const recovDiff = Math.abs(stored - real);
+    const riskDiff = Math.abs(storedRisk - realRisk);
+    // Ignore rounding noise under $1.
+    if (recovDiff < 1 && riskDiff < 1) return null;
+    return { stored, real, storedRisk, realRisk, recovDiff, riskDiff };
+  }, [selectedBatchObj, trueBatchRollup]);
+
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
     for (const f of findings.filter(x => x.is_primary_in_cluster && x.adversarial_verdict === "kept")) {
