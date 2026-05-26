@@ -34,6 +34,7 @@ import {
 import { readTextMaybeGzipped } from "@/lib/gunzip";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
+import { EstimationBreakdown } from "@/components/recovery/EstimationBreakdown";
 
 const ALL_LENSES: RecoveryLensId[] = [
   "hcc","cdi","counterfactual","modifier","bundling","contract","clawback_exposure","policy_time","supply",
@@ -886,6 +887,9 @@ export default function AppRecovery() {
                                 {Number(f.dollars_at_risk) > 0 && (
                                   <div className="text-[9px] text-amber-600">@risk {fmtMoney(f.dollars_at_risk)}</div>
                                 )}
+                                <div className="mt-1 flex justify-end">
+                                  <EstimationBreakdown finding={f} />
+                                </div>
                               </td>
                               <td className="p-2 align-top text-center">
                                 <Badge variant={f.confidence === "high" ? "default" : f.confidence === "medium" ? "secondary" : "outline"} className="text-[9px]">
