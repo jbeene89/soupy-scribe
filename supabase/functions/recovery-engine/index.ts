@@ -243,22 +243,35 @@ async function runSingleEncounter(
 ) {
   const { encounter_text, patient_ref, payer, date_of_service, lenses, notes, batch_id, onRunCreated } = params;
 
+  // Auto-detect payer from the encounter text when caller didn't provide one.
+  // Looks for common commercial + government payer names and explicit "Payer:" /
+  // "Insurance:" / "Plan:" labels. First strong hit wins.
+  const detectedPayer = payer && payer.trim() ? payer.trim() : detectPayerFromText(encounter_text);
+  const effectivePayer = detectedPayer || null;
+
   const { data: run, error: runErr } = await sb.from("recovery_runs").insert({
     user_id: userId,
     batch_id,
     patient_ref,
-    payer,
+    payer: effectivePayer,
     date_of_service,
     encounter_excerpt: String(encounter_text).slice(0, 4000),
     lenses_run: lenses,
     status: "running",
     notes,
+    metadata: {
+      payer_source: payer && payer.trim()
+        ? "caller"
+        : detectedPayer
+        ? "auto-detected"
+        : "unknown",
+    },
   }).select("*").single();
   if (runErr) throw runErr;
   if (onRunCreated) onRunCreated(run.id);
 
   const results = await Promise.allSettled(
-    lenses.map((l) => runLens(l, encounter_text, payer, date_of_service, apiKey)),
+    lenses.map((l) => runLens(l, encounter_text, effectivePayer, date_of_service, apiKey)),
   );
 
   const rows: any[] = [];
