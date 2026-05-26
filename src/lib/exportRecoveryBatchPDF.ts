@@ -17,6 +17,7 @@ import {
   type RecoveryRun,
 } from "./recoveryService";
 import { LENS_LABELS } from "./recoveryService";
+import { computeBatchRollup } from "./recoveryRollup";
 
 function fmtMoney(n: number | null | undefined): string {
   return Number(n || 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -41,43 +42,8 @@ export async function exportRecoveryBatchPDF(batch: RecoveryBatch) {
     .sort((a, b) => Number(b.dollars_recoverable || 0) - Number(a.dollars_recoverable || 0))
     .slice(0, 25);
 
-  // Per-run rollup from findings (source of truth — survives stale run totals
-  // and status-string mismatches).
-  const perRunRecoverable = new Map<string, number>();
-  const perRunAtRisk = new Map<string, number>();
-  for (const f of keptPrimary) {
-    perRunRecoverable.set(f.run_id, (perRunRecoverable.get(f.run_id) || 0) + Number(f.dollars_recoverable || 0));
-    perRunAtRisk.set(f.run_id, (perRunAtRisk.get(f.run_id) || 0) + Number(f.dollars_at_risk || 0));
-  }
-
-  let liveRecoverable = 0;
-  let liveAtRisk = 0;
-  let liveCompleted = 0;
-  let liveFailed = 0;
-  let liveStuck = 0;
-  for (const r of runs) {
-    const status = String(r.status || "").toLowerCase();
-    const recov = perRunRecoverable.get(r.id) ?? Number(r.total_dollars_recoverable || 0);
-    const risk = perRunAtRisk.get(r.id) ?? Number(r.total_dollars_at_risk || 0);
-    if (status === "failed") {
-      liveFailed++;
-    } else if (status === "running" || status === "pending" || status === "queued") {
-      liveStuck++;
-    } else {
-      // completed / partial / anything else with findings → count as done
-      liveCompleted++;
-      liveRecoverable += recov;
-      liveAtRisk += risk;
-    }
-  }
-
-  // Last-resort guard: if older batch metadata is stale and statuses are odd,
-  // never export a $0 rollup when verified primary findings have real dollars.
-  if (liveRecoverable === 0 && perRunRecoverable.size > 0) {
-    liveRecoverable = Array.from(perRunRecoverable.values()).reduce((sum, value) => sum + value, 0);
-    liveAtRisk = Array.from(perRunAtRisk.values()).reduce((sum, value) => sum + value, 0);
-    liveCompleted = Math.max(liveCompleted, perRunRecoverable.size);
-  }
+  const { perRunRecoverable, perRunAtRisk, liveRecoverable, liveAtRisk, liveCompleted, liveFailed, liveStuck } =
+    computeBatchRollup(runs, allFindings);
 
   // By-lens rollup
   const byLens: Record<string, { count: number; dollars: number }> = {};
