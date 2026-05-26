@@ -13,6 +13,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ===== Inference provider routing =====
+// If CUSTOM_INFERENCE_URL is set (e.g. an AMD Developer Cloud GPU running
+// vLLM / Ollama / TGI with an OpenAI-compatible /v1/chat/completions API),
+// route all model calls there instead of Lovable AI Gateway. Falls back to
+// Lovable AI when the custom secrets are not configured.
+function getInferenceConfig(lovableKey: string) {
+  const customUrl = Deno.env.get("CUSTOM_INFERENCE_URL");
+  const customKey = Deno.env.get("CUSTOM_INFERENCE_API_KEY");
+  const customModel = Deno.env.get("CUSTOM_INFERENCE_MODEL");
+  if (customUrl && customKey && customModel) {
+    return { url: customUrl, key: customKey, model: customModel, provider: "custom" as const };
+  }
+  return {
+    url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+    key: lovableKey,
+    model: "google/gemini-2.5-flash",
+    provider: "lovable" as const,
+  };
+}
+
 type LensId =
   | "hcc"
   | "cdi"
@@ -116,11 +136,12 @@ ${encounterText.slice(0, 60000)}
 
 ${FINDING_SCHEMA}`;
 
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const inf = getInferenceConfig(apiKey);
+  const res = await fetch(inf.url, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${inf.key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: inf.model,
       messages: [
         { role: "system", content: cfg.system },
         { role: "user", content: userPrompt },
@@ -179,11 +200,12 @@ ${JSON.stringify(compact, null, 2)}
 
 Return JSON: {"verdicts":[{"i":<index>,"verdict":"kept"|"demoted"|"removed","note":"<one-sentence reason>"}]}`;
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const inf = getInferenceConfig(apiKey);
+    const res = await fetch(inf.url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${inf.key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: inf.model,
         messages: [{ role: "system", content: sys }, { role: "user", content: user }],
         response_format: { type: "json_object" },
       }),
@@ -349,8 +371,11 @@ Deno.serve(async (req) => {
     if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const body = await req.json();
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+    const apiKey = Deno.env.get("LOVABLE_API_KEY") || "";
+    const hasCustom = !!(Deno.env.get("CUSTOM_INFERENCE_URL") && Deno.env.get("CUSTOM_INFERENCE_API_KEY") && Deno.env.get("CUSTOM_INFERENCE_MODEL"));
+    if (!apiKey && !hasCustom) {
+      throw new Error("No inference provider configured (set LOVABLE_API_KEY or CUSTOM_INFERENCE_URL + CUSTOM_INFERENCE_API_KEY + CUSTOM_INFERENCE_MODEL)");
+    }
 
     const DEFAULT_LENSES: LensId[] = ["hcc","cdi","counterfactual","modifier","bundling","contract","clawback_exposure","policy_time","supply"];
     const lenses = (Array.isArray(body?.lenses) && body.lenses.length ? body.lenses : DEFAULT_LENSES) as LensId[];
