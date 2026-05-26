@@ -547,48 +547,71 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Simple worker-pool: N workers pull from a shared queue
-      const queue = [...encounters];
-      const workers = Array.from({ length: concurrency }, async () => {
-        while (queue.length) {
-          const enc = queue.shift();
-          if (!enc) break;
-          await processOne(enc);
-        }
-      });
-      await Promise.all(workers);
+      // Background task: process the queue, then recompute batch totals.
+      // We return to the client immediately so we never hit the 150s edge
+      // idle timeout on large batches. The client polls recovery_runs +
+      // recovery_batches to see progress (and can call finalizeStuckBatch
+      // if a worker dies mid-flight).
+      const backgroundWork = (async () => {
+        try {
+          const queue = [...encounters];
+          const workers = Array.from({ length: concurrency }, async () => {
+            while (queue.length) {
+              const enc = queue.shift();
+              if (!enc) break;
+              await processOne(enc);
+            }
+          });
+          await Promise.all(workers);
 
-      // Recompute totals from ALL runs in the batch (handles append + retry).
-      const { data: allRuns } = await sb
-        .from("recovery_runs")
-        .select("status,total_dollars_at_risk,total_dollars_recoverable")
-        .eq("batch_id", batch.id);
-      let totalAtRisk = 0, totalRecoverable = 0, completed = 0, failed = 0;
-      for (const r of allRuns || []) {
-        if (r.status === "completed" || r.status === "partial") {
-          completed++;
-          totalAtRisk += Number(r.total_dollars_at_risk || 0);
-          totalRecoverable += Number(r.total_dollars_recoverable || 0);
-        } else if (r.status === "failed") {
-          failed++;
+          const { data: allRuns } = await sb
+            .from("recovery_runs")
+            .select("status,total_dollars_at_risk,total_dollars_recoverable")
+            .eq("batch_id", batch.id);
+          let totalAtRisk = 0, totalRecoverable = 0, completed = 0, failed = 0;
+          for (const r of allRuns || []) {
+            if (r.status === "completed" || r.status === "partial") {
+              completed++;
+              totalAtRisk += Number(r.total_dollars_at_risk || 0);
+              totalRecoverable += Number(r.total_dollars_recoverable || 0);
+            } else if (r.status === "failed") {
+              failed++;
+            }
+          }
+          const batchStatus = failed === 0 ? "completed" : completed === 0 ? "failed" : "partial";
+          await sb.from("recovery_batches").update({
+            status: batchStatus,
+            completed_count: completed,
+            failed_count: failed,
+            total_dollars_at_risk: +totalAtRisk.toFixed(2),
+            total_dollars_recoverable: +totalRecoverable.toFixed(2),
+            metadata: { runs: runSummaries },
+          }).eq("id", batch.id);
+        } catch (bgErr) {
+          console.error("recovery-engine background batch error", bgErr);
+          try {
+            await sb.from("recovery_batches").update({
+              status: "partial",
+              error: String((bgErr as any)?.message || bgErr).slice(0, 500),
+            }).eq("id", batch.id);
+          } catch (_) { /* best effort */ }
         }
+      })();
+
+      // @ts-ignore EdgeRuntime is provided by Supabase edge runtime
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(backgroundWork);
       }
-      const batchStatus = failed === 0 ? "completed" : completed === 0 ? "failed" : "partial";
-      const { data: updatedBatch } = await sb.from("recovery_batches").update({
-        status: batchStatus,
-        completed_count: completed,
-        failed_count: failed,
-        total_dollars_at_risk: +totalAtRisk.toFixed(2),
-        total_dollars_recoverable: +totalRecoverable.toFixed(2),
-        metadata: { runs: runSummaries },
-      }).eq("id", batch.id).select("*").single();
 
       return new Response(JSON.stringify({
         success: true,
         mode: "batch",
-        batch: updatedBatch,
-        runs: runSummaries,
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        async: true,
+        batch,
+        runs: [],
+        message: "Batch accepted and is processing in the background. Poll the batch to see progress.",
+      }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ============ SINGLE MODE ============

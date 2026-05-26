@@ -128,6 +128,30 @@ export default function AppRecovery() {
     }
   }
 
+  // Poll a running batch until it finishes (or 10 minutes elapse), refreshing
+  // the UI as runs complete. Used because the edge function now returns
+  // immediately and processes encounters in the background to avoid the 150s
+  // gateway idle timeout.
+  async function pollBatchUntilDone(batchId: string) {
+    const start = Date.now();
+    const MAX_MS = 10 * 60 * 1000;
+    let lastStatus = "running";
+    while (Date.now() - start < MAX_MS) {
+      await new Promise(r => setTimeout(r, 4000));
+      try {
+        await reloadBatches();
+        if (selectedBatchId === batchId || !selectedBatchId) {
+          await selectBatch(batchId);
+        }
+        const fresh = (await listBatches()).find(b => b.id === batchId);
+        if (!fresh) break;
+        lastStatus = fresh.status;
+        if (fresh.status !== "running" && fresh.status !== "pending") break;
+      } catch { /* keep polling */ }
+    }
+    return lastStatus;
+  }
+
   async function handleBatchFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -353,8 +377,8 @@ export default function AppRecovery() {
         concurrency: batchTurbo ? 4 : 1,
       });
       toast({
-        title: "Batch complete",
-        description: `${res.batch.completed_count}/${res.batch.encounter_count} succeeded · ${fmtMoney(res.batch.total_dollars_recoverable)} recoverable`,
+        title: "Batch started",
+        description: `${batchEncounters.length} encounter${batchEncounters.length === 1 ? "" : "s"} queued — processing in background. This view will update as each one finishes.`,
       });
       // Cache source encounters keyed by batch id so user can retry failed
       // without re-uploading the files.
@@ -363,7 +387,7 @@ export default function AppRecovery() {
       setBatchLabel("");
       await reloadBatches();
       await selectBatch(res.batch.id);
-      await reloadRuns();
+      pollBatchUntilDone(res.batch.id).then(() => reloadRuns());
     } catch (e: any) {
       toast({ title: "Batch failed", description: e.message, variant: "destructive" });
     } finally {
@@ -399,11 +423,12 @@ export default function AppRecovery() {
         concurrency: batchTurbo ? 4 : 1,
       });
       toast({
-        title: "Retry complete",
-        description: `${toRetry.length} encounter${toRetry.length === 1 ? "" : "s"} re-run · batch now ${res.batch.completed_count}/${res.batch.encounter_count}`,
+        title: "Retry started",
+        description: `${toRetry.length} encounter${toRetry.length === 1 ? "" : "s"} re-queued — processing in background.`,
       });
       await reloadBatches();
       await selectBatch(batchId);
+      pollBatchUntilDone(batchId);
     } catch (e: any) {
       toast({ title: "Retry failed", description: e.message, variant: "destructive" });
     } finally {
@@ -436,10 +461,11 @@ export default function AppRecovery() {
       }));
       toast({
         title: "Added to batch",
-        description: `${parsed.encounters.length} new encounter${parsed.encounters.length === 1 ? "" : "s"} processed · batch now ${res.batch.completed_count}/${res.batch.encounter_count}`,
+        description: `${parsed.encounters.length} new encounter${parsed.encounters.length === 1 ? "" : "s"} queued — processing in background.`,
       });
       await reloadBatches();
       await selectBatch(selectedBatchId);
+      pollBatchUntilDone(selectedBatchId);
     } catch (err: any) {
       toast({ title: "Append failed", description: err.message, variant: "destructive" });
     } finally {
