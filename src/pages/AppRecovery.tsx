@@ -116,7 +116,7 @@ export default function AppRecovery() {
       setBatchEncounters(prev => [...prev, ...parsed.encounters]);
       toast({
         title: "Loaded",
-        description: `${parsed.encounters.length} patient encounter${parsed.encounters.length === 1 ? "" : "s"} from ${parsed.partCount} file${parsed.partCount === 1 ? "" : "s"} (total queued: ${batchEncounters.length + parsed.encounters.length})`,
+        description: `${parsed.encounters.length} patient encounter${parsed.encounters.length === 1 ? "" : "s"} from ${parsed.partCount} file${parsed.partCount === 1 ? "" : "s"} · split mode: ${parsed.strategy} (total queued: ${batchEncounters.length + parsed.encounters.length})`,
       });
     } catch (err: any) {
       toast({ title: "Could not read files", description: err.message, variant: "destructive" });
