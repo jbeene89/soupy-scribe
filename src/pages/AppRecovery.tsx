@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, DollarSign, AlertTriangle, CheckCircle2, ChevronRight, Trash2, Sparkles, FolderUp, ShieldCheck, ShieldAlert, ShieldX, Download } from "lucide-react";
 import { exportRecoveryBatchPDF } from "@/lib/exportRecoveryBatchPDF";
+import { computeBatchRollup } from "@/lib/recoveryRollup";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   CATEGORY_LABELS,
   LENS_LABELS,
@@ -65,6 +67,7 @@ export default function AppRecovery() {
   const [batches, setBatches] = useState<RecoveryBatch[]>([]);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [batchRuns, setBatchRuns] = useState<RecoveryRun[]>([]);
+  const [batchFindings, setBatchFindings] = useState<RecoveryFinding[]>([]);
   const [batchEncounters, setBatchEncounters] = useState<BatchEncounterInput[]>([]);
   const [batchLabel, setBatchLabel] = useState("");
   const [batchPayer, setBatchPayer] = useState("");
@@ -103,6 +106,23 @@ export default function AppRecovery() {
     try {
       const r = await listRunsInBatch(id);
       setBatchRuns(r);
+      // Pull findings across all runs in this batch so we can recompute the
+      // true rollup and warn the user when the stored batch totals are stale.
+      try {
+        const ids = r.map(x => x.id);
+        if (ids.length) {
+          const { data, error } = await supabase
+            .from("recovery_findings")
+            .select("*")
+            .in("run_id", ids);
+          if (error) throw error;
+          setBatchFindings((data || []) as any);
+        } else {
+          setBatchFindings([]);
+        }
+      } catch {
+        setBatchFindings([]);
+      }
     } catch (e: any) {
       toast({ title: "Could not load batch runs", description: e.message, variant: "destructive" });
     }
