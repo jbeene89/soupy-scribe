@@ -958,7 +958,24 @@ export default function AppRecovery() {
                   <div className="border rounded-md max-h-48 overflow-y-auto">
                     <div className="flex items-center justify-between px-2 py-1.5 border-b bg-muted/30">
                       <span className="text-[11px] font-medium">{batchEncounters.length} queued</span>
-                      <button onClick={() => setBatchEncounters([])} className="text-[10px] text-destructive hover:underline">Clear all</button>
+                      <div className="flex items-center gap-2">
+                        {[25, 50, 100, 250].map(n => (
+                          <button
+                            key={n}
+                            disabled={batchEncounters.length <= n}
+                            onClick={() => {
+                              const dropped = batchEncounters.length - n;
+                              setBatchEncounters(prev => prev.slice(0, n));
+                              toast({ title: `Trimmed to first ${n}`, description: `Removed ${dropped} encounter${dropped === 1 ? "" : "s"} from the queue.` });
+                            }}
+                            className="text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={`Keep only the first ${n} encounters`}
+                          >
+                            Keep {n}
+                          </button>
+                        ))}
+                        <button onClick={() => setBatchEncounters([])} className="text-[10px] text-destructive hover:underline">Clear all</button>
+                      </div>
                     </div>
                     <ul className="text-[11px] divide-y">
                       {batchEncounters.map((e, i) => (
