@@ -120,6 +120,74 @@ const FINDING_SCHEMA = `Return JSON: {
 }
 Be conservative. NEVER fabricate a finding without a verbatim evidence quote. If nothing applies, return {"findings": []}.`;
 
+// Best-effort payer detection from free text. Returns canonical payer label
+// when a strong match is found, otherwise null. Order matters: more specific
+// patterns first so "Aetna Better Health" beats a bare "Aetna" hit elsewhere.
+function detectPayerFromText(text: string): string | null {
+  if (!text) return null;
+  const head = text.slice(0, 20000); // payer is almost always near the top
+
+  // 1. Explicit label wins: "Payer: X" / "Insurance: X" / "Plan: X" / "Carrier: X"
+  const labelRe = /\b(?:payer|payor|insurance(?:\s*carrier)?|insurer|carrier|plan(?:\s*name)?|primary\s*insurance)\s*[:#-]\s*([A-Z][A-Za-z0-9 &.,'\/-]{2,60})/i;
+  const labelMatch = head.match(labelRe);
+  if (labelMatch) {
+    const raw = labelMatch[1].trim().replace(/[.,;]+$/, "");
+    if (raw && !/^(unknown|n\/a|none|self[\s-]?pay)$/i.test(raw)) {
+      return canonicalizePayer(raw) || raw;
+    }
+  }
+
+  // 2. Pattern match against known payer keywords anywhere in the head.
+  const PATTERNS: { canonical: string; re: RegExp }[] = [
+    { canonical: "Medicare", re: /\b(?:medicare(?:\s+part\s+[abcd])?|cms|noridian|palmetto\s+gba|novitas|wps\s+medicare|cgs\s+administrators)\b/i },
+    { canonical: "Medicare Advantage", re: /\bmedicare\s+advantage\b|\bMA[\s-]?plan\b/i },
+    { canonical: "Medicaid", re: /\bmedicaid\b|\bmedi[\s-]?cal\b/i },
+    { canonical: "Tricare", re: /\btricare\b|\bchampus\b/i },
+    { canonical: "VA", re: /\b(?:veterans?\s+(?:affairs|administration)|VA\s+health)\b/i },
+    { canonical: "UnitedHealthcare", re: /\b(?:united\s*healthcare|unitedhealth|UHC|optum)\b/i },
+    { canonical: "Aetna", re: /\baetna\b/i },
+    { canonical: "Cigna", re: /\bcigna\b|\bevernorth\b/i },
+    { canonical: "Humana", re: /\bhumana\b/i },
+    { canonical: "Anthem BCBS", re: /\banthem\b/i },
+    { canonical: "Blue Cross Blue Shield", re: /\b(?:blue\s*cross(?:\s+blue\s*shield)?|BCBS|BC\/BS)\b/i },
+    { canonical: "Kaiser Permanente", re: /\bkaiser\s+permanente\b|\bkaiser\b/i },
+    { canonical: "Molina", re: /\bmolina(?:\s+healthcare)?\b/i },
+    { canonical: "Centene", re: /\bcentene\b|\bambetter\b|\bwellcare\b/i },
+    { canonical: "CareSource", re: /\bcaresource\b/i },
+    { canonical: "Highmark", re: /\bhighmark\b/i },
+    { canonical: "Independence Blue Cross", re: /\bindependence\s+blue\s+cross\b|\bIBX\b/i },
+    { canonical: "HCSC", re: /\b(?:health\s+care\s+service\s+corp|HCSC)\b/i },
+    { canonical: "EmblemHealth", re: /\bemblemhealth\b/i },
+    { canonical: "Healthfirst", re: /\bhealthfirst\b/i },
+    { canonical: "Oscar Health", re: /\boscar(?:\s+health)?\b/i },
+    { canonical: "Bright Health", re: /\bbright\s+healthcare?\b/i },
+    { canonical: "Workers Comp", re: /\bworkers?[\s']*comp(?:ensation)?\b/i },
+    { canonical: "Self-pay", re: /\bself[\s-]?pay\b/i },
+  ];
+  for (const { canonical, re } of PATTERNS) {
+    if (re.test(head)) return canonical;
+  }
+  return null;
+}
+
+function canonicalizePayer(raw: string): string | null {
+  const t = raw.toLowerCase();
+  if (/united\s*health|^uhc$|optum/.test(t)) return "UnitedHealthcare";
+  if (/anthem/.test(t)) return "Anthem BCBS";
+  if (/blue\s*cross|bcbs|bc\/bs/.test(t)) return "Blue Cross Blue Shield";
+  if (/aetna/.test(t)) return "Aetna";
+  if (/cigna|evernorth/.test(t)) return "Cigna";
+  if (/humana/.test(t)) return "Humana";
+  if (/kaiser/.test(t)) return "Kaiser Permanente";
+  if (/medicare\s+advantage|^ma[\s-]?plan$/.test(t)) return "Medicare Advantage";
+  if (/medicare|cms/.test(t)) return "Medicare";
+  if (/medicaid|medi[\s-]?cal/.test(t)) return "Medicaid";
+  if (/tricare|champus/.test(t)) return "Tricare";
+  if (/molina/.test(t)) return "Molina";
+  if (/centene|ambetter|wellcare/.test(t)) return "Centene";
+  return null;
+}
+
 async function runLens(
   lens: LensId,
   encounterText: string,
@@ -243,22 +311,35 @@ async function runSingleEncounter(
 ) {
   const { encounter_text, patient_ref, payer, date_of_service, lenses, notes, batch_id, onRunCreated } = params;
 
+  // Auto-detect payer from the encounter text when caller didn't provide one.
+  // Looks for common commercial + government payer names and explicit "Payer:" /
+  // "Insurance:" / "Plan:" labels. First strong hit wins.
+  const detectedPayer = payer && payer.trim() ? payer.trim() : detectPayerFromText(encounter_text);
+  const effectivePayer = detectedPayer || null;
+
   const { data: run, error: runErr } = await sb.from("recovery_runs").insert({
     user_id: userId,
     batch_id,
     patient_ref,
-    payer,
+    payer: effectivePayer,
     date_of_service,
     encounter_excerpt: String(encounter_text).slice(0, 4000),
     lenses_run: lenses,
     status: "running",
     notes,
+    metadata: {
+      payer_source: payer && payer.trim()
+        ? "caller"
+        : detectedPayer
+        ? "auto-detected"
+        : "unknown",
+    },
   }).select("*").single();
   if (runErr) throw runErr;
   if (onRunCreated) onRunCreated(run.id);
 
   const results = await Promise.allSettled(
-    lenses.map((l) => runLens(l, encounter_text, payer, date_of_service, apiKey)),
+    lenses.map((l) => runLens(l, encounter_text, effectivePayer, date_of_service, apiKey)),
   );
 
   const rows: any[] = [];
