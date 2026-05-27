@@ -35,6 +35,7 @@ import { readTextMaybeGzipped } from "@/lib/gunzip";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 import { EstimationBreakdown } from "@/components/recovery/EstimationBreakdown";
+import { PreventionPlaybook } from "@/components/recovery/PreventionPlaybook";
 
 const ALL_LENSES: RecoveryLensId[] = [
   "hcc","cdi","counterfactual","modifier","bundling","contract","clawback_exposure","policy_time","supply",
@@ -848,6 +849,10 @@ export default function AppRecovery() {
                 </label>
               </div>
 
+              {findings.length > 0 && (
+                <PreventionPlaybook findings={findings} totalEncounters={1} scopeLabel="This run" />
+              )}
+
               {/* Findings table */}
               <Card>
                 <CardContent className="p-0">
@@ -1156,6 +1161,14 @@ export default function AppRecovery() {
                       <StatCard label="Encounters" value={`${selectedBatchRollup.completed || b.completed_count}/${batchRuns.length || b.encounter_count}`} sub={selectedBatchRollup.failed || b.failed_count ? `${selectedBatchRollup.failed || b.failed_count} failed` : "all succeeded"} />
                       <StatCard label="Avg / Encounter" value={fmtMoney((selectedBatchRollup.completed || b.completed_count) ? (selectedBatchRollup.recoverable || b.total_dollars_recoverable) / (selectedBatchRollup.completed || b.completed_count) : 0)} tone="emerald" />
                     </div>
+
+                    {batchFindingsLoaded && (
+                      <PreventionPlaybook
+                        findings={batchFindings}
+                        totalEncounters={batchRuns.length || b.encounter_count}
+                        scopeLabel={b.label || `Batch ${b.id.slice(0, 8)}`}
+                      />
+                    )}
 
                     <div className="flex justify-end">
                       {(b.failed_count > 0 || batchRuns.some(r => r.status === "failed")) && (
