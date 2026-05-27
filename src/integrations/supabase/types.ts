@@ -200,6 +200,66 @@ export type Database = {
           },
         ]
       }
+      capacity_events: {
+        Row: {
+          actual_ratio: number
+          case_id: string | null
+          classification: string
+          created_at: string
+          day_of_week: string | null
+          estimated_impact: number
+          event_date: string | null
+          id: string
+          impact_direction: string
+          notes: string | null
+          nurses_on_shift: number
+          occupied_beds: number
+          org_id: string | null
+          shift: string | null
+          staffed_beds: number
+          target_ratio: number
+          unit: string
+        }
+        Insert: {
+          actual_ratio?: number
+          case_id?: string | null
+          classification?: string
+          created_at?: string
+          day_of_week?: string | null
+          estimated_impact?: number
+          event_date?: string | null
+          id?: string
+          impact_direction?: string
+          notes?: string | null
+          nurses_on_shift?: number
+          occupied_beds?: number
+          org_id?: string | null
+          shift?: string | null
+          staffed_beds?: number
+          target_ratio?: number
+          unit: string
+        }
+        Update: {
+          actual_ratio?: number
+          case_id?: string | null
+          classification?: string
+          created_at?: string
+          day_of_week?: string | null
+          estimated_impact?: number
+          event_date?: string | null
+          id?: string
+          impact_direction?: string
+          notes?: string | null
+          nurses_on_shift?: number
+          occupied_beds?: number
+          org_id?: string | null
+          shift?: string | null
+          staffed_beds?: number
+          target_ratio?: number
+          unit?: string
+        }
+        Relationships: []
+      }
       case_analyses: {
         Row: {
           assumptions: string[] | null
