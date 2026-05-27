@@ -6,6 +6,7 @@ import type { ImagingFinding } from '@/lib/imagingTypes';
 import type { RevenueIntegrityFinding } from '@/lib/revenueIntegrityTypes';
 import type { CDIFinding } from '@/lib/cdiTypes';
 import type { CapacityEvent } from '@/lib/capacityTypes';
+import type { WriteoffEvent } from '@/lib/writeoffTypes';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import { deleteCase, deriveLivePatterns, type LivePhysicianPattern } from '@/lib/soupyEngineService';
 import { fetchCases, fetchCase } from '@/lib/caseService';
@@ -15,10 +16,12 @@ import { fetchImagingFindings } from '@/lib/imagingService';
 import { listRevenueIntegrityFindings } from '@/lib/revenueIntegrityService';
 import { listAllCDIFindings } from '@/lib/cdiService';
 import { fetchCapacityEvents } from '@/lib/capacityService';
+import { fetchWriteoffEvents } from '@/lib/writeoffService';
 import { mockORReadinessEvents, mockTriageEvents, mockPostOpFlowEvents } from '@/lib/operationalMockData';
 import { mockERAcuteEvents, mockPatientAdvocateEvents } from '@/lib/erAcuteMockData';
 import { mockImagingFindings } from '@/lib/imagingMockData';
 import { mockCapacityEvents } from '@/lib/capacityMockData';
+import { mockWriteoffEvents } from '@/lib/writeoffMockData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -63,6 +66,8 @@ interface AdminContextType {
   reloadCDIFindings: () => Promise<void>;
   capacityEvents: CapacityEvent[];
   reloadCapacityEvents: () => Promise<void>;
+  writeoffEvents: WriteoffEvent[];
+  reloadWriteoffEvents: () => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType>(null!);
@@ -90,6 +95,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [liveRIFindings, setLiveRIFindings] = useState<RevenueIntegrityFinding[]>([]);
   const [liveCDIFindings, setLiveCDIFindings] = useState<CDIFinding[]>([]);
   const [liveCapacityEvents, setLiveCapacityEvents] = useState<CapacityEvent[]>([]);
+  const [liveWriteoffEvents, setLiveWriteoffEvents] = useState<WriteoffEvent[]>([]);
 
   const loadLiveCases = useCallback(async () => {
     setLoadingLive(true);
@@ -159,6 +165,15 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const loadLiveWriteoffEvents = useCallback(async () => {
+    try {
+      const evs = await fetchWriteoffEvents();
+      setLiveWriteoffEvents(evs);
+    } catch (err) {
+      console.error('Failed to load write-off events:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadLiveCases();
     loadLiveOperationalEvents();
@@ -166,6 +181,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     loadLiveRIFindings();
     loadLiveCDIFindings();
     loadLiveCapacityEvents();
+    loadLiveWriteoffEvents();
 
     const channel = supabase
       .channel('admin-realtime')
@@ -180,10 +196,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'revenue_integrity_findings' }, () => loadLiveRIFindings())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cdi_findings' }, () => loadLiveCDIFindings())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'capacity_events' }, () => loadLiveCapacityEvents())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'writeoff_events' }, () => loadLiveWriteoffEvents())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [loadLiveCases, loadLiveOperationalEvents, loadLiveImagingFindings, loadLiveRIFindings, loadLiveCDIFindings, loadLiveCapacityEvents]);
+  }, [loadLiveCases, loadLiveOperationalEvents, loadLiveImagingFindings, loadLiveRIFindings, loadLiveCDIFindings, loadLiveCapacityEvents, loadLiveWriteoffEvents]);
 
   const allCases = dataSource === 'live' ? liveCases : [...mockCases, ...liveCases];
   const activeCases = allCases.filter(c => c.status === 'pending' || c.status === 'in-review');
@@ -198,6 +215,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const revenueIntegrityFindings = liveRIFindings;
   const cdiFindings = liveCDIFindings;
   const capacityEvents = dataSource === 'live' ? liveCapacityEvents : [...mockCapacityEvents, ...liveCapacityEvents];
+  const writeoffEvents = dataSource === 'live' ? liveWriteoffEvents : [...mockWriteoffEvents, ...liveWriteoffEvents];
 
   const handleModeChange = (mode: AppMode) => {
     sessionStorage.setItem('soupy_app_mode', mode);
@@ -258,6 +276,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       reloadCDIFindings: loadLiveCDIFindings,
       capacityEvents,
       reloadCapacityEvents: loadLiveCapacityEvents,
+      writeoffEvents,
+      reloadWriteoffEvents: loadLiveWriteoffEvents,
     }}>
       {children}
     </AdminContext.Provider>
