@@ -34,6 +34,7 @@ import AppPolicyTimeMachine from "./pages/AppPolicyTimeMachine";
 import AppPolicyLibrary from "./pages/AppPolicyLibrary";
 import AppCompliance from "./pages/AppCompliance";
 import AppRecovery from "./pages/AppRecovery";
+import AppCapacityBalance from "./pages/AppCapacityBalance";
 import { PHIAcknowledgmentGate } from "@/components/compliance/PHIAcknowledgmentGate";
 import { IdleTimeoutGuard } from "@/components/compliance/IdleTimeoutGuard";
 
@@ -95,6 +96,7 @@ const App = () => (
               <Route path="policy-library" element={<AppPolicyLibrary />} />
               <Route path="compliance" element={<AppCompliance />} />
               <Route path="recovery" element={<AppRecovery />} />
+              <Route path="capacity" element={<AppCapacityBalance />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

@@ -5,6 +5,7 @@ import type { ORReadinessEvent, TriageAccuracyEvent, PostOpFlowEvent, ERAcuteEve
 import type { ImagingFinding } from '@/lib/imagingTypes';
 import type { RevenueIntegrityFinding } from '@/lib/revenueIntegrityTypes';
 import type { CDIFinding } from '@/lib/cdiTypes';
+import type { CapacityEvent } from '@/lib/capacityTypes';
 import { mockCases, mockPatterns, defaultSOUPYConfig } from '@/lib/mockData';
 import { deleteCase, deriveLivePatterns, type LivePhysicianPattern } from '@/lib/soupyEngineService';
 import { fetchCases, fetchCase } from '@/lib/caseService';
@@ -13,9 +14,11 @@ import { fetchERAcuteEvents, fetchPatientAdvocateEvents } from '@/lib/erAcuteSer
 import { fetchImagingFindings } from '@/lib/imagingService';
 import { listRevenueIntegrityFindings } from '@/lib/revenueIntegrityService';
 import { listAllCDIFindings } from '@/lib/cdiService';
+import { fetchCapacityEvents } from '@/lib/capacityService';
 import { mockORReadinessEvents, mockTriageEvents, mockPostOpFlowEvents } from '@/lib/operationalMockData';
 import { mockERAcuteEvents, mockPatientAdvocateEvents } from '@/lib/erAcuteMockData';
 import { mockImagingFindings } from '@/lib/imagingMockData';
+import { mockCapacityEvents } from '@/lib/capacityMockData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -58,6 +61,8 @@ interface AdminContextType {
   cdiFindings: CDIFinding[];
   reloadRevenueIntegrity: () => Promise<void>;
   reloadCDIFindings: () => Promise<void>;
+  capacityEvents: CapacityEvent[];
+  reloadCapacityEvents: () => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType>(null!);
@@ -84,6 +89,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [liveImagingFindings, setLiveImagingFindings] = useState<ImagingFinding[]>([]);
   const [liveRIFindings, setLiveRIFindings] = useState<RevenueIntegrityFinding[]>([]);
   const [liveCDIFindings, setLiveCDIFindings] = useState<CDIFinding[]>([]);
+  const [liveCapacityEvents, setLiveCapacityEvents] = useState<CapacityEvent[]>([]);
 
   const loadLiveCases = useCallback(async () => {
     setLoadingLive(true);
@@ -144,12 +150,22 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const loadLiveCapacityEvents = useCallback(async () => {
+    try {
+      const evs = await fetchCapacityEvents();
+      setLiveCapacityEvents(evs);
+    } catch (err) {
+      console.error('Failed to load capacity events:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadLiveCases();
     loadLiveOperationalEvents();
     loadLiveImagingFindings();
     loadLiveRIFindings();
     loadLiveCDIFindings();
+    loadLiveCapacityEvents();
 
     const channel = supabase
       .channel('admin-realtime')
@@ -163,10 +179,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'imaging_findings' }, () => loadLiveImagingFindings())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'revenue_integrity_findings' }, () => loadLiveRIFindings())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cdi_findings' }, () => loadLiveCDIFindings())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'capacity_events' }, () => loadLiveCapacityEvents())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [loadLiveCases, loadLiveOperationalEvents, loadLiveImagingFindings, loadLiveRIFindings, loadLiveCDIFindings]);
+  }, [loadLiveCases, loadLiveOperationalEvents, loadLiveImagingFindings, loadLiveRIFindings, loadLiveCDIFindings, loadLiveCapacityEvents]);
 
   const allCases = dataSource === 'live' ? liveCases : [...mockCases, ...liveCases];
   const activeCases = allCases.filter(c => c.status === 'pending' || c.status === 'in-review');
@@ -180,6 +197,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const imagingFindings = dataSource === 'live' ? liveImagingFindings : [...mockImagingFindings, ...liveImagingFindings];
   const revenueIntegrityFindings = liveRIFindings;
   const cdiFindings = liveCDIFindings;
+  const capacityEvents = dataSource === 'live' ? liveCapacityEvents : [...mockCapacityEvents, ...liveCapacityEvents];
 
   const handleModeChange = (mode: AppMode) => {
     sessionStorage.setItem('soupy_app_mode', mode);
@@ -238,6 +256,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       revenueIntegrityFindings, cdiFindings,
       reloadRevenueIntegrity: loadLiveRIFindings,
       reloadCDIFindings: loadLiveCDIFindings,
+      capacityEvents,
+      reloadCapacityEvents: loadLiveCapacityEvents,
     }}>
       {children}
     </AdminContext.Provider>
