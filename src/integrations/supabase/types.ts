@@ -3041,6 +3041,60 @@ export type Database = {
         }
         Relationships: []
       }
+      writeoff_events: {
+        Row: {
+          amount: number
+          appeal_viable: boolean
+          case_id: string | null
+          classification: string
+          created_at: string
+          event_date: string | null
+          id: string
+          notes: string | null
+          org_id: string | null
+          patient_account: string | null
+          payer: string
+          policy_basis: string | null
+          reason_code: string | null
+          recoverable_estimate: number
+          writeoff_type: string
+        }
+        Insert: {
+          amount?: number
+          appeal_viable?: boolean
+          case_id?: string | null
+          classification?: string
+          created_at?: string
+          event_date?: string | null
+          id?: string
+          notes?: string | null
+          org_id?: string | null
+          patient_account?: string | null
+          payer: string
+          policy_basis?: string | null
+          reason_code?: string | null
+          recoverable_estimate?: number
+          writeoff_type?: string
+        }
+        Update: {
+          amount?: number
+          appeal_viable?: boolean
+          case_id?: string | null
+          classification?: string
+          created_at?: string
+          event_date?: string | null
+          id?: string
+          notes?: string | null
+          org_id?: string | null
+          patient_account?: string | null
+          payer?: string
+          policy_basis?: string | null
+          reason_code?: string | null
+          recoverable_estimate?: number
+          writeoff_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
