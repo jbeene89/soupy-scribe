@@ -12,6 +12,7 @@ import { Scale, AlertTriangle, TrendingDown, BedDouble, Plus, Activity, ArrowUpR
 import type { CapacityEvent } from '@/lib/capacityTypes';
 import { DEFAULT_TARGET_RATIOS, computeCapacity } from '@/lib/capacityTypes';
 import { rollupCapacity, createCapacityEvent } from '@/lib/capacityService';
+import { RedeploymentPanel } from './RedeploymentPanel';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -89,6 +90,7 @@ export function CapacityBalanceModule({ events, onChanged }: Props) {
             <TabsTrigger value="byUnit">By Unit</TabsTrigger>
             <TabsTrigger value="byShift">By Shift</TabsTrigger>
             <TabsTrigger value="events">Event Log</TabsTrigger>
+            <TabsTrigger value="redeploy">Redeployment</TabsTrigger>
           </TabsList>
 
           <TabsContent value="byUnit" className="space-y-2 mt-4">
@@ -137,6 +139,10 @@ export function CapacityBalanceModule({ events, onChanged }: Props) {
             {events.slice(0, 30).map(e => (
               <EventRow key={e.id} event={e} />
             ))}
+          </TabsContent>
+
+          <TabsContent value="redeploy" className="mt-4">
+            <RedeploymentPanel events={events} />
           </TabsContent>
         </Tabs>
       )}

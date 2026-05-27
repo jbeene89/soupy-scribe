@@ -69,6 +69,7 @@ const EXPERIMENTAL_NAV = [
   { title: 'ER / Acute', path: '/app/er-acute', icon: Siren },
   { title: 'Patient Advocate', path: '/app/advocate', icon: HeartHandshake },
   { title: 'Capacity Balance', path: '/app/capacity', icon: Scale },
+  { title: 'Write-off Audit', path: '/app/writeoffs', icon: Banknote },
   { title: 'Imaging Audit', path: '/app/imaging', icon: ScanSearch },
   { title: 'EHR Integration', path: '/app/ehr', icon: DatabaseIcon },
   { title: 'HIPAA Compliance', path: '/app/compliance', icon: ShieldCheck },
