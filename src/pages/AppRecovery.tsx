@@ -849,6 +849,10 @@ export default function AppRecovery() {
                 </label>
               </div>
 
+              {findings.length > 0 && (
+                <PreventionPlaybook findings={findings} totalEncounters={1} scopeLabel="This run" />
+              )}
+
               {/* Findings table */}
               <Card>
                 <CardContent className="p-0">
