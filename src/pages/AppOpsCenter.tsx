@@ -17,7 +17,7 @@ import {
 } from "@/lib/opsCenterData";
 import { VendorSubmissions } from "@/components/ops/VendorSubmissions";
 
-function downloadCsv(rows: (string | number)[][], filename: string) {
+export function downloadCsv(rows: (string | number)[][], filename: string) {
   const esc = (v: string | number) => {
     const s = String(v ?? "");
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -51,7 +51,6 @@ export default function AppOpsCenter() {
             <TabsTrigger value="lines" className="whitespace-nowrap"><HeartPulse className="h-3.5 w-3.5 mr-1.5 shrink-0" />Service Lines</TabsTrigger>
             <TabsTrigger value="runbooks" className="whitespace-nowrap"><Activity className="h-3.5 w-3.5 mr-1.5 shrink-0" />Sev Runbooks</TabsTrigger>
             <TabsTrigger value="rca" className="whitespace-nowrap"><Microscope className="h-3.5 w-3.5 mr-1.5 shrink-0" />Lost-Appeal RCA</TabsTrigger>
-            <TabsTrigger value="vendors" className="whitespace-nowrap"><ShieldAlert className="h-3.5 w-3.5 mr-1.5 shrink-0" />Vendor Watch</TabsTrigger>
           </TabsList>
         </div>
 
@@ -63,7 +62,6 @@ export default function AppOpsCenter() {
         <TabsContent value="lines" className="mt-4"><Lines /></TabsContent>
         <TabsContent value="runbooks" className="mt-4"><Runbooks /></TabsContent>
         <TabsContent value="rca" className="mt-4"><Rca /></TabsContent>
-        <TabsContent value="vendors" className="mt-4"><Vendors /></TabsContent>
       </Tabs>
     </div>
   );
@@ -625,7 +623,7 @@ function RunbookCol({ title, items }: { title: string; items: string[] }) {
 }
 
 /* ── Vendor Watch ── */
-function Vendors() {
+export function VendorPortfolio() {
   const [tab, setTab] = useLocalState<"roi" | "deals" | "contracts" | "anomalies" | "plays" | "bench">("opsc.vendor.tab", "roi");
   const [pursued] = useLocalState<Record<string, PursueEntry>>("opsc.vendor.pursued", {});
   const [deals] = useLocalState<Record<string, DealEntry>>("opsc.vendor.deals", {});
