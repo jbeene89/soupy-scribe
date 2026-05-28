@@ -42,6 +42,18 @@ function slugify(s: string): string {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'vendor';
 }
 
+function downloadCsv(rows: (string | number)[][], filename: string) {
+  const esc = (v: string | number) => {
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = rows.map(r => r.map(esc).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  toast.success(`Exported ${filename}`);
+}
+
 export function VendorWatchModule() {
   const [docs, setDocs] = useState<VendorWatchDocument[]>([]);
   const [findings, setFindings] = useState<VendorWatchFinding[]>([]);
@@ -176,15 +188,70 @@ export function VendorWatchModule() {
     return m;
   }, [findings]);
 
+  function exportFindingsCsv() {
+    if (findings.length === 0) { toast.error('No findings to export'); return; }
+    const docById = new Map(docs.map(d => [d.id, d]));
+    downloadCsv([
+      ['Vendor', 'Doc type', 'File', 'Severity', 'Type', 'Title', 'Detail', 'Recommended action', '$ impact', 'Status', 'Detected'],
+      ...findings.map(f => {
+        const d = docById.get(f.document_id);
+        return [
+          d?.vendor_name ?? '',
+          d ? DOC_TYPE_LABELS[d.doc_type] : '',
+          d?.file_name ?? '',
+          f.severity,
+          f.finding_type,
+          f.title,
+          f.detail ?? '',
+          f.recommended_action ?? '',
+          f.dollar_impact ?? 0,
+          f.status,
+          new Date(f.created_at).toLocaleString(),
+        ];
+      }),
+    ], `vendor-watch-findings-${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
+  function exportDocsCsv() {
+    if (docs.length === 0) { toast.error('No documents to export'); return; }
+    downloadCsv([
+      ['Vendor', 'Doc type', 'File', 'Size (KB)', 'Status', 'Findings', '$ at risk', 'Uploaded'],
+      ...docs.map(d => {
+        const fs = findingsByDoc.get(d.id) ?? [];
+        const dollars = fs.reduce((s, f) => s + (f.dollar_impact || 0), 0);
+        return [
+          d.vendor_name,
+          DOC_TYPE_LABELS[d.doc_type],
+          d.file_name,
+          (d.file_size / 1024).toFixed(1),
+          d.status,
+          fs.length,
+          Math.round(dollars),
+          new Date(d.created_at).toLocaleString(),
+        ];
+      }),
+    ], `vendor-watch-documents-${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Vendor Watch</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Drop vendor documents — contracts, fee schedules, remits, EOBs, correspondence —
-          and SOUPY extracts terms, flags revenue leaks, and surfaces unfavorable clauses.
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Vendor Watch</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Drop vendor documents — contracts, fee schedules, remits, EOBs, correspondence —
+            and SOUPY extracts terms, flags revenue leaks, and surfaces unfavorable clauses.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={exportDocsCsv} disabled={docs.length === 0}>
+            <Download className="h-3.5 w-3.5 mr-1.5" />Documents CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportFindingsCsv} disabled={findings.length === 0}>
+            <Download className="h-3.5 w-3.5 mr-1.5" />Findings CSV
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
