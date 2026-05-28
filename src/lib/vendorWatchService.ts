@@ -29,7 +29,7 @@ export async function uploadVendorWatchDocument(opts: {
   file: File;
   vendorKey: string;
   vendorName: string;
-  docType: VendorWatchDocType;
+  docType: VendorWatchDocType | 'auto';
 }): Promise<VendorWatchDocument> {
   const { data: session } = await supabase.auth.getUser();
   const userId = session?.user?.id;
@@ -48,7 +48,8 @@ export async function uploadVendorWatchDocument(opts: {
 
   // 2. Upload the original binary into the per-user folder.
   const safeName = opts.file.name.replace(/[^a-z0-9._-]/gi, '_');
-  const path = `${userId}/vendor-watch/${opts.vendorKey}/${Date.now()}-${safeName}`;
+  const vendorKey = opts.vendorKey || 'unclassified';
+  const path = `${userId}/vendor-watch/${vendorKey}/${Date.now()}-${safeName}`;
   const up = await supabase.storage.from(BUCKET).upload(path, opts.file, {
     upsert: false,
     contentType: opts.file.type || undefined,
@@ -60,9 +61,9 @@ export async function uploadVendorWatchDocument(opts: {
     .from('vendor_watch_documents')
     .insert([{
       owner_id: userId,
-      vendor_key: opts.vendorKey,
-      vendor_name: opts.vendorName,
-      doc_type: opts.docType,
+      vendor_key: vendorKey,
+      vendor_name: opts.vendorName?.trim() || 'Auto-detecting…',
+      doc_type: opts.docType === 'auto' ? 'other' : opts.docType,
       file_path: path,
       file_name: opts.file.name,
       file_size: opts.file.size,

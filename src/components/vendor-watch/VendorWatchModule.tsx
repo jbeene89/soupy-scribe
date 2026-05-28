@@ -60,7 +60,7 @@ export function VendorWatchModule() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [vendorName, setVendorName] = useState('');
-  const [docType, setDocType] = useState<VendorWatchDocType>('contract');
+  const [docType, setDocType] = useState<VendorWatchDocType | 'auto'>('auto');
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
@@ -88,12 +88,11 @@ export function VendorWatchModule() {
 
   async function handleUpload() {
     if (!pendingFile) { toast.error('Choose a file first'); return; }
-    if (!vendorName.trim()) { toast.error('Vendor name required'); return; }
     setUploading(true);
     try {
       const doc = await uploadVendorWatchDocument({
         file: pendingFile,
-        vendorKey: slugify(vendorName),
+        vendorKey: vendorName.trim() ? slugify(vendorName) : '',
         vendorName: vendorName.trim(),
         docType,
       });
@@ -276,19 +275,20 @@ export function VendorWatchModule() {
         <CardContent className="space-y-3">
           <div className="grid md:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="vw-vendor" className="text-xs">Vendor / Payer</Label>
+              <Label htmlFor="vw-vendor" className="text-xs">Vendor / Payer <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <Input
                 id="vw-vendor"
-                placeholder="e.g. Aetna, Cotiviti, BCBS-TX"
+                placeholder="Leave blank — SOUPY will detect from the document"
                 value={vendorName}
                 onChange={(e) => setVendorName(e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="vw-doctype" className="text-xs">Document type</Label>
-              <Select value={docType} onValueChange={(v) => setDocType(v as VendorWatchDocType)}>
+              <Label htmlFor="vw-doctype" className="text-xs">Document type <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Select value={docType} onValueChange={(v) => setDocType(v as VendorWatchDocType | 'auto')}>
                 <SelectTrigger id="vw-doctype"><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="auto">✨ Auto-detect (recommended)</SelectItem>
                   {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v}</SelectItem>
                   ))}
@@ -340,7 +340,7 @@ export function VendorWatchModule() {
                 Clear
               </Button>
             )}
-            <Button onClick={handleUpload} disabled={uploading || !pendingFile || !vendorName.trim()}>
+            <Button onClick={handleUpload} disabled={uploading || !pendingFile}>
               {uploading ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Uploading…</> : <><Sparkles className="h-4 w-4 mr-1" />Upload &amp; analyze</>}
             </Button>
           </div>
@@ -415,6 +415,37 @@ export function VendorWatchModule() {
                       <div>
                         <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Summary</div>
                         <p className="text-sm">{doc.analysis.summary}</p>
+                      </div>
+                    )}
+
+                    {doc.analysis?.cross_references && doc.analysis.cross_references.length > 0 && (
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
+                          <ShieldAlert className="h-3 w-3" />
+                          Cross-references to your other documents
+                        </div>
+                        <div className="space-y-1.5">
+                          {doc.analysis.cross_references.map((x, i) => (
+                            <div key={i} className="rounded-md border bg-background p-2 text-xs space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant="outline" className="text-[10px] uppercase">{x.relationship.replace(/_/g, ' ')}</Badge>
+                                {x.related_file_name && (
+                                  <span className="font-medium">↔ {x.related_file_name}</span>
+                                )}
+                                {x.related_vendor && (
+                                  <span className="text-muted-foreground">({x.related_vendor})</span>
+                                )}
+                                {x.severity && (
+                                  <Badge className={cn('text-[10px] uppercase border ml-auto', SEV_STYLES[x.severity])}>{x.severity}</Badge>
+                                )}
+                              </div>
+                              <p className="text-muted-foreground">{x.detail}</p>
+                              {x.dollar_impact != null && x.dollar_impact > 0 && (
+                                <p className="text-amber-600 font-semibold">≈ ${Math.round(x.dollar_impact).toLocaleString()} impact</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 

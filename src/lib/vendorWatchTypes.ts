@@ -13,6 +13,8 @@ export type VendorWatchSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type VendorWatchAnalysis = {
   summary: string;
   document_kind: string;
+  detected_vendor_name?: string;
+  detected_doc_type?: VendorWatchDocType;
   key_terms?: Array<{ label: string; value: string }>;
   findings?: Array<{
     finding_type: string;
@@ -22,6 +24,15 @@ export type VendorWatchAnalysis = {
     recommended_action?: string;
     dollar_impact?: number;
     quoted_language?: string;
+  }>;
+  cross_references?: Array<{
+    related_document_id?: string;
+    related_file_name?: string;
+    related_vendor?: string;
+    relationship: string;     // e.g. "rate_conflict", "matches", "supersedes", "supports", "contradicts"
+    detail: string;
+    severity?: VendorWatchSeverity;
+    dollar_impact?: number;
   }>;
   confidence: number;
 };
