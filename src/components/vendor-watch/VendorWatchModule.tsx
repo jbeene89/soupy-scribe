@@ -60,7 +60,7 @@ export function VendorWatchModule() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [vendorName, setVendorName] = useState('');
-  const [docType, setDocType] = useState<VendorWatchDocType>('contract');
+  const [docType, setDocType] = useState<VendorWatchDocType | 'auto'>('auto');
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
@@ -88,12 +88,11 @@ export function VendorWatchModule() {
 
   async function handleUpload() {
     if (!pendingFile) { toast.error('Choose a file first'); return; }
-    if (!vendorName.trim()) { toast.error('Vendor name required'); return; }
     setUploading(true);
     try {
       const doc = await uploadVendorWatchDocument({
         file: pendingFile,
-        vendorKey: slugify(vendorName),
+        vendorKey: vendorName.trim() ? slugify(vendorName) : '',
         vendorName: vendorName.trim(),
         docType,
       });
@@ -276,19 +275,20 @@ export function VendorWatchModule() {
         <CardContent className="space-y-3">
           <div className="grid md:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="vw-vendor" className="text-xs">Vendor / Payer</Label>
+              <Label htmlFor="vw-vendor" className="text-xs">Vendor / Payer <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <Input
                 id="vw-vendor"
-                placeholder="e.g. Aetna, Cotiviti, BCBS-TX"
+                placeholder="Leave blank — SOUPY will detect from the document"
                 value={vendorName}
                 onChange={(e) => setVendorName(e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="vw-doctype" className="text-xs">Document type</Label>
-              <Select value={docType} onValueChange={(v) => setDocType(v as VendorWatchDocType)}>
+              <Label htmlFor="vw-doctype" className="text-xs">Document type <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Select value={docType} onValueChange={(v) => setDocType(v as VendorWatchDocType | 'auto')}>
                 <SelectTrigger id="vw-doctype"><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="auto">✨ Auto-detect (recommended)</SelectItem>
                   {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v}</SelectItem>
                   ))}
@@ -340,7 +340,7 @@ export function VendorWatchModule() {
                 Clear
               </Button>
             )}
-            <Button onClick={handleUpload} disabled={uploading || !pendingFile || !vendorName.trim()}>
+            <Button onClick={handleUpload} disabled={uploading || !pendingFile}>
               {uploading ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Uploading…</> : <><Sparkles className="h-4 w-4 mr-1" />Upload &amp; analyze</>}
             </Button>
           </div>
