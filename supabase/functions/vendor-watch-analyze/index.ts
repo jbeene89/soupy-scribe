@@ -11,8 +11,17 @@ const corsHeaders = {
 
 const SYSTEM_PROMPT = `You are a payer-contract and revenue-cycle audit assistant.
 You receive a single vendor document (payer contract, fee schedule, remittance / 835, EOB,
-or vendor correspondence) and must extract structured intelligence the revenue-cycle team
-can act on.
+or vendor correspondence) AND a brief context list of the user's OTHER previously-analyzed
+vendor documents. You must:
+ 1. Auto-classify the document (detected_doc_type) and pull the real vendor / payer name
+    from the document text (detected_vendor_name) — the user often does not know the
+    correct label.
+ 2. Extract structured intelligence the revenue-cycle team can act on.
+ 3. CROSS-REFERENCE the new document against the supplied context list. If a contract
+    states a fee-schedule basis and a remit shows a different paid amount, flag it. If a
+    new amendment supersedes an older contract, note it. If a fee schedule and remit agree,
+    say so (relationship: "matches"). Always include related_file_name when citing another
+    doc.
 
 For CONTRACTS / FEE SCHEDULES: extract effective dates, term length, payment terms (Net X),
 timely-filing windows, appeal windows, fee-schedule basis (% of Medicare, fixed, per-diem),
@@ -28,7 +37,12 @@ Severity scale: low = informational, medium = should be reviewed, high = likely 
 leak or contract risk, critical = active financial loss or breach.
 
 Be specific. Quote exact contract language when flagging issues. Conservative on dollar
-impact — only estimate when the document supports it.`;
+impact — only estimate when the document supports it.
+
+If the user's stated vendor name is "Auto-detecting…" or empty, you MUST populate
+detected_vendor_name from the document. If the stated doc type is "other" but the document
+is clearly a contract / remit / fee schedule / EOB / correspondence, set detected_doc_type
+accordingly.`;
 
 const tool = {
   type: "function",
@@ -42,6 +56,14 @@ const tool = {
         document_kind: {
           type: "string",
           enum: ["contract", "fee_schedule", "remit", "eob", "correspondence", "unknown"],
+        },
+        detected_vendor_name: {
+          type: "string",
+          description: "The real vendor / payer name pulled from the document text. Empty string if not present.",
+        },
+        detected_doc_type: {
+          type: "string",
+          enum: ["contract", "fee_schedule", "remit", "eob", "correspondence", "other"],
         },
         key_terms: {
           type: "array",
@@ -73,9 +95,29 @@ const tool = {
             required: ["finding_type", "severity", "title", "detail"],
           },
         },
+        cross_references: {
+          type: "array",
+          description: "Relationships between this document and the user's other analyzed documents. Empty array if none.",
+          items: {
+            type: "object",
+            properties: {
+              related_document_id: { type: "string" },
+              related_file_name: { type: "string" },
+              related_vendor: { type: "string" },
+              relationship: {
+                type: "string",
+                description: "rate_conflict | matches | supersedes | supports | contradicts | timely_filing_conflict | other",
+              },
+              detail: { type: "string" },
+              severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+              dollar_impact: { type: "number" },
+            },
+            required: ["relationship", "detail"],
+          },
+        },
         confidence: { type: "number", description: "0-1 — how confident the analyzer is in the extraction." },
       },
-      required: ["summary", "document_kind", "findings", "confidence"],
+      required: ["summary", "document_kind", "detected_doc_type", "detected_vendor_name", "findings", "cross_references", "confidence"],
     },
   },
 };
@@ -147,10 +189,37 @@ serve(async (req) => {
     // Cap text length sent to the model (keep ~120k chars / ~30k tokens).
     const text = doc.raw_text.length > 120_000 ? doc.raw_text.slice(0, 120_000) + "\n…[truncated]" : doc.raw_text;
 
+    // Fetch up to 20 other analyzed docs from this owner for cross-referencing.
+    const { data: otherDocs } = await admin
+      .from("vendor_watch_documents")
+      .select("id, vendor_name, doc_type, file_name, analysis, created_at")
+      .eq("owner_id", userId)
+      .neq("id", documentId)
+      .eq("status", "analyzed")
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    const contextLines: string[] = [];
+    for (const o of otherDocs ?? []) {
+      const a: any = o.analysis ?? {};
+      const kt = Array.isArray(a.key_terms)
+        ? a.key_terms.slice(0, 12).map((t: any) => `${t.label}: ${t.value}`).join(" · ")
+        : "";
+      contextLines.push(
+        `- id=${o.id} vendor="${o.vendor_name}" type=${o.doc_type} file="${o.file_name}"\n` +
+        `    summary: ${(a.summary || "").slice(0, 400)}\n` +
+        (kt ? `    key terms: ${kt}\n` : ""),
+      );
+    }
+
     const userMsg = [
-      `Vendor: ${doc.vendor_name}`,
-      `Stated document type: ${doc.doc_type}`,
+      `Stated vendor (may be "Auto-detecting…"): ${doc.vendor_name}`,
+      `Stated document type (may be "other" placeholder): ${doc.doc_type}`,
       `File: ${doc.file_name}`,
+      "",
+      contextLines.length
+        ? `--- USER'S OTHER ANALYZED VENDOR DOCUMENTS (for cross-reference) ---\n${contextLines.join("")}`
+        : "--- No other analyzed vendor documents on file ---",
       "",
       "--- DOCUMENT TEXT ---",
       text,
@@ -192,12 +261,31 @@ serve(async (req) => {
     }
     const report = JSON.parse(call.function.arguments);
 
-    // Persist analysis blob on the document.
-    await admin.from("vendor_watch_documents").update({
+    // Apply auto-detected vendor/doc type back to the row when present.
+    const ALLOWED_TYPES = ["contract", "fee_schedule", "remit", "eob", "correspondence", "other"];
+    const updates: Record<string, unknown> = {
       status: "analyzed",
       analysis: report,
       error_message: null,
-    }).eq("id", documentId);
+    };
+    const detectedVendor = typeof report.detected_vendor_name === "string"
+      ? report.detected_vendor_name.trim()
+      : "";
+    if (detectedVendor && (doc.vendor_name === "Auto-detecting…" || !doc.vendor_name)) {
+      updates.vendor_name = detectedVendor.slice(0, 120);
+      updates.vendor_key = detectedVendor
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 60) || "unclassified";
+    }
+    const detectedType = report.detected_doc_type;
+    if (detectedType && ALLOWED_TYPES.includes(detectedType) && doc.doc_type === "other") {
+      updates.doc_type = detectedType;
+    }
+
+    // Persist analysis blob on the document.
+    await admin.from("vendor_watch_documents").update(updates).eq("id", documentId);
 
     // Insert findings.
     const findings = Array.isArray(report.findings) ? report.findings : [];
@@ -213,6 +301,31 @@ serve(async (req) => {
         dollar_impact: typeof f.dollar_impact === "number" ? f.dollar_impact : null,
       }));
       await admin.from("vendor_watch_findings").insert(rows);
+    }
+
+    // Insert cross-reference findings as their own rows so they show up in the findings list & CSV.
+    const xrefs = Array.isArray(report.cross_references) ? report.cross_references : [];
+    if (xrefs.length) {
+      const xrefRows = xrefs.map((x: any) => {
+        const rel = String(x.relationship || "other");
+        const sev = ["low", "medium", "high", "critical"].includes(x.severity)
+          ? x.severity
+          : (rel === "rate_conflict" || rel === "contradicts" || rel === "timely_filing_conflict")
+            ? "high"
+            : "low";
+        const titlePrefix = x.related_file_name ? `↔ ${x.related_file_name}: ` : "Cross-reference: ";
+        return {
+          document_id: documentId,
+          owner_id: userId,
+          finding_type: `xref_${rel}`.slice(0, 80),
+          severity: sev,
+          title: (titlePrefix + rel.replace(/_/g, " ")).slice(0, 280),
+          detail: String(x.detail || ""),
+          recommended_action: null,
+          dollar_impact: typeof x.dollar_impact === "number" ? x.dollar_impact : null,
+        };
+      });
+      await admin.from("vendor_watch_findings").insert(xrefRows);
     }
 
     return new Response(JSON.stringify({ ok: true, findings_count: findings.length, report }), {
