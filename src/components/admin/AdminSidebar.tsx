@@ -42,6 +42,7 @@ import {
   ShieldCheck,
   Banknote,
   Scale,
+  Eye,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -70,6 +71,7 @@ const EXPERIMENTAL_NAV = [
   { title: 'Patient Advocate', path: '/app/advocate', icon: HeartHandshake },
   { title: 'Capacity Balance', path: '/app/capacity', icon: Scale },
   { title: 'Write-off Audit', path: '/app/writeoffs', icon: Banknote },
+  { title: 'Vendor Watch', path: '/app/vendor-watch', icon: Eye },
   { title: 'Imaging Audit', path: '/app/imaging', icon: ScanSearch },
   { title: 'EHR Integration', path: '/app/ehr', icon: DatabaseIcon },
   { title: 'HIPAA Compliance', path: '/app/compliance', icon: ShieldCheck },
