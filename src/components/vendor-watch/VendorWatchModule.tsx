@@ -418,6 +418,37 @@ export function VendorWatchModule() {
                       </div>
                     )}
 
+                    {doc.analysis?.cross_references && doc.analysis.cross_references.length > 0 && (
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
+                          <ShieldAlert className="h-3 w-3" />
+                          Cross-references to your other documents
+                        </div>
+                        <div className="space-y-1.5">
+                          {doc.analysis.cross_references.map((x, i) => (
+                            <div key={i} className="rounded-md border bg-background p-2 text-xs space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant="outline" className="text-[10px] uppercase">{x.relationship.replace(/_/g, ' ')}</Badge>
+                                {x.related_file_name && (
+                                  <span className="font-medium">↔ {x.related_file_name}</span>
+                                )}
+                                {x.related_vendor && (
+                                  <span className="text-muted-foreground">({x.related_vendor})</span>
+                                )}
+                                {x.severity && (
+                                  <Badge className={cn('text-[10px] uppercase border ml-auto', SEV_STYLES[x.severity])}>{x.severity}</Badge>
+                                )}
+                              </div>
+                              <p className="text-muted-foreground">{x.detail}</p>
+                              {x.dollar_impact != null && x.dollar_impact > 0 && (
+                                <p className="text-amber-600 font-semibold">≈ ${Math.round(x.dollar_impact).toLocaleString()} impact</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {doc.analysis?.key_terms && doc.analysis.key_terms.length > 0 && (
                       <div>
                         <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Key terms</div>
