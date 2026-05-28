@@ -36,6 +36,7 @@ import AppCompliance from "./pages/AppCompliance";
 import AppRecovery from "./pages/AppRecovery";
 import AppCapacityBalance from "./pages/AppCapacityBalance";
 import AppWriteoffAudit from "./pages/AppWriteoffAudit";
+import AppVendorWatch from "./pages/AppVendorWatch";
 import { PHIAcknowledgmentGate } from "@/components/compliance/PHIAcknowledgmentGate";
 import { IdleTimeoutGuard } from "@/components/compliance/IdleTimeoutGuard";
 
@@ -99,6 +100,7 @@ const App = () => (
               <Route path="recovery" element={<AppRecovery />} />
               <Route path="capacity" element={<AppCapacityBalance />} />
               <Route path="writeoffs" element={<AppWriteoffAudit />} />
+              <Route path="vendor-watch" element={<AppVendorWatch />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

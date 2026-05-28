@@ -3041,6 +3041,113 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_watch_documents: {
+        Row: {
+          analysis: Json | null
+          created_at: string
+          doc_type: string
+          error_message: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          mime_type: string | null
+          owner_id: string
+          raw_text: string | null
+          status: string
+          updated_at: string
+          vendor_key: string
+          vendor_name: string
+        }
+        Insert: {
+          analysis?: Json | null
+          created_at?: string
+          doc_type: string
+          error_message?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number
+          id?: string
+          mime_type?: string | null
+          owner_id: string
+          raw_text?: string | null
+          status?: string
+          updated_at?: string
+          vendor_key: string
+          vendor_name: string
+        }
+        Update: {
+          analysis?: Json | null
+          created_at?: string
+          doc_type?: string
+          error_message?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          mime_type?: string | null
+          owner_id?: string
+          raw_text?: string | null
+          status?: string
+          updated_at?: string
+          vendor_key?: string
+          vendor_name?: string
+        }
+        Relationships: []
+      }
+      vendor_watch_findings: {
+        Row: {
+          created_at: string
+          detail: string | null
+          document_id: string
+          dollar_impact: number | null
+          finding_type: string
+          id: string
+          owner_id: string
+          recommended_action: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          document_id: string
+          dollar_impact?: number | null
+          finding_type: string
+          id?: string
+          owner_id: string
+          recommended_action?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          document_id?: string
+          dollar_impact?: number | null
+          finding_type?: string
+          id?: string
+          owner_id?: string
+          recommended_action?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_watch_findings_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_watch_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       writeoff_events: {
         Row: {
           amount: number
