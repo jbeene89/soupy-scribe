@@ -464,10 +464,19 @@ serve(async (req) => {
       const kt = Array.isArray(a.key_terms)
         ? a.key_terms.slice(0, 12).map((t: any) => `${t.label}: ${t.value}`).join(" · ")
         : "";
+      const rsCount = Array.isArray(a.rate_schedule) ? a.rate_schedule.length : 0;
+      const liCount = Array.isArray(a.line_items) ? a.line_items.length : 0;
+      const rsSample = Array.isArray(a.rate_schedule)
+        ? a.rate_schedule.slice(0, 8).map((r: any) =>
+            `${r.service_code || ""} ${r.service_name}${typeof r.unit_price === "number" ? ` @ $${r.unit_price}` : (r.basis ? ` (${r.basis}${r.basis_value ? " " + r.basis_value : ""})` : "")}`
+          ).join(" | ")
+        : "";
       contextLines.push(
         `- id=${o.id} vendor="${o.vendor_name}" type=${o.doc_type} file="${o.file_name}"\n` +
         `    summary: ${(a.summary || "").slice(0, 400)}\n` +
-        (kt ? `    key terms: ${kt}\n` : ""),
+        (kt ? `    key terms: ${kt}\n` : "") +
+        (rsCount ? `    rate_schedule (${rsCount} entries) sample: ${rsSample}\n` : "") +
+        (liCount ? `    line_items: ${liCount} extracted\n` : ""),
       );
     }
 
@@ -543,23 +552,70 @@ serve(async (req) => {
       updates.doc_type = detectedType;
     }
 
+    // Resolved vendor name & doc type used for reconciliation.
+    const resolvedVendorName = (updates.vendor_name as string) ?? doc.vendor_name;
+    const resolvedDocType = (updates.doc_type as string) ?? doc.doc_type;
+
     // Persist analysis blob on the document.
     await admin.from("vendor_watch_documents").update(updates).eq("id", documentId);
 
-    // Insert findings.
+    // Coerce AI finding_type to the canonical taxonomy.
+    const ANOMALY_SET = new Set(ANOMALY_ENUM);
     const findings = Array.isArray(report.findings) ? report.findings : [];
     if (findings.length) {
       const rows = findings.map((f: any) => ({
         document_id: documentId,
         owner_id: userId,
-        finding_type: String(f.finding_type || "other").slice(0, 80),
+        finding_type: ANOMALY_SET.has(String(f.finding_type)) ? String(f.finding_type) : "other",
         severity: ["low", "medium", "high", "critical"].includes(f.severity) ? f.severity : "medium",
         title: String(f.title || "Finding").slice(0, 280),
-        detail: f.detail ? String(f.detail) : null,
+        detail: [
+          f.detail ? String(f.detail) : "",
+          Array.isArray(f.affected_lines) && f.affected_lines.length
+            ? `\n\nAffected lines (${f.affected_lines.length}): ${f.affected_lines.slice(0, 20).join(", ")}`
+            : "",
+        ].join("").trim() || null,
         recommended_action: f.recommended_action ? String(f.recommended_action) : null,
         dollar_impact: typeof f.dollar_impact === "number" ? f.dollar_impact : null,
       }));
       await admin.from("vendor_watch_findings").insert(rows);
+    }
+
+    // ── Run the deterministic reconciler against same-vendor contracts/fee schedules ──
+    const reconFindings = (resolvedDocType === "remit" || resolvedDocType === "eob" || resolvedDocType === "correspondence" || resolvedDocType === "other")
+      ? reconcileLineItems({
+          newDoc: { vendor_name: resolvedVendorName, doc_type: resolvedDocType, file_name: doc.file_name },
+          newLines: Array.isArray(report.line_items) ? report.line_items : [],
+          otherDocs: (otherDocs ?? []) as any[],
+        })
+      : [];
+    if (reconFindings.length) {
+      // Dedup vs AI-emitted findings of the same finding_type with overlapping affected_lines.
+      const aiKeys = new Set<string>();
+      for (const f of findings) {
+        if (!f || !Array.isArray(f.affected_lines)) continue;
+        for (const r of f.affected_lines) aiKeys.add(`${f.finding_type}::${normalize(String(r))}`);
+      }
+      const filtered = reconFindings.filter((r) => {
+        const overlap = r.affected_lines.some((ref) => aiKeys.has(`${r.finding_type}::${normalize(String(ref))}`));
+        return !overlap;
+      });
+      if (filtered.length) {
+        await admin.from("vendor_watch_findings").insert(filtered.map((r) => ({
+          document_id: documentId,
+          owner_id: userId,
+          finding_type: r.finding_type,
+          severity: r.severity,
+          title: `🧮 ${r.title}`,
+          detail: [
+            r.detail,
+            r.affected_lines.length ? `\n\nAffected lines (${r.affected_lines.length}): ${r.affected_lines.slice(0, 20).join(", ")}` : "",
+            r.source_file ? `\nReconciled against: ${r.source_file}` : "",
+          ].join("").trim(),
+          recommended_action: r.recommended_action,
+          dollar_impact: r.dollar_impact,
+        })));
+      }
     }
 
     // Insert cross-reference findings as their own rows so they show up in the findings list & CSV.
@@ -587,7 +643,12 @@ serve(async (req) => {
       await admin.from("vendor_watch_findings").insert(xrefRows);
     }
 
-    return new Response(JSON.stringify({ ok: true, findings_count: findings.length, report }), {
+    return new Response(JSON.stringify({
+      ok: true,
+      findings_count: findings.length,
+      reconciler_findings_count: reconFindings.length,
+      report,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
