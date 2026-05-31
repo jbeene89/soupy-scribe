@@ -58,14 +58,14 @@ export default function AppStrategicTools() {
   const [searchParams] = useSearchParams();
 
   // Provider-side tools: auditing what the payer did, defending your claims
-  const PROVIDER_TABS = ["auditor", "abtest", "debt", "pa"] as const;
+  const PROVIDER_TABS: string[] = ["auditor", "abtest", "debt", "pa"];
   // Payer-side tools: hunting provider patterns, contract & policy analytics
-  const PAYER_TABS = ["counterfactual", "leakage", "clocks", "drift", "ncd"] as const;
+  const PAYER_TABS: string[] = ["counterfactual", "leakage", "clocks", "drift", "ncd"];
 
-  const visibleTabs = appMode === "provider" ? PROVIDER_TABS : PAYER_TABS;
+  const visibleTabs: string[] = appMode === "provider" ? PROVIDER_TABS : PAYER_TABS;
   const requested = searchParams.get("tab");
   const defaultTab =
-    requested && (visibleTabs as readonly string[]).includes(requested)
+    requested && visibleTabs.includes(requested)
       ? requested
       : visibleTabs[0];
 
@@ -83,15 +83,15 @@ export default function AppStrategicTools() {
       <Tabs defaultValue={defaultTab} key={defaultTab} className="w-full">
         <div className="overflow-x-auto -mx-1 px-1">
           <TabsList className="inline-flex h-auto flex-nowrap gap-1 w-max min-w-full">
-            {visibleTabs.includes("auditor" as any) && <TabsTrigger value="auditor" className="whitespace-nowrap"><Gavel className="h-3.5 w-3.5 mr-1.5 shrink-0" />Audit the Auditor</TabsTrigger>}
-            {visibleTabs.includes("counterfactual" as any) && <TabsTrigger value="counterfactual" className="whitespace-nowrap"><Coins className="h-3.5 w-3.5 mr-1.5 shrink-0" />Counterfactual</TabsTrigger>}
-            {visibleTabs.includes("leakage" as any) && <TabsTrigger value="leakage" className="whitespace-nowrap"><Receipt className="h-3.5 w-3.5 mr-1.5 shrink-0" />Contract Leakage</TabsTrigger>}
-            {visibleTabs.includes("clocks" as any) && <TabsTrigger value="clocks" className="whitespace-nowrap"><Clock className="h-3.5 w-3.5 mr-1.5 shrink-0" />Regulatory Clocks</TabsTrigger>}
-            {visibleTabs.includes("drift" as any) && <TabsTrigger value="drift" className="whitespace-nowrap"><TrendingUp className="h-3.5 w-3.5 mr-1.5 shrink-0" />Denial Drift</TabsTrigger>}
-            {visibleTabs.includes("abtest" as any) && <TabsTrigger value="abtest" className="whitespace-nowrap"><FlaskConical className="h-3.5 w-3.5 mr-1.5 shrink-0" />Appeal A/B</TabsTrigger>}
-            {visibleTabs.includes("ncd" as any) && <TabsTrigger value="ncd" className="whitespace-nowrap"><Bell className="h-3.5 w-3.5 mr-1.5 shrink-0" />NCD/LCD Alerts</TabsTrigger>}
-            {visibleTabs.includes("debt" as any) && <TabsTrigger value="debt" className="whitespace-nowrap"><Stethoscope className="h-3.5 w-3.5 mr-1.5 shrink-0" />Doc Debt</TabsTrigger>}
-            {visibleTabs.includes("pa" as any) && <TabsTrigger value="pa" className="whitespace-nowrap"><ShieldCheck className="h-3.5 w-3.5 mr-1.5 shrink-0" />PA Predictor</TabsTrigger>}
+            {visibleTabs.includes("auditor") && <TabsTrigger value="auditor" className="whitespace-nowrap"><Gavel className="h-3.5 w-3.5 mr-1.5 shrink-0" />Audit the Auditor</TabsTrigger>}
+            {visibleTabs.includes("counterfactual") && <TabsTrigger value="counterfactual" className="whitespace-nowrap"><Coins className="h-3.5 w-3.5 mr-1.5 shrink-0" />Counterfactual</TabsTrigger>}
+            {visibleTabs.includes("leakage") && <TabsTrigger value="leakage" className="whitespace-nowrap"><Receipt className="h-3.5 w-3.5 mr-1.5 shrink-0" />Contract Leakage</TabsTrigger>}
+            {visibleTabs.includes("clocks") && <TabsTrigger value="clocks" className="whitespace-nowrap"><Clock className="h-3.5 w-3.5 mr-1.5 shrink-0" />Regulatory Clocks</TabsTrigger>}
+            {visibleTabs.includes("drift") && <TabsTrigger value="drift" className="whitespace-nowrap"><TrendingUp className="h-3.5 w-3.5 mr-1.5 shrink-0" />Denial Drift</TabsTrigger>}
+            {visibleTabs.includes("abtest") && <TabsTrigger value="abtest" className="whitespace-nowrap"><FlaskConical className="h-3.5 w-3.5 mr-1.5 shrink-0" />Appeal A/B</TabsTrigger>}
+            {visibleTabs.includes("ncd") && <TabsTrigger value="ncd" className="whitespace-nowrap"><Bell className="h-3.5 w-3.5 mr-1.5 shrink-0" />NCD/LCD Alerts</TabsTrigger>}
+            {visibleTabs.includes("debt") && <TabsTrigger value="debt" className="whitespace-nowrap"><Stethoscope className="h-3.5 w-3.5 mr-1.5 shrink-0" />Doc Debt</TabsTrigger>}
+            {visibleTabs.includes("pa") && <TabsTrigger value="pa" className="whitespace-nowrap"><ShieldCheck className="h-3.5 w-3.5 mr-1.5 shrink-0" />PA Predictor</TabsTrigger>}
           </TabsList>
         </div>
 
