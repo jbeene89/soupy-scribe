@@ -43,6 +43,8 @@ import {
   Banknote,
   Scale,
   Eye,
+  Clock,
+  Gavel,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
