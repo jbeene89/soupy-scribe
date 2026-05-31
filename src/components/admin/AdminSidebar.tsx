@@ -65,6 +65,7 @@ const PAYER_NAV = [
 ];
 
 const SHARED_NAV = [
+  { title: 'Smart Upload', path: '/app/upload', icon: Sparkles },
   { title: 'Imaging Audit', path: '/app/imaging', icon: ScanSearch },
   { title: 'Policy Library', path: '/app/policy-library', icon: FileText },
   { title: 'Ops Center', path: '/app/ops-center', icon: Activity },
