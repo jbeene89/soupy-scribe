@@ -1546,6 +1546,57 @@ export type Database = {
           },
         ]
       }
+      linkedin_posts: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          failed_at: string | null
+          has_image: boolean
+          id: string
+          link_url: string | null
+          post_id: string | null
+          post_url: string | null
+          published_at: string | null
+          queued_at: string
+          status: string
+          text_snippet: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          failed_at?: string | null
+          has_image?: boolean
+          id?: string
+          link_url?: string | null
+          post_id?: string | null
+          post_url?: string | null
+          published_at?: string | null
+          queued_at?: string
+          status?: string
+          text_snippet: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          failed_at?: string | null
+          has_image?: boolean
+          id?: string
+          link_url?: string | null
+          post_id?: string | null
+          post_url?: string | null
+          published_at?: string | null
+          queued_at?: string
+          status?: string
+          text_snippet?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           admin_replied_at: string | null
