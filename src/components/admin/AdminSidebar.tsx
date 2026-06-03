@@ -45,6 +45,7 @@ import {
   Eye,
   Clock,
   Gavel,
+  Linkedin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -77,6 +78,7 @@ const SHARED_NAV = [
   { title: 'Capacity Balance', path: '/app/capacity', icon: Scale },
   { title: 'EHR Integration', path: '/app/ehr', icon: DatabaseIcon },
   { title: 'HIPAA Compliance', path: '/app/compliance', icon: ShieldCheck },
+  { title: 'LinkedIn Share', path: '/app/linkedin-share', icon: Linkedin },
 ];
 
 const PROVIDER_NAV = [
