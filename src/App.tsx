@@ -40,6 +40,7 @@ import AppCapacityBalance from "./pages/AppCapacityBalance";
 import AppWriteoffAudit from "./pages/AppWriteoffAudit";
 import AppVendorWatch from "./pages/AppVendorWatch";
 import AppSmartUpload from "./pages/AppSmartUpload";
+import AppLinkedInShare from "./pages/AppLinkedInShare";
 import { PHIAcknowledgmentGate } from "@/components/compliance/PHIAcknowledgmentGate";
 import { IdleTimeoutGuard } from "@/components/compliance/IdleTimeoutGuard";
 
@@ -107,6 +108,7 @@ const App = () => (
               <Route path="writeoffs" element={<AppWriteoffAudit />} />
               <Route path="vendor-watch" element={<AppVendorWatch />} />
               <Route path="upload" element={<AppSmartUpload />} />
+              <Route path="linkedin-share" element={<AppLinkedInShare />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
