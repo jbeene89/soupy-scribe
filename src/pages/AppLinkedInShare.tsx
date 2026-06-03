@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Linkedin, Loader2, ExternalLink, CheckCircle2, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Linkedin, Loader2, ExternalLink, CheckCircle2, AlertCircle, Image as ImageIcon, Clock, History, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import teaserImg from '@/assets/linkedin-teaser-denial-economy.jpg';
 
@@ -24,6 +25,28 @@ export default function AppLinkedInShare() {
   const [includeImage, setIncludeImage] = useState(true);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; postUrl?: string; error?: string } | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  async function loadHistory() {
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from('linkedin_posts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(25);
+    setHistory(data || []);
+    setHistoryLoading(false);
+  }
+
+  useEffect(() => {
+    loadHistory();
+    const ch = supabase
+      .channel('linkedin-posts-feed')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'linkedin_posts' }, () => loadHistory())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
 
   async function fetchImageBase64(): Promise<{ b64: string; type: string }> {
     const res = await fetch(teaserImg);
@@ -63,6 +86,7 @@ export default function AppLinkedInShare() {
       setResult({ ok: false, error: e?.message || String(e) });
     } finally {
       setLoading(false);
+      loadHistory();
     }
   }
 
@@ -212,6 +236,101 @@ export default function AppLinkedInShare() {
           </p>
         </Card>
       </div>
+
+      {/* Publishing status panel */}
+      <Card className="p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Publishing status</h2>
+          </div>
+          <Button variant="ghost" size="sm" onClick={loadHistory} disabled={historyLoading}>
+            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${historyLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+
+        {history.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            No LinkedIn posts yet. Publish one above to see it tracked here.
+          </p>
+        ) : (
+          <div className="divide-y border rounded-md overflow-hidden">
+            {history.map((p) => (
+              <PostRow key={p.id} post={p} />
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === 'published') {
+    return (
+      <Badge variant="secondary" className="bg-green-500/15 text-green-700 dark:text-green-400 border border-green-500/30">
+        <CheckCircle2 className="h-3 w-3 mr-1" /> Published
+      </Badge>
+    );
+  }
+  if (status === 'failed') {
+    return (
+      <Badge variant="secondary" className="bg-destructive/15 text-destructive border border-destructive/30">
+        <AlertCircle className="h-3 w-3 mr-1" /> Failed
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+      <Clock className="h-3 w-3 mr-1" /> Queued
+    </Badge>
+  );
+}
+
+function fmt(ts?: string | null) {
+  if (!ts) return null;
+  try {
+    return new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  } catch { return ts; }
+}
+
+function PostRow({ post }: { post: any }) {
+  const timestamp = post.published_at || post.failed_at || post.queued_at || post.created_at;
+  return (
+    <div className="p-3 bg-card space-y-1.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-foreground line-clamp-2 whitespace-pre-wrap">{post.text_snippet}</p>
+          <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-muted-foreground">
+            <span>{fmt(timestamp)}</span>
+            {post.has_image && <span>• Image attached</span>}
+            {post.link_url && (
+              <a href={post.link_url} target="_blank" rel="noreferrer" className="text-[#0A66C2] hover:underline truncate max-w-[200px]">
+                {post.link_url}
+              </a>
+            )}
+          </div>
+        </div>
+        <div className="shrink-0 flex flex-col items-end gap-1">
+          <StatusBadge status={post.status} />
+          {post.status === 'published' && post.post_url && (
+            <a
+              href={post.post_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11px] text-[#0A66C2] hover:underline inline-flex items-center gap-1"
+            >
+              View <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
+      </div>
+      {post.status === 'failed' && post.error_message && (
+        <div className="text-[11px] text-destructive bg-destructive/5 border border-destructive/20 rounded p-2 break-words">
+          {post.error_message}
+        </div>
+      )}
     </div>
   );
 }
