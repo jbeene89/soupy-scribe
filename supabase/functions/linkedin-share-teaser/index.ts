@@ -1,4 +1,5 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const GATEWAY = 'https://connector-gateway.lovable.dev/linkedin';
 
@@ -114,12 +115,29 @@ async function createPost(ownerUrn: string, text: string, asset?: string, altTex
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const admin = createClient(supabaseUrl, serviceKey);
+  let userId: string | null = null;
+  let logId: string | null = null;
+
   try {
     if (req.method !== 'POST') {
       return new Response(JSON.stringify({ error: 'method_not_allowed' }), {
         status: 405,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    const authHeader = req.headers.get('Authorization') || '';
+    const jwt = authHeader.replace('Bearer ', '');
+    if (jwt) {
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: `Bearer ${jwt}` } },
+      });
+      const { data: u } = await userClient.auth.getUser();
+      userId = u?.user?.id ?? null;
     }
 
     const body = (await req.json()) as ShareBody;
@@ -133,6 +151,18 @@ Deno.serve(async (req) => {
     let finalText = body.text;
     if (body.linkUrl && !finalText.includes(body.linkUrl)) {
       finalText = `${finalText}\n\n${body.linkUrl}`;
+    }
+
+    // Insert queued log
+    if (userId) {
+      const { data: ins } = await admin.from('linkedin_posts').insert({
+        user_id: userId,
+        status: 'queued',
+        text_snippet: finalText.slice(0, 500),
+        link_url: body.linkUrl ?? null,
+        has_image: !!body.imageBase64,
+      }).select('id').single();
+      logId = ins?.id ?? null;
     }
 
     const ownerUrn = await getPersonUrn();
@@ -154,11 +184,28 @@ Deno.serve(async (req) => {
       ? `https://www.linkedin.com/feed/update/${urn}`
       : 'https://www.linkedin.com/feed/';
 
+    if (logId) {
+      await admin.from('linkedin_posts').update({
+        status: 'published',
+        post_id: postId,
+        post_url: postUrl,
+        published_at: new Date().toISOString(),
+      }).eq('id', logId);
+    }
+
     return new Response(JSON.stringify({ ok: true, postId, postUrl }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
+    const msg = String((e as any)?.message || e);
+    if (logId) {
+      await admin.from('linkedin_posts').update({
+        status: 'failed',
+        error_message: msg.slice(0, 2000),
+        failed_at: new Date().toISOString(),
+      }).eq('id', logId);
+    }
     return new Response(JSON.stringify({ error: String(e?.message || e) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
