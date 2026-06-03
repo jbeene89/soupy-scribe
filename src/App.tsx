@@ -26,6 +26,7 @@ import Status from "./pages/Status";
 import SubProcessors from "./pages/SubProcessors";
 import Security from "./pages/Security";
 import AIGovernance from "./pages/AIGovernance";
+import MethodologyAuditingTheAuditor from "./pages/MethodologyAuditingTheAuditor";
 import AppStrategicTools from "./pages/AppStrategicTools";
 import AppOpsCenter from "./pages/AppOpsCenter";
 import AppClawbackShield from "./pages/AppClawbackShield";
@@ -61,6 +62,7 @@ const App = () => (
             <Route path="/sub-processors" element={<SubProcessors />} />
             <Route path="/security" element={<Security />} />
             <Route path="/ai-governance" element={<AIGovernance />} />
+            <Route path="/methodology/auditing-the-auditor" element={<MethodologyAuditingTheAuditor />} />
 
             {/* Protected admin routes */}
             <Route path="/app" element={
