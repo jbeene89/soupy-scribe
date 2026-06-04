@@ -3,7 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { Navigate, useLocation } from "react-router-dom";
 import { AdminProvider } from "@/components/admin/AdminContext";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import Landing from "./pages/Landing";
@@ -46,6 +47,22 @@ import { IdleTimeoutGuard } from "@/components/compliance/IdleTimeoutGuard";
 
 const queryClient = new QueryClient();
 
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-sm text-muted-foreground">Loading…</div>
+      </div>
+    );
+  }
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace state={{ from: location.pathname }} />;
+  }
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -55,17 +72,19 @@ const App = () => (
         <BrowserRouter>
           <main>
           <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Landing />} />
+            {/* Public routes — kept minimal so the app stays gated */}
             <Route path="/auth" element={<Auth />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
-            <Route path="/trust" element={<Trust />} />
-            <Route path="/status" element={<Status />} />
-            <Route path="/sub-processors" element={<SubProcessors />} />
-            <Route path="/security" element={<Security />} />
-            <Route path="/ai-governance" element={<AIGovernance />} />
-            <Route path="/methodology/auditing-the-auditor" element={<MethodologyAuditingTheAuditor />} />
-            <Route path="/methodology/denial-economy" element={<MethodologyDenialEconomy />} />
+
+            {/* Everything else now requires sign-in */}
+            <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />
+            <Route path="/trust" element={<RequireAuth><Trust /></RequireAuth>} />
+            <Route path="/status" element={<RequireAuth><Status /></RequireAuth>} />
+            <Route path="/sub-processors" element={<RequireAuth><SubProcessors /></RequireAuth>} />
+            <Route path="/security" element={<RequireAuth><Security /></RequireAuth>} />
+            <Route path="/ai-governance" element={<RequireAuth><AIGovernance /></RequireAuth>} />
+            <Route path="/methodology/auditing-the-auditor" element={<RequireAuth><MethodologyAuditingTheAuditor /></RequireAuth>} />
+            <Route path="/methodology/denial-economy" element={<RequireAuth><MethodologyDenialEconomy /></RequireAuth>} />
 
             {/* Protected admin routes */}
             <Route path="/app" element={
