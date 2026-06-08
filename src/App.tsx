@@ -42,6 +42,7 @@ import AppWriteoffAudit from "./pages/AppWriteoffAudit";
 import AppVendorWatch from "./pages/AppVendorWatch";
 import AppSmartUpload from "./pages/AppSmartUpload";
 import AppLinkedInShare from "./pages/AppLinkedInShare";
+import CodeBayIntake from "./pages/CodeBayIntake";
 import { PHIAcknowledgmentGate } from "@/components/compliance/PHIAcknowledgmentGate";
 import { IdleTimeoutGuard } from "@/components/compliance/IdleTimeoutGuard";
 
@@ -75,6 +76,7 @@ const App = () => (
             {/* Public routes — kept minimal so the app stays gated */}
             <Route path="/auth" element={<Auth />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
+            <Route path="/code-bay-intake" element={<CodeBayIntake />} />
 
             {/* Everything else now requires sign-in */}
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />
