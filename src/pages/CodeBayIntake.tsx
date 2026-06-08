@@ -135,6 +135,7 @@ export default function CodeBayIntake() {
       <SEO
         title="SoupyAudit Code Bay Intake — Upload Synthetic Audit Bundles"
         description="Drop a Code Bay synthetic audit bundle and inspect what SoupyAudit would score: claims, notes, vendors, FHIR, and hidden ground truth."
+        path="/code-bay-intake"
       />
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between gap-4">
