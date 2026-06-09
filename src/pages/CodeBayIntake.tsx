@@ -439,6 +439,80 @@ export default function CodeBayIntake() {
                       <code className="text-xs px-1 mx-1 rounded bg-muted">findingType</code>.
                     </CardDescription>
                   </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button onClick={() => detectorInputRef.current?.click()}>
+                        <Upload className="h-4 w-4 mr-1" /> Upload detector JSON
+                      </Button>
+                      <input
+                        ref={detectorInputRef}
+                        type="file"
+                        accept="application/json,.json"
+                        className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleDetectorUpload(f); }}
+                      />
+                      {detector && <span className="text-sm text-muted-foreground">{detector.length} detector findings loaded</span>}
+                    </div>
+
+                    <pre className="text-xs bg-muted rounded p-3 overflow-auto">
+{`[
+  { "sourceId": "chg-pt-0005-22", "findingType": "modifier_abuse", "reasoning": "..." }
+]`}
+                    </pre>
+
+                    {benchmark && (
+                      <>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                          <StatCard label="True positives" value={benchmark.truePositives.length} />
+                          <StatCard label="False positives" value={benchmark.falsePositives.length} />
+                          <StatCard label="False negatives" value={benchmark.falseNegatives.length} />
+                          <StatCard
+                            label="Precision / Recall"
+                            value={`${(benchmark.precision * 100).toFixed(1)}% / ${(benchmark.recall * 100).toFixed(1)}%`}
+                          />
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <Card>
+                            <CardHeader className="pb-2"><CardTitle className="text-sm">Matched findings</CardTitle></CardHeader>
+                            <CardContent>
+                              {benchmark.matched.length === 0
+                                ? <p className="text-xs text-muted-foreground">No matches yet.</p>
+                                : (
+                                  <ul className="space-y-1 text-xs max-h-64 overflow-auto">
+                                    {benchmark.matched.map((m, i) => (
+                                      <li key={i} className="font-mono">
+                                        ✓ {m.detector.sourceId} · {m.detector.findingType ?? "—"}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardHeader className="pb-2"><CardTitle className="text-sm">Missed findings (false negatives)</CardTitle></CardHeader>
+                            <CardContent>
+                              {benchmark.falseNegatives.length === 0
+                                ? <p className="text-xs text-muted-foreground">None — detector caught everything.</p>
+                                : (
+                                  <ul className="space-y-1 text-xs max-h-64 overflow-auto">
+                                    {benchmark.falseNegatives.map((f, i) => (
+                                      <li key={i} className="font-mono">
+                                        ✗ {String(f.sourceId ?? "—")} · {String(f.findingType ?? "—")}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        <Button variant="outline" size="sm" onClick={() => downloadJson("benchmark-results.json", benchmark)}>
+                          <Download className="h-4 w-4 mr-1" /> Export benchmark JSON
+                        </Button>
+                      </>
+                    )}
+                  </CardContent>
                 </Card>
               </TabsContent>
 
