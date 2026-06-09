@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Upload, FileArchive, Eye, EyeOff, Download, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Upload, FileArchive, Eye, EyeOff, Download, AlertTriangle, CheckCircle2, XCircle, Play, Loader2 } from "lucide-react";
 import {
   EXPECTED_FILES,
   MAX_BUNDLE_BYTES,
@@ -15,6 +15,14 @@ import {
   type DetectorFinding,
   type ParsedBundle,
 } from "@/lib/codeBayBundle";
+import {
+  deriveSourceId,
+  rollupByDefectType,
+  toDetectorFindings,
+  type AuditFinding,
+  type SourceType,
+} from "@/lib/auditFindings";
+import { supabase } from "@/integrations/supabase/client";
 import { SEO } from "@/components/SEO";
 
 function formatBytes(n: number) {
@@ -67,6 +75,16 @@ export default function CodeBayIntake() {
   const [tab, setTab] = useState("overview");
   const [detector, setDetector] = useState<DetectorFinding[] | null>(null);
   const [benchmark, setBenchmark] = useState<BenchmarkResult | null>(null);
+  const [running, setRunning] = useState(false);
+  const [auditFindings, setAuditFindings] = useState<AuditFinding[] | null>(null);
+  const [auditStats, setAuditStats] = useState<{
+    rowsAnalyzed: number;
+    rowsTruncated: number;
+    findingsKept: number;
+    findingsRejected: number;
+    rowErrors: number;
+    rejectedReasons: Record<string, number>;
+  } | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detectorInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +105,8 @@ export default function CodeBayIntake() {
       setRevealGT(false);
       setDetector(null);
       setBenchmark(null);
+      setAuditFindings(null);
+      setAuditStats(null);
       setTab("overview");
       toast({ title: "Bundle loaded", description: `${parsed.totals.chargeCount} charges · ${parsed.totals.injectedFindingCount} hidden findings.` });
     } catch (e) {
@@ -118,6 +138,68 @@ export default function CodeBayIntake() {
       toast({ title: "Invalid detector JSON", description: (e as Error).message, variant: "destructive" });
     }
   }, [bundle]);
+
+  const runSoupyDetector = useCallback(async () => {
+    if (!bundle) return;
+    setRunning(true);
+    setAuditFindings(null);
+    setAuditStats(null);
+    try {
+      // Build the per-row payload. Every row carries the sourceId BEFORE the
+      // model sees it, so findings can never lose their row-level anchor.
+      const rows: { sourceId: string; sourceType: SourceType; row: Record<string, unknown> }[] = [];
+      bundle.charges.forEach((r, i) => rows.push({
+        sourceId: deriveSourceId(r, "charge", i),
+        sourceType: "charge",
+        row: r,
+      }));
+      bundle.vendorInvoices.forEach((r, i) => rows.push({
+        sourceId: deriveSourceId(r, "vendor", i),
+        sourceType: "vendor",
+        row: r,
+      }));
+      bundle.clinicalNotes.forEach((r, i) => rows.push({
+        sourceId: deriveSourceId(r, "note", i),
+        sourceType: "note",
+        row: r,
+      }));
+
+      const { data, error } = await supabase.functions.invoke("audit-bundle", {
+        body: { rows },
+      });
+      if (error) throw error;
+      const findings: AuditFinding[] = Array.isArray(data?.findings) ? data.findings : [];
+      setAuditFindings(findings);
+      setAuditStats(data?.stats ? { ...data.stats, rejectedReasons: data.rejectedReasons ?? {} } : null);
+
+      // Auto-score against the hidden ground truth.
+      const detectorPayload = toDetectorFindings(findings);
+      setDetector(detectorPayload);
+      setBenchmark(scoreDetector(detectorPayload, bundle.groundTruth));
+      setTab("playbook");
+      toast({
+        title: "SoupyAudit run complete",
+        description: `${findings.length} validated findings across ${rows.length} rows.`,
+      });
+    } catch (e) {
+      toast({
+        title: "SoupyAudit run failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setRunning(false);
+    }
+  }, [bundle]);
+
+  const rollup = useMemo(
+    () => (auditFindings ? rollupByDefectType(auditFindings) : []),
+    [auditFindings],
+  );
+  const totalRecoverable = useMemo(
+    () => rollup.reduce((s, r) => s + r.totalRecoverable, 0),
+    [rollup],
+  );
 
   const exportParsed = () => {
     if (!bundle) return;
@@ -204,6 +286,11 @@ export default function CodeBayIntake() {
                   </CardDescription>
                 </div>
                 <div className="flex gap-2 flex-wrap justify-end">
+                  <Button size="sm" onClick={runSoupyDetector} disabled={running}>
+                    {running
+                      ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Running…</>
+                      : <><Play className="h-4 w-4 mr-1" /> Run SoupyAudit on this bundle</>}
+                  </Button>
                   <Button variant="outline" size="sm" onClick={exportParsed}>
                     <Download className="h-4 w-4 mr-1" /> Export JSON
                   </Button>
@@ -230,6 +317,9 @@ export default function CodeBayIntake() {
                 <TabsTrigger value="notes">Clinical Notes ({bundle.clinicalNotes.length})</TabsTrigger>
                 <TabsTrigger value="vendors">Vendors ({bundle.vendorInvoices.length})</TabsTrigger>
                 <TabsTrigger value="ground-truth">Hidden Ground Truth</TabsTrigger>
+                <TabsTrigger value="playbook">
+                  Prevention Playbook{auditFindings ? ` (${auditFindings.length})` : ""}
+                </TabsTrigger>
                 <TabsTrigger value="benchmark">Benchmark Scoring</TabsTrigger>
               </TabsList>
 
@@ -425,6 +515,148 @@ export default function CodeBayIntake() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              <TabsContent value="playbook" className="space-y-4">
+                {!auditFindings && (
+                  <Card>
+                    <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                      Click <span className="font-medium">"Run SoupyAudit on this bundle"</span> above
+                      to generate validated, line-level findings.
+                    </CardContent>
+                  </Card>
+                )}
+
+                {auditFindings && (
+                  <>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Prevention Playbook</CardTitle>
+                        <CardDescription>
+                          Every category total below names the exact rows behind it.
+                          Total recoverable: <span className="font-mono">
+                            {totalRecoverable.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+                          </span> across {auditFindings.length} validated finding{auditFindings.length === 1 ? "" : "s"}.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {rollup.length === 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            SoupyAudit found no defects in this bundle.
+                          </p>
+                        )}
+                        {rollup.map((g) => (
+                          <div key={g.defectType} className="border rounded-md p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="font-medium capitalize">
+                                {g.defectType.replace(/_/g, " ")}
+                              </div>
+                              <div className="font-mono text-sm">
+                                {g.totalRecoverable.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+                                <span className="text-muted-foreground"> · {g.count} finding{g.count === 1 ? "" : "s"}</span>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {g.sourceIds.map((sid) => (
+                                <Badge key={sid} variant="outline" className="font-mono text-[10px]">
+                                  {sid}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Validated findings (source of truth)</CardTitle>
+                        <CardDescription>
+                          These rows ARE the audit. The summary above is a view of this list.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="overflow-auto max-h-[60vh] border rounded-md">
+                          <Table>
+                            <TableHeader className="sticky top-0 bg-background">
+                              <TableRow>
+                                <TableHead>sourceId</TableHead>
+                                <TableHead>sourceType</TableHead>
+                                <TableHead>defectType</TableHead>
+                                <TableHead>conf.</TableHead>
+                                <TableHead className="text-right">recoverable</TableHead>
+                                <TableHead>evidence</TableHead>
+                                <TableHead>explanation</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {auditFindings.map((f, i) => (
+                                <TableRow key={i}>
+                                  <TableCell className="font-mono text-xs">{f.sourceId}</TableCell>
+                                  <TableCell className="text-xs">{f.sourceType}</TableCell>
+                                  <TableCell className="text-xs">{f.defectType}</TableCell>
+                                  <TableCell className="text-xs">{f.confidence}</TableCell>
+                                  <TableCell className="text-xs text-right font-mono">
+                                    {f.recoverableAmount.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+                                  </TableCell>
+                                  <TableCell className="text-xs italic max-w-[260px] truncate" title={f.evidence}>
+                                    "{f.evidence}"
+                                  </TableCell>
+                                  <TableCell className="text-xs max-w-[260px] truncate" title={f.explanation}>
+                                    {f.explanation}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        {auditStats && (
+                          <div className="mt-3 text-xs text-muted-foreground flex flex-wrap gap-3">
+                            <span>Rows analyzed: <span className="font-mono">{auditStats.rowsAnalyzed}</span></span>
+                            <span>Kept: <span className="font-mono">{auditStats.findingsKept}</span></span>
+                            <span>Rejected by validator: <span className="font-mono">{auditStats.findingsRejected}</span></span>
+                            {auditStats.rowsTruncated > 0 && (
+                              <span className="text-amber-600">
+                                Truncated: <span className="font-mono">{auditStats.rowsTruncated}</span> rows skipped (over per-run cap)
+                              </span>
+                            )}
+                            {Object.keys(auditStats.rejectedReasons || {}).length > 0 && (
+                              <span>
+                                Rejection reasons: {Object.entries(auditStats.rejectedReasons)
+                                  .map(([k, v]) => `${k}=${v}`).join(", ")}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => downloadJson(
+                              `${bundle.manifest?.runId ?? "soupyaudit"}-findings.json`,
+                              auditFindings,
+                            )}
+                          >
+                            <Download className="h-4 w-4 mr-1" /> Export findings (full)
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => downloadJson(
+                              `${bundle.manifest?.runId ?? "soupyaudit"}-detector.json`,
+                              toDetectorFindings(auditFindings),
+                            )}
+                          >
+                            <Download className="h-4 w-4 mr-1" /> Export detector JSON (for scoring)
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+              </TabsContent>
+
             </Tabs>
           </>
         )}
