@@ -439,6 +439,152 @@ export default function CodeBayIntake() {
                       <code className="text-xs px-1 mx-1 rounded bg-muted">findingType</code>.
                     </CardDescription>
                   </CardHeader>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="playbook" className="space-y-4">
+                {!auditFindings && (
+                  <Card>
+                    <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                      Click <span className="font-medium">"Run SoupyAudit on this bundle"</span> above
+                      to generate validated, line-level findings.
+                    </CardContent>
+                  </Card>
+                )}
+
+                {auditFindings && (
+                  <>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Prevention Playbook</CardTitle>
+                        <CardDescription>
+                          Every category total below names the exact rows behind it.
+                          Total recoverable: <span className="font-mono">
+                            {totalRecoverable.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+                          </span> across {auditFindings.length} validated finding{auditFindings.length === 1 ? "" : "s"}.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {rollup.length === 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            SoupyAudit found no defects in this bundle.
+                          </p>
+                        )}
+                        {rollup.map((g) => (
+                          <div key={g.defectType} className="border rounded-md p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="font-medium capitalize">
+                                {g.defectType.replace(/_/g, " ")}
+                              </div>
+                              <div className="font-mono text-sm">
+                                {g.totalRecoverable.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+                                <span className="text-muted-foreground"> · {g.count} finding{g.count === 1 ? "" : "s"}</span>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {g.sourceIds.map((sid) => (
+                                <Badge key={sid} variant="outline" className="font-mono text-[10px]">
+                                  {sid}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Validated findings (source of truth)</CardTitle>
+                        <CardDescription>
+                          These rows ARE the audit. The summary above is a view of this list.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="overflow-auto max-h-[60vh] border rounded-md">
+                          <Table>
+                            <TableHeader className="sticky top-0 bg-background">
+                              <TableRow>
+                                <TableHead>sourceId</TableHead>
+                                <TableHead>sourceType</TableHead>
+                                <TableHead>defectType</TableHead>
+                                <TableHead>conf.</TableHead>
+                                <TableHead className="text-right">recoverable</TableHead>
+                                <TableHead>evidence</TableHead>
+                                <TableHead>explanation</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {auditFindings.map((f, i) => (
+                                <TableRow key={i}>
+                                  <TableCell className="font-mono text-xs">{f.sourceId}</TableCell>
+                                  <TableCell className="text-xs">{f.sourceType}</TableCell>
+                                  <TableCell className="text-xs">{f.defectType}</TableCell>
+                                  <TableCell className="text-xs">{f.confidence}</TableCell>
+                                  <TableCell className="text-xs text-right font-mono">
+                                    {f.recoverableAmount.toLocaleString(undefined, { style: "currency", currency: "USD" })}
+                                  </TableCell>
+                                  <TableCell className="text-xs italic max-w-[260px] truncate" title={f.evidence}>
+                                    "{f.evidence}"
+                                  </TableCell>
+                                  <TableCell className="text-xs max-w-[260px] truncate" title={f.explanation}>
+                                    {f.explanation}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        {auditStats && (
+                          <div className="mt-3 text-xs text-muted-foreground flex flex-wrap gap-3">
+                            <span>Rows analyzed: <span className="font-mono">{auditStats.rowsAnalyzed}</span></span>
+                            <span>Kept: <span className="font-mono">{auditStats.findingsKept}</span></span>
+                            <span>Rejected by validator: <span className="font-mono">{auditStats.findingsRejected}</span></span>
+                            {auditStats.rowsTruncated > 0 && (
+                              <span className="text-amber-600">
+                                Truncated: <span className="font-mono">{auditStats.rowsTruncated}</span> rows skipped (over per-run cap)
+                              </span>
+                            )}
+                            {Object.keys(auditStats.rejectedReasons || {}).length > 0 && (
+                              <span>
+                                Rejection reasons: {Object.entries(auditStats.rejectedReasons)
+                                  .map(([k, v]) => `${k}=${v}`).join(", ")}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => downloadJson(
+                              `${bundle.manifest?.runId ?? "soupyaudit"}-findings.json`,
+                              auditFindings,
+                            )}
+                          >
+                            <Download className="h-4 w-4 mr-1" /> Export findings (full)
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => downloadJson(
+                              `${bundle.manifest?.runId ?? "soupyaudit"}-detector.json`,
+                              toDetectorFindings(auditFindings),
+                            )}
+                          >
+                            <Download className="h-4 w-4 mr-1" /> Export detector JSON (for scoring)
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+              </TabsContent>
+
+              <TabsContent value="benchmark-old-anchor" className="hidden">
+                <Card>
                   <CardContent className="space-y-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <Button onClick={() => detectorInputRef.current?.click()}>
