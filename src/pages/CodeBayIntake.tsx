@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
-import { Upload, FileArchive, Eye, EyeOff, Download, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { Upload, FileArchive, Eye, EyeOff, Download, AlertTriangle, CheckCircle2, XCircle, Play, Loader2 } from "lucide-react";
 import {
   EXPECTED_FILES,
   MAX_BUNDLE_BYTES,
@@ -15,6 +15,14 @@ import {
   type DetectorFinding,
   type ParsedBundle,
 } from "@/lib/codeBayBundle";
+import {
+  deriveSourceId,
+  rollupByDefectType,
+  toDetectorFindings,
+  type AuditFinding,
+  type SourceType,
+} from "@/lib/auditFindings";
+import { supabase } from "@/integrations/supabase/client";
 import { SEO } from "@/components/SEO";
 
 function formatBytes(n: number) {
@@ -67,6 +75,16 @@ export default function CodeBayIntake() {
   const [tab, setTab] = useState("overview");
   const [detector, setDetector] = useState<DetectorFinding[] | null>(null);
   const [benchmark, setBenchmark] = useState<BenchmarkResult | null>(null);
+  const [running, setRunning] = useState(false);
+  const [auditFindings, setAuditFindings] = useState<AuditFinding[] | null>(null);
+  const [auditStats, setAuditStats] = useState<{
+    rowsAnalyzed: number;
+    rowsTruncated: number;
+    findingsKept: number;
+    findingsRejected: number;
+    rowErrors: number;
+    rejectedReasons: Record<string, number>;
+  } | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detectorInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +105,8 @@ export default function CodeBayIntake() {
       setRevealGT(false);
       setDetector(null);
       setBenchmark(null);
+      setAuditFindings(null);
+      setAuditStats(null);
       setTab("overview");
       toast({ title: "Bundle loaded", description: `${parsed.totals.chargeCount} charges · ${parsed.totals.injectedFindingCount} hidden findings.` });
     } catch (e) {
@@ -118,6 +138,68 @@ export default function CodeBayIntake() {
       toast({ title: "Invalid detector JSON", description: (e as Error).message, variant: "destructive" });
     }
   }, [bundle]);
+
+  const runSoupyDetector = useCallback(async () => {
+    if (!bundle) return;
+    setRunning(true);
+    setAuditFindings(null);
+    setAuditStats(null);
+    try {
+      // Build the per-row payload. Every row carries the sourceId BEFORE the
+      // model sees it, so findings can never lose their row-level anchor.
+      const rows: { sourceId: string; sourceType: SourceType; row: Record<string, unknown> }[] = [];
+      bundle.charges.forEach((r, i) => rows.push({
+        sourceId: deriveSourceId(r, "charge", i),
+        sourceType: "charge",
+        row: r,
+      }));
+      bundle.vendorInvoices.forEach((r, i) => rows.push({
+        sourceId: deriveSourceId(r, "vendor", i),
+        sourceType: "vendor",
+        row: r,
+      }));
+      bundle.clinicalNotes.forEach((r, i) => rows.push({
+        sourceId: deriveSourceId(r, "note", i),
+        sourceType: "note",
+        row: r,
+      }));
+
+      const { data, error } = await supabase.functions.invoke("audit-bundle", {
+        body: { rows },
+      });
+      if (error) throw error;
+      const findings: AuditFinding[] = Array.isArray(data?.findings) ? data.findings : [];
+      setAuditFindings(findings);
+      setAuditStats(data?.stats ? { ...data.stats, rejectedReasons: data.rejectedReasons ?? {} } : null);
+
+      // Auto-score against the hidden ground truth.
+      const detectorPayload = toDetectorFindings(findings);
+      setDetector(detectorPayload);
+      setBenchmark(scoreDetector(detectorPayload, bundle.groundTruth));
+      setTab("playbook");
+      toast({
+        title: "SoupyAudit run complete",
+        description: `${findings.length} validated findings across ${rows.length} rows.`,
+      });
+    } catch (e) {
+      toast({
+        title: "SoupyAudit run failed",
+        description: (e as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setRunning(false);
+    }
+  }, [bundle]);
+
+  const rollup = useMemo(
+    () => (auditFindings ? rollupByDefectType(auditFindings) : []),
+    [auditFindings],
+  );
+  const totalRecoverable = useMemo(
+    () => rollup.reduce((s, r) => s + r.totalRecoverable, 0),
+    [rollup],
+  );
 
   const exportParsed = () => {
     if (!bundle) return;
@@ -204,6 +286,11 @@ export default function CodeBayIntake() {
                   </CardDescription>
                 </div>
                 <div className="flex gap-2 flex-wrap justify-end">
+                  <Button size="sm" onClick={runSoupyDetector} disabled={running}>
+                    {running
+                      ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Running…</>
+                      : <><Play className="h-4 w-4 mr-1" /> Run SoupyAudit on this bundle</>}
+                  </Button>
                   <Button variant="outline" size="sm" onClick={exportParsed}>
                     <Download className="h-4 w-4 mr-1" /> Export JSON
                   </Button>
@@ -230,6 +317,9 @@ export default function CodeBayIntake() {
                 <TabsTrigger value="notes">Clinical Notes ({bundle.clinicalNotes.length})</TabsTrigger>
                 <TabsTrigger value="vendors">Vendors ({bundle.vendorInvoices.length})</TabsTrigger>
                 <TabsTrigger value="ground-truth">Hidden Ground Truth</TabsTrigger>
+                <TabsTrigger value="playbook">
+                  Prevention Playbook{auditFindings ? ` (${auditFindings.length})` : ""}
+                </TabsTrigger>
                 <TabsTrigger value="benchmark">Benchmark Scoring</TabsTrigger>
               </TabsList>
 
