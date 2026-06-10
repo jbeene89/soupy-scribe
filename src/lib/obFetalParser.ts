@@ -1,7 +1,7 @@
 // Forgiving client-side parsers for OB Fetal Audit ingestion.
 // We accept whatever column names the EHR exports tend to use.
 
-import type { MAREvent, MedName, StripSample } from './obFetalTypes';
+import type { CareEvent, CareEventKind, MAREvent, MedName, StripSample, VitalsReading } from './obFetalTypes';
 
 const FHR_KEYS = ['fhr', 'fhr_bpm', 'fetal_heart_rate', 'heart_rate', 'baseline_fhr', 'fhr1'];
 const UC_KEYS = ['uc', 'toco', 'contraction', 'uterine_activity', 'ua', 'iupc', 'mvu'];
@@ -195,4 +195,129 @@ export async function fileToDataURL(file: File): Promise<string> {
     r.onload = () => resolve(String(r.result || ''));
     r.readAsDataURL(file);
   });
+}
+
+// ── Vitals parsing ───────────────────────────────────────────────────────
+
+const SBP_KEYS = ['sbp', 'systolic', 'bp_systolic', 'sys'];
+const DBP_KEYS = ['dbp', 'diastolic', 'bp_diastolic', 'dia'];
+const HR_KEYS = ['hr', 'heart_rate', 'pulse', 'maternal_hr'];
+const SPO2_KEYS = ['spo2', 'sao2', 'oxygen', 'sat'];
+const TEMP_KEYS = ['temp', 'temperature', 'tempf'];
+
+/** Parse vitals as either a CSV (time, sbp, dbp, hr, spo2) OR free-text lines like "21:14 BP 52/36, HR 118". */
+export function parseVitals(text: string, anchorDate?: string): { readings: VitalsReading[]; warnings: string[] } {
+  const warnings: string[] = [];
+  const readings: VitalsReading[] = [];
+  if (!text.trim()) return { readings, warnings };
+
+  const rows = splitCSV(text);
+  const headers = rows[0]?.map(normHeader) || [];
+  const looksLikeCSV = rows.length > 1 && headers.some((h) => TIME_KEYS.includes(h)) && headers.some((h) => /bp|systolic|sbp|hr|spo2/.test(h));
+
+  if (looksLikeCSV) {
+    const ti = findIdx(rows[0], TIME_KEYS);
+    const si = findIdx(rows[0], SBP_KEYS);
+    const di = findIdx(rows[0], DBP_KEYS);
+    const hi = findIdx(rows[0], HR_KEYS);
+    const oi = findIdx(rows[0], SPO2_KEYS);
+    const tempi = findIdx(rows[0], TEMP_KEYS);
+    const bpi = findIdx(rows[0], ['bp', 'blood_pressure']);
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      const iso = toIso(row[ti] ?? '');
+      if (!iso) { warnings.push(`Vitals row ${r + 1}: bad timestamp`); continue; }
+      let sbp: number | undefined, dbp: number | undefined;
+      if (si >= 0) sbp = numOrU(row[si]);
+      if (di >= 0) dbp = numOrU(row[di]);
+      if ((!sbp || !dbp) && bpi >= 0) {
+        const m = (row[bpi] || '').match(/(\d{2,3})\s*\/\s*(\d{2,3})/);
+        if (m) { sbp = Number(m[1]); dbp = Number(m[2]); }
+      }
+      readings.push({
+        t: iso,
+        sbp, dbp,
+        hr: hi >= 0 ? numOrU(row[hi]) : undefined,
+        spo2: oi >= 0 ? numOrU(row[oi]) : undefined,
+        tempF: tempi >= 0 ? numOrU(row[tempi]) : undefined,
+        evidence: row.join(' | '),
+      });
+    }
+  } else {
+    for (const line of text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)) {
+      const tMatch = line.match(/(\d{4}-\d{2}-\d{2}[ T]\d{1,2}:\d{2}(?::\d{2})?)|(\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?)/i);
+      if (!tMatch) continue;
+      const raw = tMatch[0];
+      const iso = /\d{4}-\d{2}-\d{2}/.test(raw)
+        ? toIso(raw)
+        : toIso(`${(anchorDate || new Date().toISOString()).slice(0, 10)} ${raw}`);
+      if (!iso) continue;
+      const bp = line.match(/(?:bp\s*)?(\d{2,3})\s*\/\s*(\d{2,3})/i);
+      const hr = line.match(/hr\s*(\d{2,3})|pulse\s*(\d{2,3})/i);
+      const spo2 = line.match(/(?:spo2|sat)\s*(\d{2,3})/i);
+      const temp = line.match(/temp\s*([\d.]+)/i);
+      readings.push({
+        t: iso,
+        sbp: bp ? Number(bp[1]) : undefined,
+        dbp: bp ? Number(bp[2]) : undefined,
+        hr: hr ? Number(hr[1] || hr[2]) : undefined,
+        spo2: spo2 ? Number(spo2[1]) : undefined,
+        tempF: temp ? Number(temp[1]) : undefined,
+        evidence: line,
+      });
+    }
+  }
+  readings.sort((a, b) => a.t.localeCompare(b.t));
+  return { readings, warnings };
+}
+
+function numOrU(v: string | undefined): number | undefined {
+  if (v === undefined || v === '') return undefined;
+  const n = Number(v);
+  return isFinite(n) ? n : undefined;
+}
+
+// ── Care event parsing ───────────────────────────────────────────────────
+
+const CARE_VOCAB: { match: RegExp; kind: CareEventKind }[] = [
+  { match: /membrane\s*sweep|stripping of membranes|mucosal\s*sweep/i, kind: 'membrane_sweep' },
+  { match: /\barom\b|artificial rupture|amniotomy/i, kind: 'arom' },
+  { match: /cervidil\s*(placed|inserted)|dinoprostone\s*placed/i, kind: 'cervidil_placed' },
+  { match: /cervidil\s*(removed|d\/c|discontinued)/i, kind: 'cervidil_removed' },
+  { match: /cervical exam|sve|vaginal exam|dilated|effacement/i, kind: 'cervical_exam' },
+  { match: /consent (signed|obtained|given)/i, kind: 'consent_obtained' },
+  { match: /order (entered|placed|received)/i, kind: 'provider_order' },
+  { match: /epidural (placed|dosed)/i, kind: 'epidural' },
+  { match: /vital(s)? (checked|taken|obtained|recorded)|bp\s*\d{2,3}\s*\/\s*\d{2,3}/i, kind: 'vitals_check' },
+  { match: /rn (at )?bedside|nurse at bedside|in room/i, kind: 'rn_at_bedside' },
+  { match: /provider (notified|aware|called)|md notified|ob notified/i, kind: 'provider_notified' },
+  { match: /iv (bolus|fluid)|lr bolus|ns bolus/i, kind: 'iv_bolus' },
+  { match: /reposition|left lateral|right lateral|position changed/i, kind: 'position_change' },
+  { match: /oxygen|o2 (started|applied|on)/i, kind: 'oxygen' },
+  { match: /reassessed|reassessment/i, kind: 'reassessment' },
+];
+
+function classifyCare(line: string): CareEventKind {
+  for (const v of CARE_VOCAB) if (v.match.test(line)) return v.kind;
+  return 'other';
+}
+
+/** Parse care/nursing events from free-text. One line = one event. Any line with HH:MM is kept. */
+export function parseCareEvents(text: string, anchorDate?: string): { events: CareEvent[]; warnings: string[] } {
+  const warnings: string[] = [];
+  const events: CareEvent[] = [];
+  if (!text.trim()) return { events, warnings };
+
+  for (const line of text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)) {
+    const tMatch = line.match(/(\d{4}-\d{2}-\d{2}[ T]\d{1,2}:\d{2}(?::\d{2})?)|(\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?)/i);
+    if (!tMatch) { warnings.push(`Care line skipped (no timestamp): "${line.slice(0, 80)}"`); continue; }
+    const raw = tMatch[0];
+    const iso = /\d{4}-\d{2}-\d{2}/.test(raw)
+      ? toIso(raw)
+      : toIso(`${(anchorDate || new Date().toISOString()).slice(0, 10)} ${raw}`);
+    if (!iso) continue;
+    events.push({ t: iso, kind: classifyCare(line), description: line, evidence: line });
+  }
+  events.sort((a, b) => a.t.localeCompare(b.t));
+  return { events, warnings };
 }
