@@ -42,6 +42,7 @@ import AppWriteoffAudit from "./pages/AppWriteoffAudit";
 import AppVendorWatch from "./pages/AppVendorWatch";
 import AppSmartUpload from "./pages/AppSmartUpload";
 import AppLinkedInShare from "./pages/AppLinkedInShare";
+import AppOBFetalAudit from "./pages/AppOBFetalAudit";
 import CodeBayIntake from "./pages/CodeBayIntake";
 import { PHIAcknowledgmentGate } from "@/components/compliance/PHIAcknowledgmentGate";
 import { IdleTimeoutGuard } from "@/components/compliance/IdleTimeoutGuard";
@@ -130,6 +131,7 @@ const App = () => (
               <Route path="vendor-watch" element={<AppVendorWatch />} />
               <Route path="upload" element={<AppSmartUpload />} />
               <Route path="linkedin-share" element={<AppLinkedInShare />} />
+              <Route path="ob-fetal-audit" element={<AppOBFetalAudit />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
