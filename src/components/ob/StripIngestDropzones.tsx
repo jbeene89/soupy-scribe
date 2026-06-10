@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, Activity, Pill, FileText, Image as ImageIcon, HeartPulse, ClipboardList, UserSquare2 } from 'lucide-react';
+import { Upload, X, Activity, Pill, FileText, Image as ImageIcon, HeartPulse, ClipboardList, UserSquare2, Camera, Loader2 } from 'lucide-react';
 import { parseStripCSV, parseMAR, parseVitals, parseCareEvents, fileToText, fileToDataURL } from '@/lib/obFetalParser';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { CareEvent, MAREvent, OBCaseHeader, StripSample, VitalsReading } from '@/lib/obFetalTypes';
 
 export interface IngestState {
@@ -43,6 +45,9 @@ export function StripIngestDropzones({
   const vitalsRef = useRef<HTMLInputElement>(null);
   const careRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const ocrRef = useRef<HTMLInputElement>(null);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrLog, setOcrLog] = useState<string[]>([]);
 
   async function handleStripFile(file: File) {
     setBusy(true);
@@ -105,6 +110,43 @@ export function StripIngestDropzones({
 
   function updateHeader(patch: Partial<OBCaseHeader>) {
     onChange({ ...value, caseHeader: { ...value.caseHeader, ...patch } });
+  }
+
+  async function handleOcrPhotos(files: FileList) {
+    setOcrBusy(true);
+    setOcrLog([]);
+    try {
+      const images: { filename: string; dataUrl: string }[] = [];
+      for (const f of Array.from(files)) {
+        images.push({ filename: f.name, dataUrl: await fileToDataURL(f) });
+      }
+      const anchorDate = value.caseHeader.dateOfAdmission || value.caseHeader.dateOfDelivery;
+      const { data, error } = await supabase.functions.invoke('ob-photo-ocr', {
+        body: { images, anchorDate },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const newVitals = (data?.vitalsReadings || []) as VitalsReading[];
+      const newCare = (data?.careEvents || []) as CareEvent[];
+      const perImage = data?.perImage || [];
+      const warnings = (data?.warnings || []) as string[];
+      onChange({
+        ...value,
+        vitalsReadings: dedupByEvidence([...value.vitalsReadings, ...newVitals]),
+        careEvents: dedupByEvidence([...value.careEvents, ...newCare]),
+        parseWarnings: [...value.parseWarnings, ...warnings.map((w) => `Photo: ${w}`)],
+      });
+      setOcrLog(perImage.map((p: any) =>
+        p.error
+          ? `${p.filename}: ${p.error}`
+          : `${p.filename} (${p.artifact_type}): ${p.vitalsCount} vitals + ${p.careCount} care events`
+      ));
+      toast.success(`Transcribed ${newVitals.length} vitals + ${newCare.length} care events from ${images.length} photo${images.length === 1 ? '' : 's'}.`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setOcrBusy(false);
+    }
   }
 
   return (
