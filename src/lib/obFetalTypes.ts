@@ -60,13 +60,67 @@ export interface MAREvent {
 
 export type ViolationSeverity = 'critical' | 'high' | 'moderate';
 
+/** Maternal vital signs reading from the flowsheet. */
+export interface VitalsReading {
+  t: string;
+  /** Systolic BP (mmHg). */
+  sbp?: number;
+  /** Diastolic BP (mmHg). */
+  dbp?: number;
+  /** Maternal heart rate (bpm). */
+  hr?: number;
+  /** SpO2 (%). */
+  spo2?: number;
+  /** Temperature (F). */
+  tempF?: number;
+  evidence?: string;
+}
+
+export type CareEventKind =
+  | 'vitals_check'
+  | 'rn_at_bedside'
+  | 'provider_notified'
+  | 'cervical_exam'
+  | 'membrane_sweep'
+  | 'arom'
+  | 'cervidil_placed'
+  | 'cervidil_removed'
+  | 'epidural'
+  | 'consent_obtained'
+  | 'provider_order'
+  | 'iv_bolus'
+  | 'position_change'
+  | 'oxygen'
+  | 'reassessment'
+  | 'other';
+
+/** Any nursing / provider / care activity that has a time and (often) a verbatim chart line. */
+export interface CareEvent {
+  t: string;
+  kind: CareEventKind;
+  /** Free-text label / verbatim chart line. */
+  description: string;
+  /** Optional staff name from the chart. */
+  staff?: string;
+  evidence?: string;
+}
+
 /** A point where the strip + MAR + chart show the medication should have been held/reduced but wasn't. */
 export interface StopRuleViolation {
   id: string;
   /** ISO timestamp of the violation. */
   t: string;
-  medication: MedName;
+  /** When the violation isn't tied to a medication (e.g. hypotension, unattended), this is "system". */
+  medication: MedName | 'system';
   medicationLabel: string;
+  /** Stable rule code so the PDF / complaint packet can group findings. */
+  ruleCode?:
+    | 'pit_cat3' | 'pit_tachy' | 'pit_cat2' | 'pit_running_cat3'
+    | 'miso_interval' | 'miso_tachy'
+    | 'maternal_hypotension'
+    | 'ripening_interval'
+    | 'unattended_patient'
+    | 'consent_scope';
   rule: string;
   severity: ViolationSeverity;
   /** Human description: what the strip showed. */
@@ -101,6 +155,8 @@ export interface OBAuditResult {
   windowMinutes: number;
   windows: StripWindow[];
   marEvents: MAREvent[];
+  vitalsReadings: VitalsReading[];
+  careEvents: CareEvent[];
   violations: StopRuleViolation[];
   contraindicationChecks: ContraindicationCheck[];
   /** Total monitored time in minutes covered by the windows. */
@@ -116,10 +172,29 @@ export interface OBAuditResult {
     moderateViolations: number;
     pitocinIncreasesDuringConcern: number;
     misoRedosesUnderInterval: number;
+    hypotensionEpisodes: number;
+    unattendedGaps: number;
+    consentScopeFlags: number;
+    ripeningIntervalFlags: number;
   };
   notes: string[];
   /** Any rows the parser couldn't classify, surfaced for human review. */
   parseWarnings: string[];
+  /** Optional case header used by the complaint packet (patient initials, facility, DOS). */
+  caseHeader?: OBCaseHeader;
+}
+
+export interface OBCaseHeader {
+  patientInitials?: string;
+  facility?: string;
+  unit?: string;
+  roomNumber?: string;
+  attendingOB?: string;
+  dateOfAdmission?: string;
+  dateOfDelivery?: string;
+  authorName?: string;
+  /** Free-text narrative the user wrote describing the case. */
+  narrative?: string;
 }
 
 /** Payload sent to the edge function. */
@@ -130,8 +205,14 @@ export interface OBAuditRequest {
   stripImages?: { filename: string; dataUrl: string }[];
   /** Pre-parsed MAR events. Optional. */
   marEvents?: MAREvent[];
+  /** Maternal vitals readings. Optional. */
+  vitalsReadings?: VitalsReading[];
+  /** Nursing / provider care events. Optional. */
+  careEvents?: CareEvent[];
   /** Optional clinical notes text — used to fill in chartedResponse on violations. */
   notesText?: string;
   /** Override window size, default 10. */
   windowMinutes?: number;
+  /** Case header carried through to the complaint packet. */
+  caseHeader?: OBCaseHeader;
 }
