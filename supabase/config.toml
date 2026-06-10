@@ -35,6 +35,9 @@ verify_jwt = false
 [functions.ob-fetal-audit]
 verify_jwt = false
 
+[functions.ob-photo-ocr]
+verify_jwt = false
+
 # soupy-engine handles a mix of authed and admin/health actions.
 # Auth is enforced per-action inside the function itself.
 [functions.soupy-engine]

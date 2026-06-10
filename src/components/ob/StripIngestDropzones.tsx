@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, Activity, Pill, FileText, Image as ImageIcon, HeartPulse, ClipboardList, UserSquare2 } from 'lucide-react';
+import { Upload, X, Activity, Pill, FileText, Image as ImageIcon, HeartPulse, ClipboardList, UserSquare2, Camera, Loader2 } from 'lucide-react';
 import { parseStripCSV, parseMAR, parseVitals, parseCareEvents, fileToText, fileToDataURL } from '@/lib/obFetalParser';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { CareEvent, MAREvent, OBCaseHeader, StripSample, VitalsReading } from '@/lib/obFetalTypes';
 
 export interface IngestState {
@@ -43,6 +45,9 @@ export function StripIngestDropzones({
   const vitalsRef = useRef<HTMLInputElement>(null);
   const careRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const ocrRef = useRef<HTMLInputElement>(null);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrLog, setOcrLog] = useState<string[]>([]);
 
   async function handleStripFile(file: File) {
     setBusy(true);
@@ -105,6 +110,43 @@ export function StripIngestDropzones({
 
   function updateHeader(patch: Partial<OBCaseHeader>) {
     onChange({ ...value, caseHeader: { ...value.caseHeader, ...patch } });
+  }
+
+  async function handleOcrPhotos(files: FileList) {
+    setOcrBusy(true);
+    setOcrLog([]);
+    try {
+      const images: { filename: string; dataUrl: string }[] = [];
+      for (const f of Array.from(files)) {
+        images.push({ filename: f.name, dataUrl: await fileToDataURL(f) });
+      }
+      const anchorDate = value.caseHeader.dateOfAdmission || value.caseHeader.dateOfDelivery;
+      const { data, error } = await supabase.functions.invoke('ob-photo-ocr', {
+        body: { images, anchorDate },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const newVitals = (data?.vitalsReadings || []) as VitalsReading[];
+      const newCare = (data?.careEvents || []) as CareEvent[];
+      const perImage = data?.perImage || [];
+      const warnings = (data?.warnings || []) as string[];
+      onChange({
+        ...value,
+        vitalsReadings: dedupByEvidence([...value.vitalsReadings, ...newVitals]),
+        careEvents: dedupByEvidence([...value.careEvents, ...newCare]),
+        parseWarnings: [...value.parseWarnings, ...warnings.map((w) => `Photo: ${w}`)],
+      });
+      setOcrLog(perImage.map((p: any) =>
+        p.error
+          ? `${p.filename}: ${p.error}`
+          : `${p.filename} (${p.artifact_type}): ${p.vitalsCount} vitals + ${p.careCount} care events`
+      ));
+      toast.success(`Transcribed ${newVitals.length} vitals + ${newCare.length} care events from ${images.length} photo${images.length === 1 ? '' : 's'}.`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setOcrBusy(false);
+    }
   }
 
   return (
@@ -278,6 +320,33 @@ export function StripIngestDropzones({
           onChange={(e) => onChange({ ...value, notesText: e.target.value })}
         />
       </Card>
+
+      {/* Photo OCR */}
+      <Card className="p-4 md:col-span-2 border-primary/30 bg-primary/[0.03]">
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Camera className="h-4 w-4 text-primary" /> Photo OCR — drop pictures of paper chart pages
+          </div>
+          {ocrBusy && <Badge variant="secondary" className="gap-1"><Loader2 className="h-3 w-3 animate-spin" /> reading photos…</Badge>}
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Drop photos of printed monitor vitals columns, paper MAR pages, nursing flowsheets, or the
+          "Birthing Room" sign-in log. The AI transcribes each row into structured vitals and care
+          events and adds them to the boxes above. Times like <code>11:33</code>, <code>0420</code>,
+          or <code>2-26-26 23:35</code> are all understood. If the case header has a date of admission,
+          rows that only show a clock time are anchored to that date.
+        </p>
+        <input ref={ocrRef} type="file" accept="image/*" multiple className="hidden"
+          onChange={(e) => e.target.files && e.target.files.length > 0 && handleOcrPhotos(e.target.files)} />
+        <Button size="sm" onClick={() => ocrRef.current?.click()} disabled={ocrBusy}>
+          <Camera className="h-3.5 w-3.5 mr-1.5" /> {ocrBusy ? 'Transcribing…' : 'Add chart photos'}
+        </Button>
+        {ocrLog.length > 0 && (
+          <ul className="mt-3 text-[11px] text-muted-foreground space-y-0.5">
+            {ocrLog.map((l, i) => <li key={i}>• {l}</li>)}
+          </ul>
+        )}
+      </Card>
     </div>
     </div>
   );
@@ -290,4 +359,16 @@ function LabeledInput({ label, value, onChange, placeholder }: { label: string; 
       <Input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="h-8 text-xs" />
     </label>
   );
+}
+
+function dedupByEvidence<T extends { t: string; evidence?: string; description?: string }>(arr: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const r of arr) {
+    const k = `${r.t}|${r.evidence || r.description || ''}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(r);
+  }
+  return out.sort((a, b) => a.t.localeCompare(b.t));
 }
