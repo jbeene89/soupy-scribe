@@ -95,3 +95,65 @@ export function buildDemoOBBundle(): OBAuditRequest {
     },
   };
 }
+
+/** Hand-transcribed snippet from the user's two post-OR photos:
+ *  (1) printed bedside vitals column 10:55–11:55 showing NIBP / MSpO2 / pulse rows after Pitocin was
+ *      discontinued and the patient was wheeled toward the OR, and
+ *  (2) the paper "Birthing Room 10" sign-in log entries that fall inside this admission window.
+ *  This is here so the user can see real evidence flow end-to-end with one click; replace with the
+ *  full chart once the rest is transcribed or photo-OCRed. */
+export function buildPostORPhotoBundle(): OBAuditRequest {
+  // Anchor to "today" so the post-OR window reads as recent. All times are AM (per the photo).
+  const day = new Date();
+  day.setHours(0, 0, 0, 0);
+  const iso = (h: number, m: number) => new Date(day.getTime() + (h * 60 + m) * 60_000).toISOString();
+
+  const vitalsReadings: VitalsReading[] = [
+    { t: iso(10, 55), spo2: 97, hr: 72, evidence: '10:55 MSpO2 97% P 72' },
+    { t: iso(11, 0),  spo2: 97, hr: 72, evidence: '11:00 MSpO2 97% P 72' },
+    { t: iso(11, 3),  sbp: 116, dbp: 74, hr: 65, evidence: '11:03 NIBP 116/74 M 90 P 65' },
+    { t: iso(11, 5),  spo2: 97, hr: 71, evidence: '11:05 MSpO2 97% P 71' },
+    { t: iso(11, 10), spo2: 97, hr: 73, evidence: '11:10 MSpO2 97% P 73' },
+    { t: iso(11, 15), spo2: 97, hr: 72, evidence: '11:15 MSpO2 97% P 72' },
+    { t: iso(11, 18), spo2: 93, hr: 68, evidence: '11:18 MSpO2 93% P 68' },
+    { t: iso(11, 18), sbp: 118, dbp: 73, hr: 65, evidence: '11:18 NIBP 118/73 M 91 P 65' },
+    { t: iso(11, 20), spo2: 97, hr: 76, evidence: '11:20 MSpO2 97% P 76' },
+    { t: iso(11, 25), spo2: 96, hr: 68, evidence: '11:25 MSpO2 96% P 68' },
+    { t: iso(11, 30), spo2: 97, hr: 68, evidence: '11:30 MSpO2 97% P 68' },
+    { t: iso(11, 33), spo2: 94, hr: 69, evidence: '11:33 MSpO2 94% P 69' },
+    { t: iso(11, 33), sbp: 117, dbp: 65, hr: 68, evidence: '11:33 NIBP 117/65 M 83 P 68' },
+    { t: iso(11, 35), spo2: 97, hr: 67, evidence: '11:35 MSpO2 97% P 67' },
+    { t: iso(11, 40), spo2: 95, hr: 69, evidence: '11:40 MSpO2 95% P 69' },
+    { t: iso(11, 45), spo2: 94, hr: 74, evidence: '11:45 MSpO2 94% P 74' },
+    { t: iso(11, 48), spo2: 94, hr: 84, evidence: '11:48 MSpO2 94% P 84' },
+    { t: iso(11, 49), sbp: 122, dbp: 72, hr: 75, evidence: '11:49 NIBP 122/72 M 90 P 75' },
+    { t: iso(11, 50), spo2: 96, hr: 74, evidence: '11:50 MSpO2 96% P 74' },
+    { t: iso(11, 55), spo2: 94, hr: 72, evidence: '11:55 MSpO2 94% P 72' },
+  ];
+
+  const careEvents: CareEvent[] = [
+    { t: iso(11, 33), kind: 'vitals_check', description: '11:33 NIBP cycle (deflate) — automatic cuff cycle on bedside monitor', evidence: '11:33 NIBP(D)' },
+    { t: iso(11, 48), kind: 'vitals_check', description: '11:48 NIBP cycle (deflate) — automatic cuff cycle on bedside monitor', evidence: '11:48 NIBP(D)' },
+  ];
+
+  return {
+    vitalsReadings,
+    careEvents,
+    notesText: [
+      '10:55 Pitocin already discontinued; patient being prepped/transported toward the OR.',
+      '11:03 First post-stop NIBP reading documented: 116/74 (MAP 90).',
+      '11:18 SpO2 transient dip to 93% noted on the printed monitor strip.',
+      '11:33 SpO2 94% recorded with NIBP cycle.',
+      '11:55 Maternal vitals trending stable as patient continues to OR transition.',
+    ].join('\n'),
+    windowMinutes: 10,
+    caseHeader: {
+      patientInitials: 'L.',
+      facility: 'Baptist Medical Center Downtown',
+      unit: 'Labor & Delivery → OR transition',
+      roomNumber: 'Birthing Room 10 (2nd floor)',
+      narrative:
+        'Hand-transcribed from two photos taken after Pitocin was discontinued and the patient was being moved toward the operating room for emergency C-section. Photo 1: printed bedside-monitor vitals column from 10:55 to 11:55 showing four NIBP readings (116/74, 118/73, 117/65, 122/72) and continuous MSpO2 / pulse. Photo 2: the paper "Birthing Room 10" sign-in / visitation log. The vitals column is being preserved here as primary evidence of maternal hemodynamic state during the OR transition window.',
+    },
+  };
+}

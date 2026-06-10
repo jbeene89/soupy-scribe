@@ -11,6 +11,7 @@ import { StripTimeline } from '@/components/ob/StripTimeline';
 import { StopRuleViolationsPanel } from '@/components/ob/StopRuleViolationsPanel';
 import { ContraindicationLedger } from '@/components/ob/ContraindicationLedger';
 import { runOBAudit, buildDemoOBBundle } from '@/lib/obFetalService';
+import { buildPostORPhotoBundle } from '@/lib/obFetalService';
 import { exportOBAuditPDF } from '@/lib/exportOBAuditPDF';
 import { exportOBComplaintPacketPDF } from '@/lib/exportOBComplaintPacketPDF';
 import type { OBAuditResult } from '@/lib/obFetalTypes';
@@ -66,6 +67,21 @@ export default function AppOBFetalAudit() {
     await handleRun(demo);
   }
 
+  async function handlePostORPhotos() {
+    const bundle = buildPostORPhotoBundle();
+    setIngest({
+      stripSamples: [],
+      stripImages: [],
+      marEvents: [],
+      vitalsReadings: bundle.vitalsReadings ?? [],
+      careEvents: bundle.careEvents ?? [],
+      notesText: bundle.notesText ?? '',
+      parseWarnings: [],
+      caseHeader: bundle.caseHeader ?? {},
+    });
+    await handleRun(bundle);
+  }
+
   function handleReset() {
     setIngest(EMPTY_INGEST);
     setResult(null);
@@ -88,6 +104,9 @@ export default function AppOBFetalAudit() {
         <div className="flex gap-2 flex-shrink-0">
           <Button variant="outline" size="sm" onClick={handleDemo} disabled={running}>
             <Sparkles className="h-4 w-4 mr-1.5" /> Load demo case
+          </Button>
+          <Button variant="outline" size="sm" onClick={handlePostORPhotos} disabled={running}>
+            <Sparkles className="h-4 w-4 mr-1.5" /> Load post-OR photo evidence
           </Button>
           {(hasInput || result) && (
             <Button variant="ghost" size="sm" onClick={handleReset} disabled={running}>
