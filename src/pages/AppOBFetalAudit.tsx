@@ -12,6 +12,7 @@ import { StopRuleViolationsPanel } from '@/components/ob/StopRuleViolationsPanel
 import { ContraindicationLedger } from '@/components/ob/ContraindicationLedger';
 import { runOBAudit, buildDemoOBBundle } from '@/lib/obFetalService';
 import { exportOBAuditPDF } from '@/lib/exportOBAuditPDF';
+import { exportOBComplaintPacketPDF } from '@/lib/exportOBComplaintPacketPDF';
 import type { OBAuditResult } from '@/lib/obFetalTypes';
 
 export default function AppOBFetalAudit() {
@@ -19,7 +20,12 @@ export default function AppOBFetalAudit() {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<OBAuditResult | null>(null);
 
-  const hasInput = ingest.stripSamples.length > 0 || ingest.stripImages.length > 0 || ingest.marEvents.length > 0;
+  const hasInput =
+    ingest.stripSamples.length > 0 ||
+    ingest.stripImages.length > 0 ||
+    ingest.marEvents.length > 0 ||
+    ingest.vitalsReadings.length > 0 ||
+    ingest.careEvents.length > 0;
 
   async function handleRun(payloadOverride?: Parameters<typeof runOBAudit>[0]) {
     setRunning(true);
@@ -28,8 +34,11 @@ export default function AppOBFetalAudit() {
         stripSamples: ingest.stripSamples,
         stripImages: ingest.stripImages,
         marEvents: ingest.marEvents,
+        vitalsReadings: ingest.vitalsReadings,
+        careEvents: ingest.careEvents,
         notesText: ingest.notesText,
         windowMinutes: 10,
+        caseHeader: ingest.caseHeader,
       };
       const r = await runOBAudit(payload);
       setResult(r);
@@ -48,8 +57,11 @@ export default function AppOBFetalAudit() {
       stripSamples: demo.stripSamples ?? [],
       stripImages: [],
       marEvents: demo.marEvents ?? [],
+      vitalsReadings: demo.vitalsReadings ?? [],
+      careEvents: demo.careEvents ?? [],
       notesText: demo.notesText ?? '',
       parseWarnings: [],
+      caseHeader: demo.caseHeader ?? {},
     });
     await handleRun(demo);
   }
@@ -132,7 +144,10 @@ export default function AppOBFetalAudit() {
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-[10px]">{result.monitoredMinutes} min monitored</Badge>
                 <Button size="sm" variant="outline" onClick={() => exportOBAuditPDF(result)}>
-                  <Download className="h-3.5 w-3.5 mr-1.5" /> Export PDF
+                  <Download className="h-3.5 w-3.5 mr-1.5" /> Timeline PDF
+                </Button>
+                <Button size="sm" onClick={() => exportOBComplaintPacketPDF(result)}>
+                  <Download className="h-3.5 w-3.5 mr-1.5" /> Complaint packet
                 </Button>
               </div>
             </div>
