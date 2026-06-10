@@ -320,6 +320,33 @@ export function StripIngestDropzones({
           onChange={(e) => onChange({ ...value, notesText: e.target.value })}
         />
       </Card>
+
+      {/* Photo OCR */}
+      <Card className="p-4 md:col-span-2 border-primary/30 bg-primary/[0.03]">
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Camera className="h-4 w-4 text-primary" /> Photo OCR — drop pictures of paper chart pages
+          </div>
+          {ocrBusy && <Badge variant="secondary" className="gap-1"><Loader2 className="h-3 w-3 animate-spin" /> reading photos…</Badge>}
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Drop photos of printed monitor vitals columns, paper MAR pages, nursing flowsheets, or the
+          "Birthing Room" sign-in log. The AI transcribes each row into structured vitals and care
+          events and adds them to the boxes above. Times like <code>11:33</code>, <code>0420</code>,
+          or <code>2-26-26 23:35</code> are all understood. If the case header has a date of admission,
+          rows that only show a clock time are anchored to that date.
+        </p>
+        <input ref={ocrRef} type="file" accept="image/*" multiple className="hidden"
+          onChange={(e) => e.target.files && e.target.files.length > 0 && handleOcrPhotos(e.target.files)} />
+        <Button size="sm" onClick={() => ocrRef.current?.click()} disabled={ocrBusy}>
+          <Camera className="h-3.5 w-3.5 mr-1.5" /> {ocrBusy ? 'Transcribing…' : 'Add chart photos'}
+        </Button>
+        {ocrLog.length > 0 && (
+          <ul className="mt-3 text-[11px] text-muted-foreground space-y-0.5">
+            {ocrLog.map((l, i) => <li key={i}>• {l}</li>)}
+          </ul>
+        )}
+      </Card>
     </div>
     </div>
   );
@@ -332,4 +359,16 @@ function LabeledInput({ label, value, onChange, placeholder }: { label: string; 
       <Input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="h-8 text-xs" />
     </label>
   );
+}
+
+function dedupByEvidence<T extends { t: string; evidence?: string; description?: string }>(arr: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const r of arr) {
+    const k = `${r.t}|${r.evidence || r.description || ''}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(r);
+  }
+  return out.sort((a, b) => a.t.localeCompare(b.t));
 }
