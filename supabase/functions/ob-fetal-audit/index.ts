@@ -51,8 +51,9 @@ type ViolationSeverity = "critical" | "high" | "moderate";
 interface StopRuleViolation {
   id: string;
   t: string;
-  medication: MedName;
+  medication: MedName | "system";
   medicationLabel: string;
+  ruleCode?: string;
   rule: string;
   severity: ViolationSeverity;
   stripFinding: string;
@@ -70,6 +71,24 @@ interface ContraindicationCheck {
   dose: string;
   contraindicationsPresent: { label: string; evidence: string }[];
   clear: boolean;
+}
+
+interface VitalsReading {
+  t: string;
+  sbp?: number;
+  dbp?: number;
+  hr?: number;
+  spo2?: number;
+  tempF?: number;
+  evidence?: string;
+}
+
+interface CareEvent {
+  t: string;
+  kind: string;
+  description: string;
+  staff?: string;
+  evidence?: string;
 }
 
 // ── Stage A.1: structured bucketing ──────────────────────────────────────
