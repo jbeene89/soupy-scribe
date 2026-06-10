@@ -1,82 +1,69 @@
-# Make the audit findings the source of truth, not the playbook
+# OB Fetal Monitoring Audit Module
 
-## The problem in plain language
+A new mode-agnostic module that audits labor & delivery cases over extended time windows. It compares the fetal monitor strip against the medications given (Pitocin, Misoprostol/Cervidil) and flags every moment where the nurse or provider **should have stopped or reduced the medication but did not** — with a verbatim timestamp and reason for each flag.
 
-Today the audit tool takes the whole Code Bay bundle, mashes it into one big block of "encounter text," and asks the AI to write a nice report. The report says things like *"Bundling: $2,624 across 3 encounters."* That sounds good, but Code Bay's hidden answer key is line-level — it expects you to point at **chg-pt-0005-18 = upcoding**, **ven-pt-0002-1 = vendor_overbilling**, etc. The current report can't be checked against the answer key because it never names the rows it accused.
+This is the all-three-in-one workflow you asked for: same engine output drives the retrospective clinical audit, the malpractice/risk timeline, and the billing audit for continuous fetal monitoring time units.
 
-## The fix
+## What you'll be able to do
 
-Make the tool output a **structured findings list first**, where every finding points at one specific row in one specific file. The pretty playbook becomes a *view* of that list — not the report itself.
+1. Open **L&D Fetal Monitoring Audit** from the sidebar.
+2. Drop in any combination of:
+   - A structured strip export (CSV / XML / HL7 from PeriGen, OBIX, Centricity, Philips) — timestamp, FHR bpm, contraction values.
+   - One or more scanned strip images / PDFs — the engine reads the tracing visually, segment by segment, and turns it into the same timeline.
+   - The medication record (MAR) — Pitocin rate changes, Misoprostol doses, mag, terbutaline, with timestamps.
+   - Nursing notes / provider notes.
+3. Click **Run OB Audit**.
+4. See:
+   - A scrollable **timeline** that shows every 10-minute window of the strip alongside what medication was running, what changed, and what was charted.
+   - A **stop-rule violations** panel: each violation has the exact timestamp, the strip finding (e.g. "tachysystole — 7 contractions in 10 min at 14:32"), the medication that should have been held/decreased, the rule that was broken, and the verbatim chart quote (or "no documented action").
+   - A **contraindication ledger**: for every dose of Pitocin or Misoprostol, the engine lists which contraindications were present at the time of administration (active labor, prior C-section, Category III, tachysystole within prior 30 min, etc.) — or explicitly says "none documented."
+   - A printable PDF for legal / peer-review / payer use.
 
-## What every finding must contain
+## Stop-rules covered in v1
 
-| Field | Example |
-|---|---|
-| `sourceId` | `chg-pt-0005-18` |
-| `sourceType` | `charge` / `vendor` / `note` / `timesheet` / `fhir` |
-| `defectType` | `upcoding`, `vendor_overbilling`, `phantom_charge`, `modifier_abuse`, `unbundling`, `policy_time`, `contract_underpay`, … (controlled vocabulary, matches Code Bay's) |
-| `confidence` | `high` / `medium` / `low` |
-| `recoverableAmount` | dollars |
-| `evidence` | the exact cell values / row snippet that triggered it (verbatim, no paraphrase) |
-| `explanation` | one or two sentences |
+**Oxytocin (Pitocin)** — ACOG / AWHONN aligned:
+- Tachysystole (>5 contractions in any 10-min window averaged over 30 min) → reduce or discontinue
+- Category III tracing → discontinue immediately
+- Category II with recurrent late decels, recurrent variable decels, prolonged decel, minimal/absent variability → reduce/discontinue + intrauterine resuscitation
+- Uterine rupture signs (sudden FHR change + loss of station + pain) → discontinue
+- Continued increase in rate despite any of the above
 
-This is the contract. Nothing downstream gets to invent a finding that doesn't have these fields filled in.
+**Misoprostol / Cervidil**:
+- Redose before the minimum interval (Misoprostol 3–6h, Cervidil 12h)
+- Use after spontaneous labor / regular contractions established
+- Tachysystole within prior monitoring window
+- Documented prior uterine surgery / C-section
 
-## How the new pipeline runs
+## Technical section (skip if not technical)
 
-```text
-Code Bay .zip
-    │
-    ▼
-parseCodeBayBundle  (already exists — keeps sourceIds intact)
-    │
-    ▼
-NEW: per-row detectors           ← the new core
-   • walks charges row-by-row, vendors row-by-row, notes row-by-row
-   • each candidate gets a sourceId tag before anything else happens
-   • emits Finding[] (the structured contract above)
-    │
-    ▼
-Validator (rejects any finding missing sourceId / evidence / defectType,
-           confirms the sourceId actually exists in the bundle,
-           confirms the evidence string appears verbatim in that row)
-    │
-    ▼
-Persist Finding[]  ← THIS is the source of truth, exportable as JSON
-    │
-    ├──► Code Bay scoring  (already exists in scoreDetector — just feed it Finding[])
-    │
-    └──► Prevention Playbook is now a *rollup view*:
-         group by defectType, sum recoverableAmount, list contributing sourceIds.
-         The playbook can never report a category without naming the rows behind it.
-```
+### Files
+- `supabase/functions/ob-fetal-audit/index.ts` — main engine. Accepts `{ stripStructured?, stripImages?[], mar?, notes? }`. Two-stage pipeline:
+  - Stage A — normalize: if structured CSV present, parse to `StripWindow[]`; for each image, call multimodal vision model to extract per-window FHR/UC numerics into the same shape.
+  - Stage B — analyze: deterministic stop-rule engine (no LLM) walks the merged timeline, joins MAR events, returns `StopRuleViolation[]` + `ContraindicationCheck[]` + per-window NICHD category.
+- `src/lib/obFetalTypes.ts` — `StripWindow`, `MAREvent`, `StopRuleViolation`, `ContraindicationCheck`, `OBAuditResult`.
+- `src/lib/obFetalParser.ts` — client-side CSV/text parsers for structured strip, MAR, notes (forgiving column matching).
+- `src/lib/obFetalService.ts` — `runOBAudit()` invoker + result caching.
+- `src/lib/exportOBAuditPDF.ts` — printable timeline + violations + contraindication ledger.
+- `src/pages/AppOBFetalAudit.tsx` — route `/app/ob-fetal-audit`.
+- `src/components/ob/StripIngestDropzones.tsx` — 4 dropzones (structured strip, strip images, MAR, notes) + sample-data button.
+- `src/components/ob/StripTimeline.tsx` — visual 10-min-window timeline with med overlay + decel markers.
+- `src/components/ob/StopRuleViolationsPanel.tsx` — grouped by severity with timestamp + verbatim evidence.
+- `src/components/ob/ContraindicationLedger.tsx` — per-dose contraindication check.
+- Sidebar link added under the existing operational/clinical group.
 
-## What changes in the codebase (technical section)
+### Engine details
+- Window size: 10 minutes (configurable). NICHD Cat I/II/III computed per window.
+- Decel classification: late / variable / prolonged / early via timing offset from contraction peak (structured) or visual cue (image).
+- Tachysystole rule: >5 contractions averaged over a rolling 30-min window.
+- Med join: each MAR Pitocin rate change is annotated with the strip category in the 30 min **before and after** the change. Rate increases during tachysystole or Cat II/III are flagged.
+- Misoprostol redose rule joins dose timestamps and computes elapsed time + contraction status at redose.
 
-1. **New module `src/lib/auditFindings.ts`** — defines the `AuditFinding` type (the contract above), plus `validateFinding()` that enforces:
-   - `sourceId` exists in the parsed bundle
-   - `evidence` substring appears in the referenced row
-   - `defectType` is in the allowed enum
-   - `recoverableAmount >= 0`
+### What's NOT in v1 (called out in the UI so we don't overpromise)
+- Real-time monitoring (this is retrospective only).
+- Direct HL7 socket ingestion (file upload only).
+- Maternal vitals / mag toxicity rules (next iteration — your "Med scope" answer was Pit + Miso first).
 
-2. **New edge function `audit-bundle`** — replaces the "flatten to prose" path for Code Bay inputs. Iterates each `charges` / `vendor_invoices` / `clinical_notes` row, asks the model **per row** (or in small same-source batches) to return zero or more findings tagged with that row's `sourceId`. Each model call's prompt includes the row JSON and forces the schema above. Findings that fail `validateFinding` are dropped, not rewritten.
-
-3. **Rework `recovery-engine`'s Code Bay path** — when the input came from a Code Bay bundle, route through `audit-bundle` instead of the prose lenses. The lens-on-prose path stays for free-text encounters that have no row IDs.
-
-4. **`PreventionPlaybook.tsx` becomes a rollup view** — reads `AuditFinding[]`, groups by `defectType`, and every category card lists the contributing `sourceId`s underneath the dollar total. No category total can be shown without the row-level breakdown that produced it.
-
-5. **`CodeBayIntake.tsx` "Run SoupyAudit" button** — already accepts detector JSON via upload; add a "Run SoupyAudit on this bundle" action that calls `audit-bundle` and pipes the result straight into `scoreDetector` so precision/recall shows immediately.
-
-6. **Export** — `AuditFinding[]` is downloadable as JSON in the exact shape `scoreDetector` and Code Bay's `hidden_ground_truth.json` use (`{sourceId, findingType, reasoning}` plus the extra fields). This is the artifact an external evaluator can verify.
-
-## What this fixes
-
-- Code Bay (or any third party) can now score the tool, because every dollar in the playbook traces to a named row with a named defect type.
-- "Bundling: $2,624 across 3 encounters" becomes "Bundling: $2,624 — `chg-pt-0005-15`, `chg-pt-0005-18`, `chg-pt-0003-12`."
-- Hallucinated findings get filtered out by the validator before they reach the playbook.
-
-## What does NOT change
-
-- The free-text encounter path (paste a chart note, no row IDs) still uses the existing lens pipeline.
-- The existing `recovery_findings` table, UI shell, and PDF export stay; they just render from the new structured list.
-- No DB schema changes required for v1 — `AuditFinding` rows fit into the existing `recovery_findings` table via the `metadata` JSON field, with `code` carrying `sourceId` and `lens` carrying `defectType`. (We can add proper columns later if you want them queryable.)
+## Out of scope for this change
+- No changes to existing Payer/Provider/Psych modes.
+- No DB schema changes — results stay in-memory for v1 (can be persisted later if you want history).
+- No PHI is sent to vision model if you use the structured strip path; image path runs through the existing de-identification helper before upload.
