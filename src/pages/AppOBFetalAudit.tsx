@@ -126,12 +126,15 @@ export default function AppOBFetalAudit() {
 
       {result && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
             <SummaryTile label="Cat I windows" value={result.summary.catI} tone="ok" />
             <SummaryTile label="Cat II windows" value={result.summary.catII} tone="warn" />
             <SummaryTile label="Cat III windows" value={result.summary.catIII} tone="bad" />
             <SummaryTile label="Tachysystole" value={result.summary.tachysystoleWindows} tone="warn" />
             <SummaryTile label="Critical violations" value={result.summary.criticalViolations} tone="bad" />
+            <SummaryTile label="Hypotension episodes" value={result.summary.hypotensionEpisodes} tone="bad" />
+            <SummaryTile label="Unattended gaps" value={result.summary.unattendedGaps} tone="warn" />
+            <SummaryTile label="Consent / scope flags" value={result.summary.consentScopeFlags} tone="warn" />
           </div>
 
           <Tabs defaultValue="violations" className="w-full">
