@@ -1,0 +1,23 @@
+case_id,timestamp,event_type,pitocin_mU_min_after_event,preceding_or_current_strip_context,contraindication_or_caution,expected_clinical_action_for_training_label,expected_audit_label
+CASE_01,2026-06-10T07:10:00,pitocin_start,2,"Category I, moderate variability, no late/variable decels",none,may_start_per_protocol,NEGATIVE_CONTROL
+CASE_01,2026-06-10T07:40:00,pitocin_increase,4,"Category I, contractions <5/10 min",none,may_titrate_per_protocol,NEGATIVE_CONTROL
+CASE_01,2026-06-10T08:15:00,pitocin_increase,6,"Category I, moderate variability, no recurrent decels",none,may_titrate_per_protocol,NEGATIVE_CONTROL
+CASE_02,2026-06-10T10:55:00,pitocin_increase,8,Tachysystole emerging; recurrent late decels beginning; variability trending minimal,hyperactive uterus + fetal stress,do_not_increase; reduce/stop and evaluate,TRUE_POSITIVE
+CASE_02,2026-06-10T11:10:00,pitocin_increase,10,Tachysystole >5/10 min with recurrent late decels,hyperactive uterus; fetal distress if delivery not imminent,stop Pitocin; intrauterine resuscitation; notify provider,TRUE_POSITIVE
+CASE_02,2026-06-10T11:40:00,pitocin_stop,0,Prolonged decel after recurrent lates and tachysystole,urgent fetal stress,late stop/delay flag,DELAYED_ACTION
+CASE_03,2026-06-10T12:55:00,pitocin_start,2,Recurrent variable decels already present; minimal-to-moderate variability,fetal stress/caution; not a reassuring baseline,hold start pending evaluation/correction,TRUE_POSITIVE
+CASE_03,2026-06-10T13:25:00,pitocin_increase,4,Recurrent variables continue after Pitocin; contractions increasing,fetal stress worsened under stimulation,do_not_increase; consider reduction/stop,TRUE_POSITIVE
+CASE_03,2026-06-10T13:45:00,pitocin_increase,6,Recurrent deeper variables with minimal variability,fetal stress where delivery not imminent,stop/urgent evaluation,TRUE_POSITIVE
+CASE_04,2026-06-10T15:40:00,pitocin_increase,12,Contractions too frequent; late decels begin; rapid dose escalation,hyperactive uterus risk,do_not_increase; reduce/stop,TRUE_POSITIVE
+CASE_04,2026-06-10T15:54:00,prolonged_deceleration_begins,12,Tetanic/high resting tone pattern with prolonged decel,hypertonic uterus + fetal distress,immediate stop and urgent response,TRUE_POSITIVE
+CASE_04,2026-06-10T16:02:00,pitocin_stop,0,Stop after prolonged decel already established,delayed response,late stop/delay flag,DELAYED_ACTION
+CASE_05,2026-06-10T17:35:00,pitocin_increase,8,Minimal/absent variability with recurrent late decels,fetal distress where delivery not imminent,do_not_increase; stop and urgent provider evaluation,TRUE_POSITIVE
+CASE_05,2026-06-10T18:10:00,pitocin_stop,0,Ongoing high-risk tracing before stop,delayed stop,late stop/delay flag,DELAYED_ACTION
+CASE_06,2026-06-10T21:00:00,pitocin_increase,8,Already adequate uterine activity; no progress context noted; FHR still reassuring,adequate uterine activity fails to achieve progress,provider reassessment rather than automatic escalation,CONTEXT_FLAG
+CASE_06,2026-06-10T21:30:00,pitocin_increase,10,Adequate/tachysystolic activity with new recurrent lates,hyperactive uterus + evolving fetal stress,do_not_increase; reduce/stop,TRUE_POSITIVE
+CASE_07,2026-06-11T00:55:00,pitocin_stop,0,Tachysystole with recurrent late decels,fetal stress and excessive uterine activity,appropriate stop; continue recovery monitoring,APPROPRIATE_STOP
+CASE_07,2026-06-11T01:05:00,pitocin_restart,2,Only 10 min since stop; variability still minimal; not a stable recovery window,ongoing fetal stress/caution,hold restart until reassuring/stable per local protocol,TRUE_POSITIVE
+CASE_07,2026-06-11T01:25:00,pitocin_increase,4,Recurrent lates return after restart,fetal stress under stimulation,do_not_increase; stop/reassess,TRUE_POSITIVE
+CASE_08,2026-06-11T03:20:00,pitocin_start,2,Fetal tachycardia with minimal variability and recurrent variables already present,fetal stress/caution; delivery not imminent context unknown,provider evaluation; hold start until resolved or justified,TRUE_POSITIVE
+CASE_08,2026-06-11T03:40:00,pitocin_increase,4,Tachycardia/minimal variability plus recurrent variables,fetal stress under stimulation,do_not_increase; reduce/stop and evaluate,TRUE_POSITIVE
+CASE_08,2026-06-11T04:00:00,pitocin_increase,6,Late decels added to tachycardia/minimal variability,worsening fetal stress,stop/urgent evaluation,TRUE_POSITIVE
