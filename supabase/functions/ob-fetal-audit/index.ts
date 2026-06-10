@@ -861,6 +861,9 @@ Deno.serve(async (req) => {
     const samples: StripSample[] = Array.isArray(body?.stripSamples) ? body.stripSamples : [];
     const images: { filename: string; dataUrl: string }[] = Array.isArray(body?.stripImages) ? body.stripImages : [];
     const marEvents: MAREvent[] = Array.isArray(body?.marEvents) ? body.marEvents : [];
+    const vitalsReadings: VitalsReading[] = Array.isArray(body?.vitalsReadings) ? body.vitalsReadings : [];
+    const careEvents: CareEvent[] = Array.isArray(body?.careEvents) ? body.careEvents : [];
+    const caseHeader = body?.caseHeader && typeof body.caseHeader === "object" ? body.caseHeader : undefined;
     const notesText: string = typeof body?.notesText === "string" ? body.notesText : "";
     const windowMinutes = Math.max(1, Math.min(30, Number(body?.windowMinutes) || 10));
     const parseWarnings: string[] = [];
@@ -880,13 +883,17 @@ Deno.serve(async (req) => {
     }
 
     const windows = mergeWindows(structuredWins, imageWins);
-    if (!windows.length && !marEvents.length) {
-      return new Response(JSON.stringify({ error: "No strip or MAR data provided." }), {
+    if (!windows.length && !marEvents.length && !vitalsReadings.length && !careEvents.length) {
+      return new Response(JSON.stringify({ error: "No strip, MAR, vitals, or care-event data provided." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { violations, contraindicationChecks, pitIncDuringConcern, misoUnder } = runRules(windows, marEvents, notesText);
+    const {
+      violations, contraindicationChecks,
+      pitIncDuringConcern, misoUnder,
+      hypotensionEpisodes, unattendedGaps, consentScopeFlags, ripeningIntervalFlags,
+    } = runRules(windows, marEvents, notesText, vitalsReadings, careEvents);
 
     const summary = {
       catI: windows.filter((w) => w.category === "I").length,
@@ -898,6 +905,10 @@ Deno.serve(async (req) => {
       moderateViolations: violations.filter((v) => v.severity === "moderate").length,
       pitocinIncreasesDuringConcern: pitIncDuringConcern,
       misoRedosesUnderInterval: misoUnder,
+      hypotensionEpisodes,
+      unattendedGaps,
+      consentScopeFlags,
+      ripeningIntervalFlags,
     };
 
     const monitoredMinutes = windows.length * windowMinutes;
@@ -907,12 +918,15 @@ Deno.serve(async (req) => {
       windowMinutes,
       windows,
       marEvents,
+      vitalsReadings,
+      careEvents,
       violations,
       contraindicationChecks,
       monitoredMinutes,
       summary,
       notes: notesText ? [notesText.slice(0, 2000)] : [],
       parseWarnings,
+      caseHeader,
     };
 
     return new Response(JSON.stringify(result), {
