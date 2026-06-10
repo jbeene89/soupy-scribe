@@ -51,8 +51,9 @@ type ViolationSeverity = "critical" | "high" | "moderate";
 interface StopRuleViolation {
   id: string;
   t: string;
-  medication: MedName;
+  medication: MedName | "system";
   medicationLabel: string;
+  ruleCode?: string;
   rule: string;
   severity: ViolationSeverity;
   stripFinding: string;
@@ -70,6 +71,24 @@ interface ContraindicationCheck {
   dose: string;
   contraindicationsPresent: { label: string; evidence: string }[];
   clear: boolean;
+}
+
+interface VitalsReading {
+  t: string;
+  sbp?: number;
+  dbp?: number;
+  hr?: number;
+  spo2?: number;
+  tempF?: number;
+  evidence?: string;
+}
+
+interface CareEvent {
+  t: string;
+  kind: string;
+  description: string;
+  staff?: string;
+  evidence?: string;
 }
 
 // ── Stage A.1: structured bucketing ──────────────────────────────────────
@@ -401,11 +420,26 @@ function runRules(
   windows: StripWindow[],
   marEvents: MAREvent[],
   notesText: string,
-): { violations: StopRuleViolation[]; contraindicationChecks: ContraindicationCheck[]; pitIncDuringConcern: number; misoUnder: number } {
+  vitalsReadings: VitalsReading[],
+  careEvents: CareEvent[],
+): {
+  violations: StopRuleViolation[];
+  contraindicationChecks: ContraindicationCheck[];
+  pitIncDuringConcern: number;
+  misoUnder: number;
+  hypotensionEpisodes: number;
+  unattendedGaps: number;
+  consentScopeFlags: number;
+  ripeningIntervalFlags: number;
+} {
   const violations: StopRuleViolation[] = [];
   const contraindicationChecks: ContraindicationCheck[] = [];
   let pitIncDuringConcern = 0;
   let misoUnder = 0;
+  let hypotensionEpisodes = 0;
+  let unattendedGaps = 0;
+  let consentScopeFlags = 0;
+  let ripeningIntervalFlags = 0;
 
   // Rule 1 & 2: Pitocin increase or continued infusion during tachysystole / Cat II / Cat III.
   for (let i = 0; i < marEvents.length; i++) {
@@ -428,6 +462,7 @@ function runRules(
         t: e.t,
         medication: "pitocin",
         medicationLabel: e.medicationLabel,
+        ruleCode: "pit_cat3",
         rule: "Pitocin must be discontinued immediately for any Category III tracing (ACOG / AWHONN).",
         severity: "critical",
         stripFinding: `Category III window at ${shortTime(cat3.start)} — ${cat3.categoryReason}`,
@@ -443,6 +478,7 @@ function runRules(
         t: e.t,
         medication: "pitocin",
         medicationLabel: e.medicationLabel,
+        ruleCode: "pit_tachy",
         rule: "Pitocin should be reduced or held during tachysystole (>5 contractions / 10 min averaged over 30 min).",
         severity: "high",
         stripFinding: `Tachysystole detected at ${shortTime(tachy.start)} — ${tachy.contractionCount} contractions in window, rolling 30-min rate exceeds 5/10 min.`,
@@ -458,6 +494,7 @@ function runRules(
         t: e.t,
         medication: "pitocin",
         medicationLabel: e.medicationLabel,
+        ruleCode: "pit_cat2",
         rule: "Pitocin should not be increased during a Category II tracing with concerning features without intrauterine resuscitation.",
         severity: "moderate",
         stripFinding: `Category II window at ${shortTime(cat2concern.start)} — ${cat2concern.categoryReason}`,
@@ -482,6 +519,7 @@ function runRules(
           t: w.start,
           medication: "pitocin",
           medicationLabel: "Oxytocin (Pitocin)",
+          ruleCode: "pit_running_cat3",
           rule: "Pitocin must be discontinued within minutes of any Category III tracing.",
           severity: "critical",
           stripFinding: `Category III at ${shortTime(w.start)} — ${w.categoryReason}`,
@@ -510,6 +548,7 @@ function runRules(
         t: curr.t,
         medication: "misoprostol",
         medicationLabel: "Misoprostol",
+        ruleCode: "miso_interval",
         rule: "Misoprostol should not be re-dosed under the 4-hour minimum interval (vaginal route).",
         severity: "high",
         stripFinding: `Previous dose at ${shortTime(prev.t)}; re-dose at ${shortTime(curr.t)} (${Math.round(gapMin)} min apart).`,
@@ -534,6 +573,7 @@ function runRules(
         t: e.t,
         medication: "misoprostol",
         medicationLabel: e.medicationLabel,
+        ruleCode: "miso_tachy",
         rule: "Misoprostol is contraindicated when tachysystole is present in the prior 30 minutes.",
         severity: "critical",
         stripFinding: `Tachysystole at ${shortTime(tachy.start)} preceding dose.`,
@@ -576,7 +616,210 @@ function runRules(
     });
   }
 
-  return { violations, contraindicationChecks, pitIncDuringConcern, misoUnder };
+  // ── Rule 6: Maternal hypotension sustained ≥ 5 min without bedside response. ──
+  // Group consecutive readings where SBP < 90 OR MAP < 65, gap ≤ 5 min apart.
+  const sorted = [...vitalsReadings].sort((a, b) => a.t.localeCompare(b.t));
+  const isHypo = (v: VitalsReading) => {
+    const map = v.sbp != null && v.dbp != null ? (v.sbp + 2 * v.dbp) / 3 : null;
+    return (v.sbp != null && v.sbp < 90) || (map != null && map < 65);
+  };
+  let runStart: VitalsReading | null = null;
+  let runEnd: VitalsReading | null = null;
+  const flushHypoRun = () => {
+    if (!runStart || !runEnd) { runStart = null; runEnd = null; return; }
+    const durMin = (new Date(runEnd.t).getTime() - new Date(runStart.t).getTime()) / 60_000;
+    if (durMin >= 5) {
+      // Was there a bedside response within 5 min of runStart?
+      const responseKinds = new Set(["rn_at_bedside","provider_notified","iv_bolus","position_change","oxygen","reassessment","vitals_check"]);
+      const respWindowEnd = new Date(new Date(runStart.t).getTime() + 5 * 60_000).getTime();
+      const response = careEvents.find((c) => {
+        const t = new Date(c.t).getTime();
+        return t >= new Date(runStart!.t).getTime() && t <= respWindowEnd && responseKinds.has(c.kind);
+      });
+      if (!response) {
+        hypotensionEpisodes++;
+        violations.push({
+          id: `v-hypo-${runStart.t}`,
+          t: runStart.t,
+          medication: "system",
+          medicationLabel: "Maternal vitals",
+          ruleCode: "maternal_hypotension",
+          rule: "Sustained maternal hypotension (SBP < 90 or MAP < 65 for ≥ 5 min) requires immediate bedside assessment, IV bolus, and provider notification.",
+          severity: "critical",
+          stripFinding: `BP ${runStart.sbp ?? "?"}/${runStart.dbp ?? "?"} sustained from ${shortTime(runStart.t)} to ${shortTime(runEnd.t)} (${Math.round(durMin)} min).`,
+          medAction: "No bedside response, IV bolus, repositioning, or provider notification documented within 5 minutes.",
+          chartedResponse: findChartedResponse(notesText, runStart.t, 10),
+          evidence: [runStart.t, runEnd.t],
+          minutesToAction: null,
+        });
+      }
+    }
+    runStart = null;
+    runEnd = null;
+  };
+  for (let i = 0; i < sorted.length; i++) {
+    const v = sorted[i];
+    if (isHypo(v)) {
+      if (!runStart) runStart = v;
+      runEnd = v;
+      // Break the run if next reading is > 10 min away.
+      const next = sorted[i + 1];
+      if (!next || (new Date(next.t).getTime() - new Date(v.t).getTime()) > 10 * 60_000 || !isHypo(next)) flushHypoRun();
+    } else if (runStart) {
+      flushHypoRun();
+    }
+  }
+  flushHypoRun();
+
+  // ── Rule 7: Cervical ripening → induction interval. ──
+  // 7a. Pitocin started < 30 min after Cervidil removal (or with Cervidil still in place).
+  const pitStart = marEvents.find((e) => e.medication === "pitocin" && (e.action === "start" || e.action === "resume"));
+  if (pitStart) {
+    const cervidilPlaced = careEvents.find((c) => c.kind === "cervidil_placed");
+    const cervidilRemoved = careEvents.find((c) => c.kind === "cervidil_removed");
+    if (cervidilPlaced && !cervidilRemoved) {
+      ripeningIntervalFlags++;
+      violations.push({
+        id: `v-ripen-cervidil-${pitStart.t}`,
+        t: pitStart.t,
+        medication: "pitocin",
+        medicationLabel: pitStart.medicationLabel,
+        ruleCode: "ripening_interval",
+        rule: "Oxytocin should not be initiated until at least 30 minutes after Cervidil (dinoprostone) removal.",
+        severity: "high",
+        stripFinding: `Cervidil placed at ${shortTime(cervidilPlaced.t)} with no documented removal before Pitocin start at ${shortTime(pitStart.t)}.`,
+        medAction: `Pitocin started at ${shortTime(pitStart.t)} (${pitStart.amount ?? "?"} ${pitStart.unit ?? ""}).`,
+        chartedResponse: findChartedResponse(notesText, pitStart.t, 30),
+        evidence: [cervidilPlaced.t, pitStart.t],
+        minutesToAction: null,
+      });
+    } else if (cervidilRemoved) {
+      const gap = (new Date(pitStart.t).getTime() - new Date(cervidilRemoved.t).getTime()) / 60_000;
+      if (gap < 30 && gap >= 0) {
+        ripeningIntervalFlags++;
+        violations.push({
+          id: `v-ripen-cervidil-gap-${pitStart.t}`,
+          t: pitStart.t,
+          medication: "pitocin",
+          medicationLabel: pitStart.medicationLabel,
+          ruleCode: "ripening_interval",
+          rule: "Oxytocin should not be initiated until at least 30 minutes after Cervidil removal.",
+          severity: "high",
+          stripFinding: `Cervidil removed at ${shortTime(cervidilRemoved.t)}; Pitocin started ${Math.round(gap)} min later.`,
+          medAction: `Pitocin started at ${shortTime(pitStart.t)}.`,
+          chartedResponse: findChartedResponse(notesText, pitStart.t, 30),
+          evidence: [cervidilRemoved.t, pitStart.t],
+          minutesToAction: null,
+        });
+      }
+    }
+    // 7b. Misoprostol dosed within 4 h before Pitocin start.
+    const lastMiso = [...marEvents].reverse().find((e) => e.medication === "misoprostol" && new Date(e.t).getTime() <= new Date(pitStart.t).getTime());
+    if (lastMiso) {
+      const gap = (new Date(pitStart.t).getTime() - new Date(lastMiso.t).getTime()) / 60_000;
+      if (gap < 240) {
+        ripeningIntervalFlags++;
+        violations.push({
+          id: `v-ripen-miso-${pitStart.t}`,
+          t: pitStart.t,
+          medication: "pitocin",
+          medicationLabel: pitStart.medicationLabel,
+          ruleCode: "ripening_interval",
+          rule: "Oxytocin should not be initiated within 4 hours of the last Misoprostol dose.",
+          severity: "high",
+          stripFinding: `Last Misoprostol dose at ${shortTime(lastMiso.t)}; Pitocin started ${Math.round(gap)} min later (< 240 min).`,
+          medAction: `Pitocin started at ${shortTime(pitStart.t)}.`,
+          chartedResponse: findChartedResponse(notesText, pitStart.t, 30),
+          evidence: [lastMiso.t, pitStart.t],
+          minutesToAction: null,
+        });
+      }
+    }
+  }
+
+  // ── Rule 8: Unattended patient — gap between vitals/check events. ──
+  // Active induction = between first Pit/Miso/Cervidil event and last MAR event (or end of monitoring).
+  const inductionEvents = marEvents.filter((e) => ["pitocin","misoprostol","cervidil"].includes(e.medication));
+  if (inductionEvents.length) {
+    const startT = new Date(inductionEvents[0].t).getTime();
+    const endT = Math.max(
+      new Date(inductionEvents[inductionEvents.length - 1].t).getTime(),
+      windows.length ? new Date(windows[windows.length - 1].end).getTime() : 0,
+    );
+    const checkKinds = new Set(["vitals_check","rn_at_bedside","reassessment","cervical_exam"]);
+    const checks = [...careEvents.filter((c) => checkKinds.has(c.kind)), ...vitalsReadings.map((v) => ({ t: v.t, kind: "vitals_check", description: v.evidence || "vitals" }))]
+      .map((c) => new Date(c.t).getTime())
+      .filter((t) => t >= startT && t <= endT)
+      .sort((a, b) => a - b);
+    // Tighten the threshold to 15 min when Pitocin is actively titrating; otherwise 30 min.
+    const checkpoints = [startT, ...checks, endT];
+    for (let i = 1; i < checkpoints.length; i++) {
+      const gapMin = (checkpoints[i] - checkpoints[i - 1]) / 60_000;
+      const midIso = new Date((checkpoints[i] + checkpoints[i - 1]) / 2).toISOString();
+      const pitActive = stateAtTime(marEvents, "pitocin", midIso) === "active";
+      const threshold = pitActive ? 15 : 30;
+      if (gapMin > threshold) {
+        unattendedGaps++;
+        const sev: ViolationSeverity = gapMin > 60 ? "critical" : "high";
+        violations.push({
+          id: `v-unatt-${checkpoints[i - 1]}`,
+          t: new Date(checkpoints[i - 1]).toISOString(),
+          medication: "system",
+          medicationLabel: "Bedside attendance",
+          ruleCode: "unattended_patient",
+          rule: pitActive
+            ? "During active Pitocin titration, vitals and assessment must be performed at least every 15 minutes (ACOG / AWHONN)."
+            : "During induction, vitals and assessment must be performed at least every 30 minutes.",
+          severity: sev,
+          stripFinding: `Gap of ${Math.round(gapMin)} min between documented vitals / bedside assessments (${shortTime(new Date(checkpoints[i - 1]).toISOString())} → ${shortTime(new Date(checkpoints[i]).toISOString())}).`,
+          medAction: pitActive ? "Pitocin actively infusing through the gap." : "Induction agent in effect through the gap.",
+          chartedResponse: findChartedResponse(notesText, new Date(checkpoints[i - 1]).toISOString(), Math.max(60, Math.round(gapMin))),
+          evidence: [new Date(checkpoints[i - 1]).toISOString(), new Date(checkpoints[i]).toISOString()],
+          minutesToAction: null,
+        });
+      }
+    }
+  }
+
+  // ── Rule 9: Consent / scope-of-practice for invasive procedures. ──
+  const invasive: { kind: string; label: string }[] = [
+    { kind: "membrane_sweep", label: "Membrane sweep / stripping of membranes" },
+    { kind: "arom", label: "Artificial rupture of membranes (AROM)" },
+    { kind: "cervidil_placed", label: "Cervidil placement" },
+  ];
+  for (const c of careEvents) {
+    const match = invasive.find((x) => x.kind === c.kind);
+    if (!match) continue;
+    // Look 4 hours back for either explicit consent or a provider order.
+    const backStart = new Date(new Date(c.t).getTime() - 4 * 60 * 60_000).getTime();
+    const supported = careEvents.some((x) => {
+      const t = new Date(x.t).getTime();
+      return t >= backStart && t <= new Date(c.t).getTime() && (x.kind === "consent_obtained" || x.kind === "provider_order");
+    });
+    if (!supported) {
+      consentScopeFlags++;
+      violations.push({
+        id: `v-consent-${c.t}`,
+        t: c.t,
+        medication: "system",
+        medicationLabel: "Consent / scope",
+        ruleCode: "consent_scope",
+        rule: `${match.label} requires a documented provider order AND patient consent before performance.`,
+        severity: "high",
+        stripFinding: `${match.label} performed at ${shortTime(c.t)} with no documented consent or provider order in the preceding 4 hours.`,
+        medAction: c.description,
+        chartedResponse: findChartedResponse(notesText, c.t, 30),
+        evidence: [c.t],
+        minutesToAction: null,
+      });
+    }
+  }
+
+  return {
+    violations, contraindicationChecks,
+    pitIncDuringConcern, misoUnder,
+    hypotensionEpisodes, unattendedGaps, consentScopeFlags, ripeningIntervalFlags,
+  };
 }
 
 function shortTime(iso: string): string {
@@ -618,6 +861,9 @@ Deno.serve(async (req) => {
     const samples: StripSample[] = Array.isArray(body?.stripSamples) ? body.stripSamples : [];
     const images: { filename: string; dataUrl: string }[] = Array.isArray(body?.stripImages) ? body.stripImages : [];
     const marEvents: MAREvent[] = Array.isArray(body?.marEvents) ? body.marEvents : [];
+    const vitalsReadings: VitalsReading[] = Array.isArray(body?.vitalsReadings) ? body.vitalsReadings : [];
+    const careEvents: CareEvent[] = Array.isArray(body?.careEvents) ? body.careEvents : [];
+    const caseHeader = body?.caseHeader && typeof body.caseHeader === "object" ? body.caseHeader : undefined;
     const notesText: string = typeof body?.notesText === "string" ? body.notesText : "";
     const windowMinutes = Math.max(1, Math.min(30, Number(body?.windowMinutes) || 10));
     const parseWarnings: string[] = [];
@@ -637,13 +883,17 @@ Deno.serve(async (req) => {
     }
 
     const windows = mergeWindows(structuredWins, imageWins);
-    if (!windows.length && !marEvents.length) {
-      return new Response(JSON.stringify({ error: "No strip or MAR data provided." }), {
+    if (!windows.length && !marEvents.length && !vitalsReadings.length && !careEvents.length) {
+      return new Response(JSON.stringify({ error: "No strip, MAR, vitals, or care-event data provided." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { violations, contraindicationChecks, pitIncDuringConcern, misoUnder } = runRules(windows, marEvents, notesText);
+    const {
+      violations, contraindicationChecks,
+      pitIncDuringConcern, misoUnder,
+      hypotensionEpisodes, unattendedGaps, consentScopeFlags, ripeningIntervalFlags,
+    } = runRules(windows, marEvents, notesText, vitalsReadings, careEvents);
 
     const summary = {
       catI: windows.filter((w) => w.category === "I").length,
@@ -655,6 +905,10 @@ Deno.serve(async (req) => {
       moderateViolations: violations.filter((v) => v.severity === "moderate").length,
       pitocinIncreasesDuringConcern: pitIncDuringConcern,
       misoRedosesUnderInterval: misoUnder,
+      hypotensionEpisodes,
+      unattendedGaps,
+      consentScopeFlags,
+      ripeningIntervalFlags,
     };
 
     const monitoredMinutes = windows.length * windowMinutes;
@@ -664,12 +918,15 @@ Deno.serve(async (req) => {
       windowMinutes,
       windows,
       marEvents,
+      vitalsReadings,
+      careEvents,
       violations,
       contraindicationChecks,
       monitoredMinutes,
       summary,
       notes: notesText ? [notesText.slice(0, 2000)] : [],
       parseWarnings,
+      caseHeader,
     };
 
     return new Response(JSON.stringify(result), {

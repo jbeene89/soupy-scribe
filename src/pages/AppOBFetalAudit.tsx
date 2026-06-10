@@ -12,6 +12,7 @@ import { StopRuleViolationsPanel } from '@/components/ob/StopRuleViolationsPanel
 import { ContraindicationLedger } from '@/components/ob/ContraindicationLedger';
 import { runOBAudit, buildDemoOBBundle } from '@/lib/obFetalService';
 import { exportOBAuditPDF } from '@/lib/exportOBAuditPDF';
+import { exportOBComplaintPacketPDF } from '@/lib/exportOBComplaintPacketPDF';
 import type { OBAuditResult } from '@/lib/obFetalTypes';
 
 export default function AppOBFetalAudit() {
@@ -19,7 +20,12 @@ export default function AppOBFetalAudit() {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<OBAuditResult | null>(null);
 
-  const hasInput = ingest.stripSamples.length > 0 || ingest.stripImages.length > 0 || ingest.marEvents.length > 0;
+  const hasInput =
+    ingest.stripSamples.length > 0 ||
+    ingest.stripImages.length > 0 ||
+    ingest.marEvents.length > 0 ||
+    ingest.vitalsReadings.length > 0 ||
+    ingest.careEvents.length > 0;
 
   async function handleRun(payloadOverride?: Parameters<typeof runOBAudit>[0]) {
     setRunning(true);
@@ -28,8 +34,11 @@ export default function AppOBFetalAudit() {
         stripSamples: ingest.stripSamples,
         stripImages: ingest.stripImages,
         marEvents: ingest.marEvents,
+        vitalsReadings: ingest.vitalsReadings,
+        careEvents: ingest.careEvents,
         notesText: ingest.notesText,
         windowMinutes: 10,
+        caseHeader: ingest.caseHeader,
       };
       const r = await runOBAudit(payload);
       setResult(r);
@@ -48,8 +57,11 @@ export default function AppOBFetalAudit() {
       stripSamples: demo.stripSamples ?? [],
       stripImages: [],
       marEvents: demo.marEvents ?? [],
+      vitalsReadings: demo.vitalsReadings ?? [],
+      careEvents: demo.careEvents ?? [],
       notesText: demo.notesText ?? '',
       parseWarnings: [],
+      caseHeader: demo.caseHeader ?? {},
     });
     await handleRun(demo);
   }
@@ -114,12 +126,15 @@ export default function AppOBFetalAudit() {
 
       {result && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
             <SummaryTile label="Cat I windows" value={result.summary.catI} tone="ok" />
             <SummaryTile label="Cat II windows" value={result.summary.catII} tone="warn" />
             <SummaryTile label="Cat III windows" value={result.summary.catIII} tone="bad" />
             <SummaryTile label="Tachysystole" value={result.summary.tachysystoleWindows} tone="warn" />
             <SummaryTile label="Critical violations" value={result.summary.criticalViolations} tone="bad" />
+            <SummaryTile label="Hypotension episodes" value={result.summary.hypotensionEpisodes} tone="bad" />
+            <SummaryTile label="Unattended gaps" value={result.summary.unattendedGaps} tone="warn" />
+            <SummaryTile label="Consent / scope flags" value={result.summary.consentScopeFlags} tone="warn" />
           </div>
 
           <Tabs defaultValue="violations" className="w-full">
@@ -132,7 +147,10 @@ export default function AppOBFetalAudit() {
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-[10px]">{result.monitoredMinutes} min monitored</Badge>
                 <Button size="sm" variant="outline" onClick={() => exportOBAuditPDF(result)}>
-                  <Download className="h-3.5 w-3.5 mr-1.5" /> Export PDF
+                  <Download className="h-3.5 w-3.5 mr-1.5" /> Timeline PDF
+                </Button>
+                <Button size="sm" onClick={() => exportOBComplaintPacketPDF(result)}>
+                  <Download className="h-3.5 w-3.5 mr-1.5" /> Complaint packet
                 </Button>
               </div>
             </div>

@@ -2,25 +2,32 @@ import { useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, Activity, Pill, FileText, Image as ImageIcon } from 'lucide-react';
-import { parseStripCSV, parseMAR, fileToText, fileToDataURL } from '@/lib/obFetalParser';
-import type { MAREvent, StripSample } from '@/lib/obFetalTypes';
+import { Upload, X, Activity, Pill, FileText, Image as ImageIcon, HeartPulse, ClipboardList, UserSquare2 } from 'lucide-react';
+import { parseStripCSV, parseMAR, parseVitals, parseCareEvents, fileToText, fileToDataURL } from '@/lib/obFetalParser';
+import type { CareEvent, MAREvent, OBCaseHeader, StripSample, VitalsReading } from '@/lib/obFetalTypes';
 
 export interface IngestState {
   stripSamples: StripSample[];
   stripImages: { filename: string; dataUrl: string }[];
   marEvents: MAREvent[];
+  vitalsReadings: VitalsReading[];
+  careEvents: CareEvent[];
   notesText: string;
   parseWarnings: string[];
+  caseHeader: OBCaseHeader;
 }
 
 export const EMPTY_INGEST: IngestState = {
   stripSamples: [],
   stripImages: [],
   marEvents: [],
+  vitalsReadings: [],
+  careEvents: [],
   notesText: '',
   parseWarnings: [],
+  caseHeader: {},
 };
 
 export function StripIngestDropzones({
@@ -33,6 +40,8 @@ export function StripIngestDropzones({
   const stripRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLInputElement>(null);
   const marRef = useRef<HTMLInputElement>(null);
+  const vitalsRef = useRef<HTMLInputElement>(null);
+  const careRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
   async function handleStripFile(file: File) {
@@ -70,7 +79,62 @@ export function StripIngestDropzones({
     setBusy(false);
   }
 
+  async function handleVitalsFile(file: File) {
+    setBusy(true);
+    const text = await fileToText(file);
+    const { readings, warnings } = parseVitals(text);
+    onChange({
+      ...value,
+      vitalsReadings: readings,
+      parseWarnings: [...value.parseWarnings.filter((w) => !w.startsWith('Vitals:')), ...warnings.map((w) => `Vitals: ${w}`)],
+    });
+    setBusy(false);
+  }
+
+  async function handleCareFile(file: File) {
+    setBusy(true);
+    const text = await fileToText(file);
+    const { events, warnings } = parseCareEvents(text);
+    onChange({
+      ...value,
+      careEvents: events,
+      parseWarnings: [...value.parseWarnings.filter((w) => !w.startsWith('Care:')), ...warnings.map((w) => `Care: ${w}`)],
+    });
+    setBusy(false);
+  }
+
+  function updateHeader(patch: Partial<OBCaseHeader>) {
+    onChange({ ...value, caseHeader: { ...value.caseHeader, ...patch } });
+  }
+
   return (
+    <div className="space-y-4">
+      {/* Case header */}
+      <Card className="p-4">
+        <div className="flex items-center gap-2 text-sm font-semibold mb-3">
+          <UserSquare2 className="h-4 w-4 text-primary" /> Case header (for the complaint packet)
+        </div>
+        <div className="grid gap-2 md:grid-cols-3 text-xs">
+          <LabeledInput label="Patient initials" value={value.caseHeader.patientInitials || ''} onChange={(v) => updateHeader({ patientInitials: v })} />
+          <LabeledInput label="Facility" value={value.caseHeader.facility || ''} onChange={(v) => updateHeader({ facility: v })} placeholder="e.g. Baptist Medical Center Downtown" />
+          <LabeledInput label="Unit" value={value.caseHeader.unit || ''} onChange={(v) => updateHeader({ unit: v })} placeholder="e.g. Labor & Delivery" />
+          <LabeledInput label="Room number" value={value.caseHeader.roomNumber || ''} onChange={(v) => updateHeader({ roomNumber: v })} />
+          <LabeledInput label="Attending OB" value={value.caseHeader.attendingOB || ''} onChange={(v) => updateHeader({ attendingOB: v })} />
+          <LabeledInput label="Date of admission" value={value.caseHeader.dateOfAdmission || ''} onChange={(v) => updateHeader({ dateOfAdmission: v })} placeholder="YYYY-MM-DD" />
+          <LabeledInput label="Date of delivery" value={value.caseHeader.dateOfDelivery || ''} onChange={(v) => updateHeader({ dateOfDelivery: v })} placeholder="YYYY-MM-DD" />
+          <LabeledInput label="Prepared by" value={value.caseHeader.authorName || ''} onChange={(v) => updateHeader({ authorName: v })} />
+        </div>
+        <div className="mt-3">
+          <div className="text-[11px] font-semibold text-muted-foreground mb-1">Narrative (your description of what happened)</div>
+          <Textarea
+            value={value.caseHeader.narrative || ''}
+            onChange={(e) => updateHeader({ narrative: e.target.value })}
+            placeholder="Plain-language summary of the admission and the events you observed. This is reprinted at the top of the complaint packet."
+            className="min-h-[100px] text-xs"
+          />
+        </div>
+      </Card>
+
     <div className="grid gap-3 md:grid-cols-2">
       {/* Strip CSV */}
       <Card className="p-4">
@@ -138,8 +202,70 @@ export function StripIngestDropzones({
         />
       </Card>
 
-      {/* Notes */}
+      {/* Vitals */}
       <Card className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 text-sm font-semibold"><HeartPulse className="h-4 w-4 text-primary" /> Maternal vitals flowsheet</div>
+          <Badge variant="secondary">{value.vitalsReadings.length} readings</Badge>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">CSV with <code>time, sbp, dbp, hr, spo2</code> — or paste free-text like "21:14 BP 52/36 HR 118".</p>
+        <input ref={vitalsRef} type="file" accept=".csv,.tsv,.txt,text/csv" className="hidden"
+          onChange={(e) => e.target.files?.[0] && handleVitalsFile(e.target.files[0])} />
+        <div className="flex gap-2 mb-2">
+          <Button size="sm" variant="outline" onClick={() => vitalsRef.current?.click()} disabled={busy}>
+            <Upload className="h-3.5 w-3.5 mr-1.5" /> Choose CSV
+          </Button>
+        </div>
+        <Textarea
+          placeholder="18:00 BP 54/36 HR 118&#10;18:15 BP 98/60 HR 96"
+          className="min-h-[88px] text-xs font-mono"
+          onBlur={(e) => {
+            const { readings, warnings } = parseVitals(e.target.value);
+            if (readings.length) onChange({
+              ...value,
+              vitalsReadings: [...value.vitalsReadings, ...readings],
+              parseWarnings: [...value.parseWarnings, ...warnings.map((w) => `Vitals: ${w}`)],
+            });
+          }}
+        />
+      </Card>
+
+      {/* Care events */}
+      <Card className="p-4 md:col-span-2">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 text-sm font-semibold"><ClipboardList className="h-4 w-4 text-primary" /> Nursing / care events</div>
+          <Badge variant="secondary">{value.careEvents.length} events</Badge>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          One line per event with a timestamp. The audit recognises phrases like
+          <code> cervidil placed</code>, <code>membrane sweep</code>, <code>cervical exam</code>,
+          <code>consent obtained</code>, <code>provider order</code>, <code>RN at bedside</code>,
+          <code>provider notified</code>, <code>IV bolus</code>, <code>reposition</code>.
+          These power the unattended-patient and consent / scope-of-practice rules.
+        </p>
+        <input ref={careRef} type="file" accept=".txt,.csv,.tsv" className="hidden"
+          onChange={(e) => e.target.files?.[0] && handleCareFile(e.target.files[0])} />
+        <div className="flex gap-2 mb-2">
+          <Button size="sm" variant="outline" onClick={() => careRef.current?.click()} disabled={busy}>
+            <Upload className="h-3.5 w-3.5 mr-1.5" /> Choose file
+          </Button>
+        </div>
+        <Textarea
+          placeholder="18:35 Cervidil placed by RN&#10;18:36 Membrane sweep performed (no consent documented)&#10;22:30 Provider notified, Pitocin order received&#10;03:30 Last vitals check&#10;07:15 RN at bedside"
+          className="min-h-[100px] text-xs font-mono"
+          onBlur={(e) => {
+            const { events, warnings } = parseCareEvents(e.target.value);
+            if (events.length) onChange({
+              ...value,
+              careEvents: [...value.careEvents, ...events],
+              parseWarnings: [...value.parseWarnings, ...warnings.map((w) => `Care: ${w}`)],
+            });
+          }}
+        />
+      </Card>
+
+      {/* Notes */}
+      <Card className="p-4 md:col-span-2">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-primary" /> Clinical notes</div>
           <Badge variant="secondary">{value.notesText.length} chars</Badge>
@@ -153,5 +279,15 @@ export function StripIngestDropzones({
         />
       </Card>
     </div>
+    </div>
+  );
+}
+
+function LabeledInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <label className="block">
+      <span className="block text-[11px] font-semibold text-muted-foreground mb-1">{label}</span>
+      <Input value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="h-8 text-xs" />
+    </label>
   );
 }
