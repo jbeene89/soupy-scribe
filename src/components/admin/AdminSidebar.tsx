@@ -46,6 +46,7 @@ import {
   Clock,
   Gavel,
   Linkedin,
+  HeartPulse as HeartPulseIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -77,6 +78,7 @@ const SHARED_NAV = [
   { title: 'Patient Advocate', path: '/app/advocate', icon: HeartHandshake },
   { title: 'Capacity Balance', path: '/app/capacity', icon: Scale },
   { title: 'EHR Integration', path: '/app/ehr', icon: DatabaseIcon },
+  { title: 'L&D Fetal Audit', path: '/app/ob-fetal-audit', icon: HeartPulseIcon },
   { title: 'HIPAA Compliance', path: '/app/compliance', icon: ShieldCheck },
   { title: 'LinkedIn Share', path: '/app/linkedin-share', icon: Linkedin },
 ];

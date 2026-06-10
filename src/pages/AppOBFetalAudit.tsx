@@ -61,7 +61,7 @@ export default function AppOBFetalAudit() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6 max-w-7xl">
-      <SEO title="OB Fetal Monitoring Audit — SOUPY Audit" description="Audit fetal monitor strips against medication administration. Detect Pitocin and Misoprostol stop-rule violations with verbatim evidence." />
+      <SEO path="/app/ob-fetal-audit" title="OB Fetal Monitoring Audit — SOUPY Audit" description="Audit fetal monitor strips against medication administration. Detect Pitocin and Misoprostol stop-rule violations with verbatim evidence." />
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
