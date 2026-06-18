@@ -80,7 +80,6 @@ const SHARED_NAV = [
   { title: 'EHR Integration', path: '/app/ehr', icon: DatabaseIcon },
   { title: 'L&D Fetal Audit', path: '/app/ob-fetal-audit', icon: HeartPulse },
   { title: 'L&D Validation Bench', path: '/app/ob-fetal-validation', icon: HeartPulse },
-  { title: 'Patient Self-Help', path: '/app/patient-self-help', icon: LifeBuoy },
   { title: 'HIPAA Compliance', path: '/app/compliance', icon: ShieldCheck },
   { title: 'LinkedIn Share', path: '/app/linkedin-share', icon: Linkedin },
 ];
@@ -102,6 +101,11 @@ const PSYCH_NAV = [
   { title: 'Pre-Submission Audit', path: '/app', icon: ClipboardCheck },
 ];
 
+const PATIENT_NAV = [
+  { title: 'Self-Help Console', path: '/app', icon: LifeBuoy },
+  { title: 'Public Intake Page', path: '/patient-self-help', icon: FileText },
+];
+
 export function AdminSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -114,7 +118,11 @@ export function AdminSidebar() {
     return location.pathname.startsWith(path);
   };
 
-  const mainNav = appMode === 'psych' ? PSYCH_NAV : appMode === 'provider' ? PROVIDER_NAV : PAYER_NAV;
+  const mainNav =
+    appMode === 'patient' ? PATIENT_NAV :
+    appMode === 'psych' ? PSYCH_NAV :
+    appMode === 'provider' ? PROVIDER_NAV :
+    PAYER_NAV;
 
   return (
     <Sidebar collapsible="icon">
@@ -156,7 +164,11 @@ export function AdminSidebar() {
 
         {/* Main navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel>{appMode === 'psych' ? 'Behavioral Health' : appMode === 'provider' ? 'Provider' : 'Payer'}</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {appMode === 'patient' ? 'Patient Self-Help' :
+             appMode === 'psych' ? 'Behavioral Health' :
+             appMode === 'provider' ? 'Provider' : 'Payer'}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNav.map((item) => (
@@ -176,7 +188,7 @@ export function AdminSidebar() {
         </SidebarGroup>
 
         {/* Shared (Provider + Payer) */}
-        {appMode !== 'psych' && (
+        {appMode !== 'psych' && appMode !== 'patient' && (
           <SidebarGroup>
             <SidebarGroupLabel>Shared</SidebarGroupLabel>
             <SidebarGroupContent>
