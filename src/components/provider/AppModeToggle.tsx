@@ -9,7 +9,7 @@ interface AppModeToggleProps {
 
 export function AppModeToggle({ mode, onChange }: AppModeToggleProps) {
   return (
-    <div className="flex items-center gap-1 rounded-lg border bg-secondary/50 p-0.5">
+    <div className="flex items-center gap-1 rounded-lg border bg-secondary/50 p-0.5 overflow-x-auto scrollbar-hide">
       <button
         onClick={() => onChange('payer')}
         className={cn(
