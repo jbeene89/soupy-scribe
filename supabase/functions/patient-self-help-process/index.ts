@@ -2,19 +2,6 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { extractText, getDocumentProxy } from "npm:unpdf";
 
-/**
- * Patient Self-Help record review processor.
- *
- * For each uploaded file:
- *  - PDFs: extract text page-by-page using unpdf, chunk in 10-page batches,
- *    send each chunk to Lovable AI for event extraction + deviation flagging.
- *  - Images: send to Lovable AI vision for transcription + interpretation.
- *
- * Then synthesize aggregated findings, timeline, complaint packet, and
- * attorney-ready summary in one final AI call. Persist as results JSON on the
- * case row.
- */
-
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
@@ -22,6 +9,7 @@ const BUCKET = "patient-self-help";
 const MODEL_FAST = "google/gemini-2.5-flash";
 const MODEL_SYNTH = "google/gemini-2.5-pro";
 const CHUNK_PAGES = 10;
+const CHUNKS_PER_RUN = 2; // process at most N chunks per invocation, then self-reinvoke
 
 type ChunkExtract = {
   events: Array<{ timestamp?: string; event: string; quote?: string; pages?: number[] }>;
@@ -66,7 +54,6 @@ async function callAI(messages: any[], model = MODEL_FAST, asJson = true): Promi
 
 function safeParseJson<T>(s: string, fallback: T): T {
   try {
-    // Strip code fences if present
     const cleaned = s.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
     return JSON.parse(cleaned) as T;
   } catch {
@@ -123,11 +110,32 @@ Return ONLY JSON matching this shape:
   }
 }`;
 
+function selfReinvoke(case_id: string, access_token: string) {
+  const url = `${SUPABASE_URL}/functions/v1/patient-self-help-process`;
+  // Fire-and-forget. EdgeRuntime.waitUntil keeps it alive after we return.
+  // @ts-ignore EdgeRuntime is provided by Supabase Edge runtime.
+  const p = fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+    body: JSON.stringify({ case_id, access_token }),
+  }).catch((e) => console.error("self-reinvoke failed", e));
+  try {
+    // @ts-ignore
+    EdgeRuntime?.waitUntil?.(p);
+  } catch { /* ignore */ }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  let caseIdForError: string | null = null;
   try {
-    const { case_id, access_token } = await req.json();
+    const body = await req.json();
+    const { case_id, access_token } = body ?? {};
+    caseIdForError = case_id ?? null;
     if (!case_id || !access_token) return jsonResponse({ error: "case_id and access_token required" }, 400);
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -140,56 +148,76 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (cErr || !caseRow) return jsonResponse({ error: "case not found" }, 404);
 
+    if (caseRow.status === "complete") return jsonResponse({ ok: true, status: "complete" });
+
     const setStatus = (status: string, progress_message: string, extra: Record<string, unknown> = {}) =>
       admin
         .from("patient_self_help_cases")
         .update({ status, progress_message, ...extra })
         .eq("id", case_id);
 
-    await setStatus("processing", "Reading files");
-
-    const { data: files } = await admin
+    const { data: filesRaw } = await admin
       .from("patient_self_help_files")
       .select("*")
-      .eq("case_id", case_id);
+      .eq("case_id", case_id)
+      .order("created_at", { ascending: true });
+    const files = filesRaw ?? [];
 
-    const fileList = files ?? [];
-    const allExtracts: Array<{ file: string; chunkLabel: string; extract: ChunkExtract }> = [];
-    let chunkIndex = 0;
-    let totalChunks = 0;
+    let workDone = 0;
+    let moreWork = false;
 
-    // First pass: count chunks for progress
-    for (const f of fileList) {
+    for (const f of files) {
+      if (workDone >= CHUNKS_PER_RUN) { moreWork = true; break; }
+      if (f.file_status === "done" || f.file_status === "error") continue;
+
       const type = (f.file_type || "").toLowerCase();
-      if (type.includes("pdf")) totalChunks += 1; // rough; refined below
-      else totalChunks += 1;
-    }
+      const isPdf = type.includes("pdf") || (f.file_name || "").toLowerCase().endsWith(".pdf");
+      const isImage = type.startsWith("image/") || /\.(png|jpe?g|webp|heic)$/i.test(f.file_name || "");
 
-    for (const f of fileList) {
-      const type = (f.file_type || "").toLowerCase();
       try {
-        const { data: dl, error: dlErr } = await admin.storage.from(BUCKET).download(f.storage_path);
-        if (dlErr || !dl) {
-          console.error("download failed", f.storage_path, dlErr);
-          continue;
-        }
-        const buf = new Uint8Array(await dl.arrayBuffer());
+        if (isPdf) {
+          // Ensure pages cached
+          let pages: string[] | null = null;
+          if (!f.chunks_total || f.chunks_total === 0) {
+            await setStatus("processing", `Reading PDF: ${f.file_name}`);
+            const { data: dl, error: dlErr } = await admin.storage.from(BUCKET).download(f.storage_path);
+            if (dlErr || !dl) throw new Error(`download failed: ${dlErr?.message ?? "unknown"}`);
+            const buf = new Uint8Array(await dl.arrayBuffer());
+            pages = await extractPdfPages(buf);
+            const total = Math.max(1, Math.ceil(pages.length / CHUNK_PAGES));
+            await admin
+              .from("patient_self_help_files")
+              .update({
+                page_count: pages.length,
+                chunks_total: total,
+                file_status: "processing",
+                extracted_text: pages.join("\n\n--- PAGE BREAK ---\n\n").slice(0, 400000),
+              })
+              .eq("id", f.id);
+            f.chunks_total = total;
+            f.page_count = pages.length;
+          } else {
+            // Reconstruct pages from cached extracted_text
+            const cached = (f.extracted_text || "") as string;
+            pages = cached.split("\n\n--- PAGE BREAK ---\n\n");
+            if (pages.length < (f.page_count || pages.length)) {
+              // cache truncated; redownload
+              const { data: dl } = await admin.storage.from(BUCKET).download(f.storage_path);
+              if (dl) {
+                const buf = new Uint8Array(await dl.arrayBuffer());
+                pages = await extractPdfPages(buf);
+              }
+            }
+          }
 
-        if (type.includes("pdf") || f.file_name?.toLowerCase().endsWith(".pdf")) {
-          await setStatus("processing", `Reading PDF: ${f.file_name}`);
-          const pages = await extractPdfPages(buf);
-          await admin
-            .from("patient_self_help_files")
-            .update({ page_count: pages.length, extracted_text: pages.join("\n\n--- PAGE BREAK ---\n\n").slice(0, 200000) })
-            .eq("id", f.id);
-
-          for (let p = 0; p < pages.length; p += CHUNK_PAGES) {
-            const slice = pages.slice(p, p + CHUNK_PAGES);
-            const startPage = p + 1;
-            const endPage = Math.min(p + CHUNK_PAGES, pages.length);
-            chunkIndex += 1;
+          // Process next batch of chunks for this file
+          while (workDone < CHUNKS_PER_RUN && f.chunks_done < f.chunks_total) {
+            const idx = f.chunks_done;
+            const startPage = idx * CHUNK_PAGES + 1;
+            const endPage = Math.min((idx + 1) * CHUNK_PAGES, f.page_count || pages.length);
             await setStatus("processing", `Analyzing ${f.file_name} pages ${startPage}-${endPage}`);
 
+            const slice = (pages || []).slice(startPage - 1, endPage);
             const userText =
               `FILE: ${f.file_name}\nPAGES: ${startPage}-${endPage}\n\n` +
               slice
@@ -205,12 +233,34 @@ Deno.serve(async (req) => {
               true,
             );
             const parsed = safeParseJson<ChunkExtract>(content, { events: [], deviations: [] });
-            allExtracts.push({ file: f.file_name, chunkLabel: `pages ${startPage}-${endPage}`, extract: parsed });
+
+            const newResults = [
+              ...(Array.isArray(f.chunk_results) ? f.chunk_results : []),
+              { chunkLabel: `pages ${startPage}-${endPage}`, extract: parsed },
+            ];
+            const newDone = idx + 1;
+            await admin
+              .from("patient_self_help_files")
+              .update({
+                chunk_results: newResults,
+                chunks_done: newDone,
+                file_status: newDone >= f.chunks_total ? "done" : "processing",
+              })
+              .eq("id", f.id);
+            f.chunk_results = newResults;
+            f.chunks_done = newDone;
+            workDone += 1;
           }
-        } else if (type.startsWith("image/") || /\.(png|jpe?g|webp|heic)$/i.test(f.file_name || "")) {
-          chunkIndex += 1;
+
+          if (f.chunks_done < f.chunks_total) {
+            moreWork = true;
+            break;
+          }
+        } else if (isImage) {
           await setStatus("processing", `Reading photo: ${f.file_name}`);
-          // Convert to data URL
+          const { data: dl, error: dlErr } = await admin.storage.from(BUCKET).download(f.storage_path);
+          if (dlErr || !dl) throw new Error(`download failed: ${dlErr?.message ?? "unknown"}`);
+          const buf = new Uint8Array(await dl.arrayBuffer());
           let binary = "";
           for (let i = 0; i < buf.length; i++) binary += String.fromCharCode(buf[i]);
           const b64 = btoa(binary);
@@ -232,13 +282,23 @@ Deno.serve(async (req) => {
             true,
           );
           const parsed = safeParseJson<ChunkExtract>(content, { events: [], deviations: [] });
-          await admin.from("patient_self_help_files").update({ ocr_text: parsed.notes || "" }).eq("id", f.id);
-          allExtracts.push({ file: f.file_name, chunkLabel: "image", extract: parsed });
+          await admin
+            .from("patient_self_help_files")
+            .update({
+              chunk_results: [{ chunkLabel: "image", extract: parsed }],
+              chunks_done: 1,
+              chunks_total: 1,
+              file_status: "done",
+              ocr_text: parsed.notes || "",
+            })
+            .eq("id", f.id);
+          workDone += 1;
         } else {
-          // Treat as text
-          chunkIndex += 1;
+          await setStatus("processing", `Reading text: ${f.file_name}`);
+          const { data: dl, error: dlErr } = await admin.storage.from(BUCKET).download(f.storage_path);
+          if (dlErr || !dl) throw new Error(`download failed: ${dlErr?.message ?? "unknown"}`);
+          const buf = new Uint8Array(await dl.arrayBuffer());
           const text = new TextDecoder().decode(buf).slice(0, 60000);
-          await admin.from("patient_self_help_files").update({ extracted_text: text }).eq("id", f.id);
           const content = await callAI(
             [
               { role: "system", content: CHUNK_SYSTEM },
@@ -247,27 +307,61 @@ Deno.serve(async (req) => {
             MODEL_FAST,
             true,
           );
-          allExtracts.push({
-            file: f.file_name,
-            chunkLabel: "text",
-            extract: safeParseJson<ChunkExtract>(content, { events: [], deviations: [] }),
-          });
+          const parsed = safeParseJson<ChunkExtract>(content, { events: [], deviations: [] });
+          await admin
+            .from("patient_self_help_files")
+            .update({
+              chunk_results: [{ chunkLabel: "text", extract: parsed }],
+              chunks_done: 1,
+              chunks_total: 1,
+              file_status: "done",
+              extracted_text: text,
+            })
+            .eq("id", f.id);
+          workDone += 1;
         }
       } catch (e) {
         console.error("file processing failed", f.file_name, e);
-        allExtracts.push({
-          file: f.file_name,
-          chunkLabel: "error",
-          extract: {
-            events: [],
-            deviations: [],
-            notes: `Could not process: ${e instanceof Error ? e.message : String(e)}`,
-          },
-        });
+        await admin
+          .from("patient_self_help_files")
+          .update({
+            file_status: "error",
+            chunk_results: [
+              ...(Array.isArray(f.chunk_results) ? f.chunk_results : []),
+              { chunkLabel: "error", extract: { events: [], deviations: [], notes: `Could not process: ${e instanceof Error ? e.message : String(e)}` } },
+            ],
+          })
+          .eq("id", f.id);
       }
     }
 
+    // If any file still not done, schedule next run
+    const { data: remaining } = await admin
+      .from("patient_self_help_files")
+      .select("id, file_status")
+      .eq("case_id", case_id)
+      .not("file_status", "in", "(done,error)");
+    if ((remaining ?? []).length > 0 || moreWork) {
+      await setStatus("processing", caseRow.progress_message || "Continuing review");
+      selfReinvoke(case_id, access_token);
+      return jsonResponse({ ok: true, more: true });
+    }
+
+    // All files done -> synthesize
     await setStatus("synthesizing", "Combining findings into your report");
+
+    const { data: finalFiles } = await admin
+      .from("patient_self_help_files")
+      .select("file_name, chunk_results")
+      .eq("case_id", case_id);
+
+    const allExtracts: Array<{ file: string; chunkLabel: string; extract: unknown }> = [];
+    for (const ff of finalFiles ?? []) {
+      const arr = Array.isArray(ff.chunk_results) ? ff.chunk_results : [];
+      for (const c of arr) {
+        allExtracts.push({ file: ff.file_name, chunkLabel: (c as any).chunkLabel, extract: (c as any).extract });
+      }
+    }
 
     const synthUser = JSON.stringify({
       case_title: caseRow.case_title,
@@ -287,7 +381,6 @@ Deno.serve(async (req) => {
         true,
       );
     } catch (e) {
-      // Fallback to fast model if pro fails (e.g. rate limit)
       console.warn("synth pro failed, retrying with flash", e);
       synthRaw = await callAI(
         [
@@ -316,19 +409,18 @@ Deno.serve(async (req) => {
       })
       .eq("id", case_id);
 
-    return jsonResponse({ ok: true });
+    return jsonResponse({ ok: true, status: "complete" });
   } catch (e) {
     console.error("processor error", e);
-    try {
-      const { case_id } = await req.clone().json().catch(() => ({ case_id: null }));
-      if (case_id) {
+    if (caseIdForError) {
+      try {
         const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
         await admin
           .from("patient_self_help_cases")
           .update({ status: "error", error: e instanceof Error ? e.message : String(e), progress_message: "Failed" })
-          .eq("id", case_id);
-      }
-    } catch { /* ignore */ }
+          .eq("id", caseIdForError);
+      } catch { /* ignore */ }
+    }
     return jsonResponse({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });
