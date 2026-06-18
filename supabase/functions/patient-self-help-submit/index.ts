@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     if (phase === "start") {
-      const inviteCode = String(body.invite_code || "").trim();
+      const inviteCode = String(body.invite_code || "").trim().toUpperCase();
       const files = Array.isArray(body.files) ? body.files : [];
       const contactEmail = String(body.contact_email || "").trim().slice(0, 320) || null;
       const contactName = String(body.contact_name || "").trim().slice(0, 200) || null;
@@ -63,10 +63,11 @@ Deno.serve(async (req) => {
       const { data: invite, error: invErr } = await admin
         .from("patient_self_help_invites")
         .select("code, max_uses, uses_count, expires_at, is_active")
-        .eq("code", inviteCode)
+        .ilike("code", inviteCode)
         .maybeSingle();
       if (invErr) return jsonResponse({ error: invErr.message }, 500);
       if (!invite || !invite.is_active) return jsonResponse({ error: "Invite code not recognized." }, 403);
+      const canonicalCode = invite.code;
       if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
         return jsonResponse({ error: "This invite code has expired." }, 403);
       }
@@ -78,7 +79,7 @@ Deno.serve(async (req) => {
       const { data: caseRow, error: caseErr } = await admin
         .from("patient_self_help_cases")
         .insert({
-          invite_code: inviteCode,
+          invite_code: canonicalCode,
           contact_email: contactEmail,
           contact_name: contactName,
           case_title: caseTitle,
@@ -116,7 +117,7 @@ Deno.serve(async (req) => {
       await admin
         .from("patient_self_help_invites")
         .update({ uses_count: invite.uses_count + 1 })
-        .eq("code", inviteCode);
+        .eq("code", canonicalCode);
 
       return jsonResponse({
         case_id: caseRow.id,
