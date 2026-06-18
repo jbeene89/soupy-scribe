@@ -6,6 +6,7 @@ import { ProviderCaseDetail } from '@/components/provider/ProviderCaseDetail';
 import { CaseUpload } from '@/components/CaseUpload';
 import { ProviderCaseUpload } from '@/components/provider/ProviderCaseUpload';
 import { PsychPracticeModule } from '@/components/psych/PsychPracticeModule';
+import AppPatientSelfHelpAdmin from '@/pages/AppPatientSelfHelpAdmin';
 import { SystemImpactSummaryCard } from '@/components/system-impact/SystemImpactSummaryCard';
 import { ShadowAuditInvite } from '@/components/ShadowAuditInvite';
 import { Scale } from 'lucide-react';
@@ -37,6 +38,11 @@ export default function AppDashboard() {
         <ShadowAuditInvite />
       </div>
     );
+  }
+
+  // Patient Self-Help mode
+  if (appMode === 'patient') {
+    return <AppPatientSelfHelpAdmin />;
   }
 
   // Provider mode: show dashboard with case queue
