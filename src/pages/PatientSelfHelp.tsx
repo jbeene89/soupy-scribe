@@ -66,6 +66,9 @@ export default function PatientSelfHelp() {
     if (phase !== 'processing' && phase !== 'complete') return;
     if (!caseId || !accessToken) return;
     let cancelled = false;
+    let lastUpdatedAt: string | null = null;
+    let lastChangedAt = Date.now();
+    let kicking = false;
     const poll = async () => {
       try {
         const { data, error } = await supabase.functions.invoke('patient-self-help-submit', {
@@ -82,6 +85,26 @@ export default function PatientSelfHelp() {
         } else if (data.status === 'error') {
           setErrorMsg(data.error || 'Processing failed.');
           setPhase('error');
+        } else if (data.status === 'processing' || data.status === 'queued' || data.status === 'synthesizing') {
+          // Watchdog: if the server's updated_at hasn't moved for ~25s,
+          // nudge the processor so long record sets keep advancing.
+          const u = data.updated_at || null;
+          if (u !== lastUpdatedAt) {
+            lastUpdatedAt = u;
+            lastChangedAt = Date.now();
+          } else if (!kicking && Date.now() - lastChangedAt > 25000) {
+            kicking = true;
+            try {
+              await supabase.functions.invoke('patient-self-help-process', {
+                body: { case_id: caseId, access_token: accessToken },
+              });
+            } catch (err) {
+              console.warn('resume kick failed', err);
+            } finally {
+              lastChangedAt = Date.now();
+              kicking = false;
+            }
+          }
         }
       } catch (e) {
         if (!cancelled) {
