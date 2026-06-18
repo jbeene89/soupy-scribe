@@ -45,6 +45,9 @@ export default function PatientSelfHelp() {
 
   // Restore an in-progress case from localStorage so a refresh doesn't lose access
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const codeParam = params.get('code');
+    if (codeParam) setInviteCode(codeParam);
     try {
       const saved = localStorage.getItem('psh-active');
       if (saved) {
