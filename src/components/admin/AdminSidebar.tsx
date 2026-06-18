@@ -46,6 +46,7 @@ import {
   Clock,
   Gavel,
   Linkedin,
+  LifeBuoy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminContext } from './AdminContext';
@@ -79,6 +80,7 @@ const SHARED_NAV = [
   { title: 'EHR Integration', path: '/app/ehr', icon: DatabaseIcon },
   { title: 'L&D Fetal Audit', path: '/app/ob-fetal-audit', icon: HeartPulse },
   { title: 'L&D Validation Bench', path: '/app/ob-fetal-validation', icon: HeartPulse },
+  { title: 'Patient Self-Help', path: '/app/patient-self-help', icon: LifeBuoy },
   { title: 'HIPAA Compliance', path: '/app/compliance', icon: ShieldCheck },
   { title: 'LinkedIn Share', path: '/app/linkedin-share', icon: Linkedin },
 ];

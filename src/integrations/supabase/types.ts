@@ -1916,6 +1916,148 @@ export type Database = {
           },
         ]
       }
+      patient_self_help_cases: {
+        Row: {
+          access_token: string
+          case_title: string | null
+          contact_email: string | null
+          contact_name: string | null
+          created_at: string
+          error: string | null
+          file_count: number
+          id: string
+          invite_code: string | null
+          narrative: string | null
+          progress_message: string | null
+          results: Json | null
+          scope: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string
+          case_title?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          error?: string | null
+          file_count?: number
+          id?: string
+          invite_code?: string | null
+          narrative?: string | null
+          progress_message?: string | null
+          results?: Json | null
+          scope?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          case_title?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          error?: string | null
+          file_count?: number
+          id?: string
+          invite_code?: string | null
+          narrative?: string | null
+          progress_message?: string | null
+          results?: Json | null
+          scope?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_self_help_cases_invite_code_fkey"
+            columns: ["invite_code"]
+            isOneToOne: false
+            referencedRelation: "patient_self_help_invites"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      patient_self_help_files: {
+        Row: {
+          case_id: string
+          created_at: string
+          extracted_text: string | null
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          ocr_text: string | null
+          page_count: number | null
+          storage_path: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          extracted_text?: string | null
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          ocr_text?: string | null
+          page_count?: number | null
+          storage_path: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          extracted_text?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          ocr_text?: string | null
+          page_count?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_self_help_files_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "patient_self_help_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_self_help_invites: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          is_active: boolean
+          label: string | null
+          max_uses: number
+          uses_count: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          is_active?: boolean
+          label?: string | null
+          max_uses?: number
+          uses_count?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          is_active?: boolean
+          label?: string | null
+          max_uses?: number
+          uses_count?: number
+        }
+        Relationships: []
+      }
       payer_anomaly_flags: {
         Row: {
           anomaly_type: string

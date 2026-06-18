@@ -45,6 +45,8 @@ import AppLinkedInShare from "./pages/AppLinkedInShare";
 import AppOBFetalAudit from "./pages/AppOBFetalAudit";
 import AppOBFetalValidation from "./pages/AppOBFetalValidation";
 import CodeBayIntake from "./pages/CodeBayIntake";
+import PatientSelfHelp from "./pages/PatientSelfHelp";
+import AppPatientSelfHelpAdmin from "./pages/AppPatientSelfHelpAdmin";
 import { PHIAcknowledgmentGate } from "@/components/compliance/PHIAcknowledgmentGate";
 import { IdleTimeoutGuard } from "@/components/compliance/IdleTimeoutGuard";
 
@@ -79,6 +81,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/code-bay-intake" element={<CodeBayIntake />} />
+            <Route path="/patient-self-help" element={<PatientSelfHelp />} />
 
             {/* Everything else now requires sign-in */}
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />
@@ -134,6 +137,7 @@ const App = () => (
               <Route path="linkedin-share" element={<AppLinkedInShare />} />
               <Route path="ob-fetal-audit" element={<AppOBFetalAudit />} />
               <Route path="ob-fetal-validation" element={<AppOBFetalValidation />} />
+              <Route path="patient-self-help" element={<AppPatientSelfHelpAdmin />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
