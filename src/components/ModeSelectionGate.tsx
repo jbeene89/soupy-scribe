@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, Stethoscope, ArrowRight, Brain, Scale, HeartPulse, Zap, CheckCircle2, DollarSign } from 'lucide-react';
+import { Shield, Stethoscope, ArrowRight, Brain, Scale, HeartPulse, Zap, CheckCircle2, DollarSign, LifeBuoy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ShadowAuditInvite } from '@/components/ShadowAuditInvite';
@@ -66,6 +66,24 @@ const MODES = [
     accentBg: 'bg-[hsl(270,40%,50%)]',
     hoverRing: 'hover:ring-[hsl(270,40%,50%)]',
   },
+  {
+    id: 'patient' as AppMode,
+    title: 'Patient Self-Help',
+    subtitle: 'Record Review',
+    description: 'Patients and families upload their medical records and get a plain-language review of anything that appears below the standard of care.',
+    icon: LifeBuoy,
+    highlights: [
+      'Full-record review (PDFs read page by page)',
+      'Photo + monitor strip ingestion',
+      'Plain-language findings + timeline',
+      'Complaint packet + attorney-ready summary',
+    ],
+    gradient: 'from-[hsl(15,55%,22%)] to-[hsl(15,50%,32%)]',
+    accentBorder: 'border-[hsl(15,55%,50%)]',
+    accentText: 'text-[hsl(15,55%,55%)]',
+    accentBg: 'bg-[hsl(15,55%,50%)]',
+    hoverRing: 'hover:ring-[hsl(15,55%,50%)]',
+  },
 ] as const;
 
 export function ModeSelectionGate({ onSelect }: Props) {
@@ -95,7 +113,7 @@ export function ModeSelectionGate({ onSelect }: Props) {
       </div>
 
       {/* Mode Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl w-full animate-fade-in" style={{ animationDelay: '150ms' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl w-full animate-fade-in" style={{ animationDelay: '150ms' }}>
         {MODES.map((mode) => {
           const Icon = mode.icon;
           const isHovered = hoveredMode === mode.id;

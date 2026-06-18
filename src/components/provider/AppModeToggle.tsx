@@ -1,6 +1,6 @@
 import type { AppMode } from '@/lib/providerTypes';
 import { cn } from '@/lib/utils';
-import { Shield, Stethoscope, HeartPulse } from 'lucide-react';
+import { Shield, Stethoscope, HeartPulse, LifeBuoy } from 'lucide-react';
 
 interface AppModeToggleProps {
   mode: AppMode;
@@ -45,6 +45,18 @@ export function AppModeToggle({ mode, onChange }: AppModeToggleProps) {
       >
         <HeartPulse className="h-3 w-3" />
         Behavioral Health
+      </button>
+      <button
+        onClick={() => onChange('patient')}
+        className={cn(
+          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+          mode === 'patient'
+            ? 'bg-card shadow-sm text-foreground'
+            : 'text-muted-foreground hover:text-foreground'
+        )}
+      >
+        <LifeBuoy className="h-3 w-3" />
+        Patient Self-Help
       </button>
     </div>
   );
