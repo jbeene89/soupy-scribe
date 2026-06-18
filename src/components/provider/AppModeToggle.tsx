@@ -13,7 +13,7 @@ export function AppModeToggle({ mode, onChange }: AppModeToggleProps) {
       <button
         onClick={() => onChange('payer')}
         className={cn(
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+          'flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
           mode === 'payer'
             ? 'bg-card shadow-sm text-foreground'
             : 'text-muted-foreground hover:text-foreground'
@@ -25,7 +25,7 @@ export function AppModeToggle({ mode, onChange }: AppModeToggleProps) {
       <button
         onClick={() => onChange('provider')}
         className={cn(
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+          'flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
           mode === 'provider'
             ? 'bg-card shadow-sm text-foreground'
             : 'text-muted-foreground hover:text-foreground'
@@ -37,7 +37,7 @@ export function AppModeToggle({ mode, onChange }: AppModeToggleProps) {
       <button
         onClick={() => onChange('psych')}
         className={cn(
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+          'flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
           mode === 'psych'
             ? 'bg-card shadow-sm text-foreground'
             : 'text-muted-foreground hover:text-foreground'
@@ -49,7 +49,7 @@ export function AppModeToggle({ mode, onChange }: AppModeToggleProps) {
       <button
         onClick={() => onChange('patient')}
         className={cn(
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+          'flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
           mode === 'patient'
             ? 'bg-card shadow-sm text-foreground'
             : 'text-muted-foreground hover:text-foreground'
