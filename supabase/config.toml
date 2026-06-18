@@ -66,3 +66,10 @@ verify_jwt = false
 
 [functions.imaging-ftd-review]
 verify_jwt = false
+
+# Patient Self-Help — public entry points; invite-code is the auth boundary.
+[functions.patient-self-help-submit]
+verify_jwt = false
+
+[functions.patient-self-help-process]
+verify_jwt = false
