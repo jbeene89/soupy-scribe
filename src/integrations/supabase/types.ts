@@ -1981,10 +1981,14 @@ export type Database = {
       patient_self_help_files: {
         Row: {
           case_id: string
+          chunk_results: Json
+          chunks_done: number
+          chunks_total: number
           created_at: string
           extracted_text: string | null
           file_name: string
           file_size: number | null
+          file_status: string
           file_type: string | null
           id: string
           ocr_text: string | null
@@ -1993,10 +1997,14 @@ export type Database = {
         }
         Insert: {
           case_id: string
+          chunk_results?: Json
+          chunks_done?: number
+          chunks_total?: number
           created_at?: string
           extracted_text?: string | null
           file_name: string
           file_size?: number | null
+          file_status?: string
           file_type?: string | null
           id?: string
           ocr_text?: string | null
@@ -2005,10 +2013,14 @@ export type Database = {
         }
         Update: {
           case_id?: string
+          chunk_results?: Json
+          chunks_done?: number
+          chunks_total?: number
           created_at?: string
           extracted_text?: string | null
           file_name?: string
           file_size?: number | null
+          file_status?: string
           file_type?: string | null
           id?: string
           ocr_text?: string | null
