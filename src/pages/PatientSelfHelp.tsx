@@ -406,6 +406,14 @@ export default function PatientSelfHelp() {
                   Reference: <span className="font-mono">{caseId.slice(0, 8)}</span>. Keep this tab open or bookmark it to come back.
                 </p>
               )}
+              <div className="mt-6 pt-4 border-t flex flex-col gap-2">
+                <p className="text-xs text-muted-foreground">
+                  Stuck or want to start fresh? Clearing the current case frees up the workspace. Your invite code stays valid.
+                </p>
+                <Button variant="outline" size="sm" className="self-start" onClick={startOver}>
+                  Clear current case
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
