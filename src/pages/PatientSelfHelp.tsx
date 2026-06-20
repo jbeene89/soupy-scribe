@@ -507,7 +507,7 @@ function CompleteView({
 
       <DisabledModeBanner reason={results.disabledModesReason || ''} />
 
-      <RecordsToRequestPanel asks={allAsks} />
+      <RecordsToRequestPanel asks={allAsks} caseTitle={caseTitle} contactName={contactName} />
 
       {s && (
         <Card>
