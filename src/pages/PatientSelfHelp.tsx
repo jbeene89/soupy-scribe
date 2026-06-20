@@ -6,18 +6,23 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Shield, Upload, FileText, Loader2, Download, CheckCircle2, AlertTriangle } from 'lucide-react';
 import {
   exportSelfHelpAttorneyPDF,
   exportSelfHelpComplaintPDF,
   exportSelfHelpFindingsPDF,
+  exportSelfHelpRecordsToRequestPDF,
   exportSelfHelpTimelinePDF,
   type SelfHelpResults,
 } from '@/lib/exportPatientSelfHelpPDFs';
+import { DOC_TYPES, type DocType, type WorryValue, type Recollection, BUCKETS, BUCKET_BLURB, type FindingCard as FindingCardType } from '@/lib/patientSelfHelpTypes';
+import { IntakeWorries } from '@/components/patient/IntakeWorries';
+import { FindingCard } from '@/components/patient/FindingCard';
+import { RecordsToRequestPanel } from '@/components/patient/RecordsToRequestPanel';
+import { DisabledModeBanner } from '@/components/patient/DisabledModeBanner';
 
-type Phase = 'code' | 'intake' | 'uploading' | 'processing' | 'complete' | 'error';
+type Phase = 'code' | 'worries' | 'intake' | 'uploading' | 'processing' | 'complete' | 'error';
 
 const SCOPES = [
   { value: 'ob_ld', label: 'OB / Labor & Delivery' },
@@ -35,6 +40,9 @@ export default function PatientSelfHelp() {
   const [scope, setScope] = useState('ob_ld');
   const [narrative, setNarrative] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [fileDocTypes, setFileDocTypes] = useState<DocType[]>([]);
+  const [worries, setWorries] = useState<WorryValue[]>([]);
+  const [recollection, setRecollection] = useState<Recollection>({});
   const [caseId, setCaseId] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('');
@@ -121,16 +129,31 @@ export default function PatientSelfHelp() {
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteCode.trim()) return;
-    setPhase('intake');
+    setPhase('worries');
   };
 
   const addFiles = (incoming: FileList | null) => {
     if (!incoming) return;
     const arr = Array.from(incoming);
-    setFiles((prev) => [...prev, ...arr].slice(0, 25));
+    setFiles((prev) => {
+      const next = [...prev, ...arr].slice(0, 25);
+      setFileDocTypes((prevTypes) => {
+        const t = [...prevTypes];
+        while (t.length < next.length) t.push('auto');
+        return t.slice(0, next.length);
+      });
+      return next;
+    });
   };
 
-  const removeFile = (idx: number) => setFiles((prev) => prev.filter((_, i) => i !== idx));
+  const removeFile = (idx: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+    setFileDocTypes((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const setDocTypeAt = (idx: number, value: DocType) => {
+    setFileDocTypes((prev) => prev.map((v, i) => (i === idx ? value : v)));
+  };
 
   const totalBytes = useMemo(() => files.reduce((s, f) => s + f.size, 0), [files]);
 
@@ -151,7 +174,14 @@ export default function PatientSelfHelp() {
           case_title: caseTitle.trim() || undefined,
           scope,
           narrative: narrative.trim() || undefined,
-          files: files.map((f) => ({ name: f.name, size: f.size, type: f.type })),
+          worries,
+          recollection,
+          files: files.map((f, i) => ({
+            name: f.name,
+            size: f.size,
+            type: f.type,
+            doc_type: fileDocTypes[i] || 'auto',
+          })),
         },
       });
       if (startErr) throw startErr;
@@ -197,7 +227,8 @@ export default function PatientSelfHelp() {
     try { localStorage.removeItem('psh-active'); } catch { /* ignore */ }
     setPhase('code');
     setInviteCode(''); setContactEmail(''); setContactName(''); setCaseTitle('');
-    setNarrative(''); setFiles([]); setCaseId(null); setAccessToken(null);
+    setNarrative(''); setFiles([]); setFileDocTypes([]); setWorries([]); setRecollection({});
+    setCaseId(null); setAccessToken(null);
     setResults(null); setStatus(''); setProgressMsg(''); setErrorMsg('');
   };
 
@@ -216,9 +247,8 @@ export default function PatientSelfHelp() {
             <CardHeader>
               <CardTitle>Patient Record Review</CardTitle>
               <CardDescription>
-                If you believe care for you or a family member was below the standard of care, upload
-                the records here and we will read the entire file and flag anything that appears off.
-                You need an invite code to begin.
+                We don't decide if care was wrong. We tell you what your record says, what it does
+                not show, what does not reconcile, and what to ask for next. You need an invite code to begin.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -229,6 +259,29 @@ export default function PatientSelfHelp() {
                 </div>
                 <Button type="submit" disabled={!inviteCode.trim()}>Continue</Button>
               </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {phase === 'worries' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>What should we look for?</CardTitle>
+              <CardDescription>
+                Three short questions before you upload. Anything you tell us focuses the review on what you actually care about.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <IntakeWorries
+                worries={worries}
+                onWorriesChange={setWorries}
+                recollection={recollection}
+                onRecollectionChange={setRecollection}
+              />
+              <div className="flex gap-2">
+                <Button onClick={() => setPhase('intake')}>Next: upload records</Button>
+                <Button variant="outline" onClick={startOver}>Cancel</Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -294,15 +347,29 @@ export default function PatientSelfHelp() {
                 </div>
 
                 {files.length > 0 && (
-                  <div className="mt-3 space-y-1">
+                  <div className="mt-3 space-y-2">
                     {files.map((f, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm border rounded px-3 py-2">
-                        <div className="flex items-center gap-2 truncate">
-                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="truncate">{f.name}</span>
-                          <span className="text-xs text-muted-foreground shrink-0">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                      <div key={i} className="border rounded px-3 py-2 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 truncate">
+                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className="truncate text-sm">{f.name}</span>
+                            <span className="text-xs text-muted-foreground shrink-0">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                          </div>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => removeFile(i)}>Remove</Button>
                         </div>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => removeFile(i)}>Remove</Button>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs text-muted-foreground shrink-0">Type:</Label>
+                          <select
+                            className="flex-1 text-xs h-8 rounded border bg-background px-2"
+                            value={fileDocTypes[i] || 'auto'}
+                            onChange={(e) => setDocTypeAt(i, e.target.value as DocType)}
+                          >
+                            {DOC_TYPES.map((d) => (
+                              <option key={d.value} value={d.value}>{d.label}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     ))}
                     <p className="text-xs text-muted-foreground">{files.length} file(s) · {(totalBytes / 1024 / 1024).toFixed(1)} MB total</p>
@@ -356,8 +423,64 @@ export default function PatientSelfHelp() {
         )}
 
         {phase === 'complete' && results && (
-          <div className="space-y-4">
-            <Card>
+          <CompleteView
+            results={results}
+            caseTitle={caseTitle}
+            contactName={contactName}
+            contactEmail={contactEmail}
+            startOver={startOver}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+function CompleteView({
+  results, caseTitle, contactName, contactEmail, startOver,
+}: {
+  results: SelfHelpResults;
+  caseTitle: string;
+  contactName: string;
+  contactEmail: string;
+  startOver: () => void;
+}) {
+  const s = results.structuredSummary;
+  const cards = (results.cards ?? []) as FindingCardType[];
+
+  const allAsks: string[] = [];
+  const seen = new Set<string>();
+  const pushAsk = (x?: string) => {
+    const t = (x || '').trim();
+    if (!t) return;
+    const k = t.toLowerCase();
+    if (seen.has(k)) return;
+    seen.add(k);
+    allAsks.push(t);
+  };
+  (s?.headlineAsks ?? []).forEach(pushAsk);
+  cards.forEach((c) => {
+    if (c.bucket === 'Ask For This Next' || c.bucket === 'Missing Source Document') pushAsk(c.askNext);
+  });
+
+  const bucketOrder: typeof BUCKETS[number][] = [
+    'Record Mismatch',
+    'Consent / Patient-Rights Flag',
+    'Missing Source Document',
+    'Needs Clarification',
+    'Looks Routine',
+  ];
+  const byBucket = new Map<string, FindingCardType[]>();
+  for (const c of cards) {
+    if (c.bucket === 'Ask For This Next') continue; // surfaced separately
+    const k = c.bucket || 'Needs Clarification';
+    if (!byBucket.has(k)) byBucket.set(k, []);
+    byBucket.get(k)!.push(c);
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-600" /> Review complete</CardTitle>
                 <CardDescription>{results.summary}</CardDescription>
@@ -366,6 +489,9 @@ export default function PatientSelfHelp() {
                 <Button onClick={() => exportSelfHelpFindingsPDF(caseTitle, results)}>
                   <Download className="h-4 w-4 mr-1" /> Findings PDF
                 </Button>
+          <Button variant="outline" onClick={() => exportSelfHelpRecordsToRequestPDF(caseTitle, contactName, results)}>
+            <Download className="h-4 w-4 mr-1" /> Records To Request PDF
+          </Button>
                 <Button variant="outline" onClick={() => exportSelfHelpTimelinePDF(caseTitle, results)}>
                   <Download className="h-4 w-4 mr-1" /> Timeline PDF
                 </Button>
@@ -379,43 +505,68 @@ export default function PatientSelfHelp() {
               </CardContent>
             </Card>
 
-            <Tabs defaultValue="findings">
-              <TabsList>
-                <TabsTrigger value="findings">Findings</TabsTrigger>
-                <TabsTrigger value="timeline">Timeline</TabsTrigger>
-                <TabsTrigger value="complaint">Complaint Packet</TabsTrigger>
-                <TabsTrigger value="attorney">Attorney Summary</TabsTrigger>
-              </TabsList>
+      <DisabledModeBanner reason={results.disabledModesReason || ''} />
 
-              <TabsContent value="findings" className="space-y-3">
-                {(results.findings ?? []).length === 0 && (
-                  <Card><CardContent className="py-6 text-sm text-muted-foreground">No deviations identified.</CardContent></Card>
-                )}
-                {(results.findings ?? []).map((f, i) => (
-                  <Card key={i}>
-                    <CardHeader>
-                      <div className="flex items-center justify-between gap-2">
-                        <CardTitle className="text-base">{f.title}</CardTitle>
-                        <Badge variant={f.severity === 'critical' ? 'destructive' : 'secondary'}>{(f.severity || 'finding').toUpperCase()}</Badge>
-                      </div>
-                      {f.standardCited && <CardDescription>Standard: {f.standardCited}</CardDescription>}
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                      {f.plainLanguage && <p>{f.plainLanguage}</p>}
-                      {f.evidenceQuote && (
-                        <blockquote className="border-l-2 pl-3 italic text-muted-foreground">"{f.evidenceQuote}"</blockquote>
-                      )}
-                      {f.sourceFile && (
-                        <p className="text-xs text-muted-foreground">
-                          Source: {f.sourceFile}{f.sourcePages?.length ? ` · pages ${f.sourcePages.join(', ')}` : ''}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </TabsContent>
+      <RecordsToRequestPanel asks={allAsks} />
 
-              <TabsContent value="timeline">
+      {s && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">What the record says, and doesn't</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {s.supports && (
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1 font-semibold">Supports</div>
+                <p>{s.supports}</p>
+              </div>
+            )}
+            {s.contains?.length ? (
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1 font-semibold">Contains</div>
+                <ul className="list-disc pl-5 space-y-0.5">{s.contains.map((x, i) => <li key={i}>{x}</li>)}</ul>
+              </div>
+            ) : null}
+            {s.doesNotInclude?.length ? (
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1 font-semibold">Does NOT include</div>
+                <ul className="list-disc pl-5 space-y-0.5">{s.doesNotInclude.map((x, i) => <li key={i}>{x}</li>)}</ul>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
+
+      <Tabs defaultValue="findings">
+        <TabsList>
+          <TabsTrigger value="findings">Findings</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="complaint">Complaint Packet</TabsTrigger>
+          <TabsTrigger value="attorney">Attorney Summary</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="findings" className="space-y-6">
+          {cards.length === 0 && (
+            <Card><CardContent className="py-6 text-sm text-muted-foreground">No findings generated for this case.</CardContent></Card>
+          )}
+          {bucketOrder.map((bucket) => {
+            const list = byBucket.get(bucket) || [];
+            if (!list.length) return null;
+            return (
+              <section key={bucket} className="space-y-2">
+                <div>
+                  <h3 className="text-base font-semibold">{bucket}</h3>
+                  <p className="text-xs text-muted-foreground">{BUCKET_BLURB[bucket]}</p>
+                </div>
+                <div className="space-y-3">
+                  {list.map((c, i) => <FindingCard key={i} card={c} />)}
+                </div>
+              </section>
+            );
+          })}
+        </TabsContent>
+
+        <TabsContent value="timeline">
                 <Card>
                   <CardContent className="py-4">
                     {(results.timeline ?? []).length === 0 && <p className="text-sm text-muted-foreground">No timestamped events extracted.</p>}
@@ -430,9 +581,9 @@ export default function PatientSelfHelp() {
                     </ul>
                   </CardContent>
                 </Card>
-              </TabsContent>
+        </TabsContent>
 
-              <TabsContent value="complaint">
+        <TabsContent value="complaint">
                 <Card>
                   <CardContent className="py-4 space-y-3 text-sm">
                     {results.complaintPacket?.intro && <p>{results.complaintPacket.intro}</p>}
@@ -452,9 +603,9 @@ export default function PatientSelfHelp() {
                     ) : null}
                   </CardContent>
                 </Card>
-              </TabsContent>
+        </TabsContent>
 
-              <TabsContent value="attorney">
+        <TabsContent value="attorney">
                 <Card>
                   <CardContent className="py-4 space-y-3 text-sm">
                     {results.attorneySummary?.caseTheory && <p><b>Case theory:</b> {results.attorneySummary.caseTheory}</p>}
@@ -478,11 +629,8 @@ export default function PatientSelfHelp() {
                     ) : null}
                   </CardContent>
                 </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
-      </main>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

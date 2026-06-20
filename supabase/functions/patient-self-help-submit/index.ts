@@ -44,6 +44,12 @@ Deno.serve(async (req) => {
       const caseTitle = String(body.case_title || "").trim().slice(0, 300) || null;
       const scope = String(body.scope || "").trim().slice(0, 80) || null;
       const narrative = String(body.narrative || "").slice(0, 30000) || null;
+      const worries: string[] = Array.isArray(body.worries)
+        ? body.worries.filter((w: unknown) => typeof w === "string").slice(0, 20)
+        : [];
+      const recollection = (body.recollection && typeof body.recollection === "object" && !Array.isArray(body.recollection))
+        ? body.recollection
+        : {};
 
       if (!inviteCode) return jsonResponse({ error: "Invite code required." }, 400);
       if (files.length === 0 && !narrative) {
@@ -87,6 +93,8 @@ Deno.serve(async (req) => {
           narrative,
           status: "awaiting_files",
           file_count: files.length,
+          worries,
+          recollection,
         })
         .select("id, access_token")
         .single();
@@ -104,12 +112,15 @@ Deno.serve(async (req) => {
         if (sErr || !signed) return jsonResponse({ error: sErr?.message || "signed url failed" }, 500);
         uploads.push({ name: f.name, path, token: signed.token, signed_url: signed.signedUrl });
 
+        const userDocType = typeof f.doc_type === "string" && f.doc_type !== "auto" ? f.doc_type : null;
         await admin.from("patient_self_help_files").insert({
           case_id: caseRow.id,
           storage_path: path,
           file_name: f.name,
           file_type: f.type || null,
           file_size: typeof f.size === "number" ? f.size : null,
+          doc_type: userDocType,
+          doc_type_source: userDocType ? "user" : null,
         });
       }
 
@@ -168,7 +179,7 @@ Deno.serve(async (req) => {
 
       const { data: row, error } = await admin
         .from("patient_self_help_cases")
-        .select("id, status, progress_message, results, error, file_count, created_at, updated_at, case_title, scope")
+        .select("id, status, progress_message, results, error, file_count, created_at, updated_at, case_title, scope, analysis_modes, disabled_modes_reason, worries, recollection")
         .eq("id", caseId)
         .eq("access_token", accessToken)
         .maybeSingle();

@@ -1919,54 +1919,66 @@ export type Database = {
       patient_self_help_cases: {
         Row: {
           access_token: string
+          analysis_modes: Json
           case_title: string | null
           contact_email: string | null
           contact_name: string | null
           created_at: string
+          disabled_modes_reason: string | null
           error: string | null
           file_count: number
           id: string
           invite_code: string | null
           narrative: string | null
           progress_message: string | null
+          recollection: Json
           results: Json | null
           scope: string | null
           status: string
           updated_at: string
+          worries: string[]
         }
         Insert: {
           access_token?: string
+          analysis_modes?: Json
           case_title?: string | null
           contact_email?: string | null
           contact_name?: string | null
           created_at?: string
+          disabled_modes_reason?: string | null
           error?: string | null
           file_count?: number
           id?: string
           invite_code?: string | null
           narrative?: string | null
           progress_message?: string | null
+          recollection?: Json
           results?: Json | null
           scope?: string | null
           status?: string
           updated_at?: string
+          worries?: string[]
         }
         Update: {
           access_token?: string
+          analysis_modes?: Json
           case_title?: string | null
           contact_email?: string | null
           contact_name?: string | null
           created_at?: string
+          disabled_modes_reason?: string | null
           error?: string | null
           file_count?: number
           id?: string
           invite_code?: string | null
           narrative?: string | null
           progress_message?: string | null
+          recollection?: Json
           results?: Json | null
           scope?: string | null
           status?: string
           updated_at?: string
+          worries?: string[]
         }
         Relationships: [
           {
@@ -1985,6 +1997,8 @@ export type Database = {
           chunks_done: number
           chunks_total: number
           created_at: string
+          doc_type: string | null
+          doc_type_source: string | null
           extracted_text: string | null
           file_name: string
           file_size: number | null
@@ -2001,6 +2015,8 @@ export type Database = {
           chunks_done?: number
           chunks_total?: number
           created_at?: string
+          doc_type?: string | null
+          doc_type_source?: string | null
           extracted_text?: string | null
           file_name: string
           file_size?: number | null
@@ -2017,6 +2033,8 @@ export type Database = {
           chunks_done?: number
           chunks_total?: number
           created_at?: string
+          doc_type?: string | null
+          doc_type_source?: string | null
           extracted_text?: string | null
           file_name?: string
           file_size?: number | null

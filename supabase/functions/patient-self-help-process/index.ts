@@ -7,19 +7,37 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const BUCKET = "patient-self-help";
 const MODEL_FAST = "google/gemini-2.5-flash";
+const MODEL_CLASSIFY = "google/gemini-2.5-flash-lite";
 const MODEL_SYNTH = "google/gemini-2.5-pro";
 const CHUNK_PAGES = 10;
 const CHUNKS_PER_RUN = 2; // process at most N chunks per invocation, then self-reinvoke
 
+const DOC_TYPES = [
+  "clinical_record",
+  "bill_eob",
+  "lab_report",
+  "imaging_report",
+  "discharge_instructions",
+  "consent_packet",
+  "portal_message",
+  "insurance_denial",
+  "unknown",
+] as const;
+type DocType = typeof DOC_TYPES[number];
+
+const BILLING_DOC_TYPES: DocType[] = ["bill_eob", "insurance_denial"];
+const CLINICAL_DOC_TYPES: DocType[] = ["clinical_record", "lab_report", "imaging_report", "discharge_instructions"];
+const CONSENT_DOC_TYPES: DocType[] = ["consent_packet", "clinical_record"];
+
 type ChunkExtract = {
   events: Array<{ timestamp?: string; event: string; quote?: string; pages?: number[] }>;
-  deviations: Array<{
+  observations: Array<{
+    bucketHint?: string;
     title: string;
-    severity: "critical" | "high" | "moderate" | "low";
-    plainLanguage: string;
-    standardCited?: string;
+    whatRecordShows: string;
     evidenceQuote?: string;
     pages?: number[];
+    relatedWorry?: string;
   }>;
   notes?: string;
 };
@@ -31,7 +49,7 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-async function callAI(messages: any[], model = MODEL_FAST, asJson = true): Promise<string> {
+async function callAI(messages: any[], model: string = MODEL_FAST, asJson = true): Promise<string> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -67,48 +85,128 @@ async function extractPdfPages(bytes: Uint8Array): Promise<string[]> {
   return Array.isArray(text) ? text : [String(text)];
 }
 
-const CHUNK_SYSTEM = `You review a chunk of a patient's medical record looking for deviations from standard of care.
-You are NOT giving medical or legal advice. You are extracting facts and flagging items that appear inconsistent with widely accepted standards.
-Use neutral, evidence-based language. Quote the record verbatim when possible. Never invent timestamps, names, doses, or vitals that are not in the text.
-Return ONLY JSON matching this shape:
+const CLASSIFY_SYSTEM = `You classify a single patient-uploaded document into ONE of these types based on the first pages of text and the file name:
+clinical_record, bill_eob, lab_report, imaging_report, discharge_instructions, consent_packet, portal_message, insurance_denial, unknown.
+
+Rules:
+- "bill_eob" = itemized bill, EOB, UB-04, CMS-1500, 837, charge detail, line-item charges with CPT/HCPCS/revenue codes.
+- "clinical_record" = chart release, EMR export, nursing/physician notes, MAR, orders, H&P, discharge summary.
+- "consent_packet" = signed consent forms only, no clinical narrative.
+- If mixed, choose the dominant type and list "mixed_signals" in signals.
+- Do NOT guess "clinical_record" just because medical words appear; check for chart structure (timestamps, providers, sections like Assessment/Plan).
+
+Return ONLY JSON:
+{ "doc_type": "...", "confidence": 0-1, "signals": ["short reasons"], "mixed_signals": ["other types observed"] }`;
+
+function buildChunkSystem(args: {
+  worries: string[];
+  recollection: Record<string, unknown>;
+  docType: DocType;
+  modes: { clinical: boolean; billing: boolean; consent: boolean };
+}) {
+  const { worries, recollection, docType, modes } = args;
+  const focusList = worries.length ? worries.join(", ") : "(none specified — extract anything notable)";
+  const recallText = Object.entries(recollection)
+    .filter(([, v]) => typeof v === "string" && (v as string).trim())
+    .map(([k, v]) => `- ${k}: ${v}`)
+    .join("\n");
+
+  return `You review a chunk of a patient-uploaded document. You are doing RECORDS RECONCILIATION, not medical or legal judgment. You never say "malpractice", "wrong care", or "below standard". You extract what the document shows and flag what does not reconcile.
+
+Document type for this file: ${docType}
+Analysis modes enabled for this case: clinical=${modes.clinical}, billing=${modes.billing}, consent=${modes.consent}
+Patient's worries: ${focusList}
+${recallText ? `What the patient remembers:\n${recallText}` : ""}
+
+Hard rules:
+- Quote the record verbatim. Never invent times, doses, names, vitals, or signatures.
+- If a value or event is not visible in this chunk, say it is not visible here. Do NOT infer it.
+- If billing is NOT enabled, ignore charge/EOB content entirely.
+- If clinical is NOT enabled, do not extract clinical narrative beyond what is plainly on the page.
+- Tag each observation with a bucketHint from this exact list when applicable:
+  "Looks Routine" | "Needs Clarification" | "Record Mismatch" | "Consent / Patient-Rights Flag" | "Missing Source Document"
+- Tag relatedWorry with one of the patient's worry codes if the observation maps to it; otherwise omit.
+
+Return ONLY JSON:
 {
-  "events": [{"timestamp": "ISO or as-written", "event": "what happened", "quote": "verbatim from record", "pages": [1,2]}],
-  "deviations": [{
+  "events": [{"timestamp": "ISO or as-written", "event": "what happened in record terms", "quote": "verbatim", "pages": [1]}],
+  "observations": [{
+    "bucketHint": "Needs Clarification",
     "title": "short label",
-    "severity": "critical|high|moderate|low",
-    "plainLanguage": "explain to a non-clinician what looks off and why it matters",
-    "standardCited": "name the standard/guideline at a high level (e.g. ACOG, AWHONN, Joint Commission, hospital P&P)",
-    "evidenceQuote": "verbatim from record",
-    "pages": [3]
+    "whatRecordShows": "what the document plainly states in this chunk",
+    "evidenceQuote": "verbatim",
+    "pages": [3],
+    "relatedWorry": "med_before_consent"
   }],
-  "notes": "anything important the next reviewer should know"
+  "notes": "anything important for the synthesizer"
 }
 If nothing notable, return empty arrays.`;
+}
 
-const SYNTH_SYSTEM = `You are a senior patient-safety reviewer. You will receive:
-- a patient/family narrative of what happened
-- structured extractions from each chunk of their medical records
-- transcribed photos / monitor strips
+function buildSynthSystem(args: {
+  worries: string[];
+  modes: { clinical: boolean; billing: boolean; consent: boolean };
+  disabledReason: string;
+  docTypeCounts: Record<string, number>;
+}) {
+  const { worries, modes, disabledReason, docTypeCounts } = args;
+  const docMix = Object.entries(docTypeCounts).map(([k, v]) => `${k}=${v}`).join(", ");
+  return `You are a records-reconciliation reviewer for a NON-CLINICIAN PATIENT. Your job is NOT to decide if care was wrong. Your job is to tell the patient what their record says, what it does not show, what does not reconcile, and what to ask for next.
 
-Produce four outputs, in neutral evidence-based language, suitable for a non-clinician patient to read AND to forward to a hospital risk department or attorney. Do NOT give medical or legal advice. Do NOT fabricate facts. Cite the file and page each finding comes from.
+Forbidden phrases and behavior:
+- Never say "malpractice", "negligence", "below the standard of care", "wrong care", "lawsuit", or "you have a case".
+- Never recommend medical action.
+- Never assert a billing problem unless billing=true. Never assert a clinical problem unless clinical=true.
+- Never invent facts not present in the extracts.
 
-Return ONLY JSON matching this shape:
+Case context:
+- Patient worries: ${worries.join(", ") || "(none specified)"}
+- Analysis modes enabled: clinical=${modes.clinical}, billing=${modes.billing}, consent=${modes.consent}
+- Documents reviewed: ${docMix || "(none)"}
+- Modes disabled because: ${disabledReason || "(nothing disabled)"}
+
+Produce a structured patient-facing report. Every finding card MUST have a bucket from this exact list:
+"Looks Routine" | "Needs Clarification" | "Record Mismatch" | "Consent / Patient-Rights Flag" | "Missing Source Document" | "Ask For This Next"
+
+Every card MUST include a non-empty whatItDoesNotProve sentence — this is the trust mechanic. If a card has nothing to disclaim, write what additional evidence would be needed to confirm or rule out.
+
+Every "Missing Source Document" card MUST also produce a matching "Ask For This Next" card with copy-paste-ready request language.
+
+Return ONLY JSON matching this exact shape:
 {
-  "summary": "2-3 sentence plain-language summary",
-  "findings": [{"title":"","severity":"critical|high|moderate|low","plainLanguage":"","standardCited":"","evidenceQuote":"","sourceFile":"","sourcePages":[1]}],
+  "summary": "one-sentence plain-language headline",
+  "structuredSummary": {
+    "supports": "what the record DOES support, plain language",
+    "contains": ["key clinical/admin language actually found in record"],
+    "doesNotInclude": ["important documents or data not present in this export"],
+    "disabledModes": ["short reasons the disabled analysis modes were skipped"],
+    "headlineAsks": ["top 3-5 records to request, copy-paste ready"]
+  },
+  "cards": [{
+    "bucket": "Record Mismatch",
+    "title": "short label",
+    "whyItMatters": "one or two sentences for a non-clinician",
+    "whatRecordShows": "concrete record contents with timestamps where present",
+    "whatItDoesNotProve": "required — what this finding does NOT prove without more evidence",
+    "askNext": "exact records or details to request next, written so the patient can copy-paste",
+    "severity": "high-documentation-issue|moderate|low|informational",
+    "sourceFile": "filename",
+    "sourcePages": [1]
+  }],
   "timeline": [{"timestamp":"","event":"","sourceFile":"","sourcePages":[1]}],
   "complaintPacket": {
-    "intro": "neutral opening paragraph the patient could send to hospital patient relations / state DOH",
+    "intro": "neutral opening paragraph the patient could send to hospital patient relations",
     "sections": [{"heading":"","body":""}],
     "requestedActions": ["what the patient is asking for"]
   },
   "attorneySummary": {
-    "caseTheory": "one paragraph framing what the deviation appears to be",
+    "caseTheory": "neutral framing of what the record does and does not show",
     "keyDeviations": [{"title":"","whyItMatters":"","recordCitation":""}],
-    "damagesNarrative": "what the patient describes happening as a result",
+    "damagesNarrative": "what the patient describes happening, in their own words",
     "recordsCited": ["file name :: pages"]
   }
 }`;
+}
 
 function selfReinvoke(case_id: string, access_token: string) {
   const url = `${SUPABASE_URL}/functions/v1/patient-self-help-process`;
@@ -126,6 +224,81 @@ function selfReinvoke(case_id: string, access_token: string) {
     // @ts-ignore
     EdgeRuntime?.waitUntil?.(p);
   } catch { /* ignore */ }
+}
+
+async function getClassificationSample(admin: any, f: any): Promise<string> {
+  // Use cached extracted_text first if present.
+  const cached = typeof f.extracted_text === "string" ? f.extracted_text : "";
+  if (cached) return cached.slice(0, 3000);
+
+  const type = (f.file_type || "").toLowerCase();
+  const name = (f.file_name || "").toLowerCase();
+  const isPdf = type.includes("pdf") || name.endsWith(".pdf");
+  const isImage = type.startsWith("image/") || /\.(png|jpe?g|webp|heic)$/i.test(name);
+
+  try {
+    const { data: dl } = await admin.storage.from(BUCKET).download(f.storage_path);
+    if (!dl) return "";
+    const buf = new Uint8Array(await dl.arrayBuffer());
+    if (isPdf) {
+      const pages = await extractPdfPages(buf);
+      return pages.slice(0, 2).join("\n\n").slice(0, 3000);
+    }
+    if (isImage) {
+      // Skip image classification text extraction; rely on filename + extension.
+      return `(image file; will be transcribed at extraction time)`;
+    }
+    return new TextDecoder().decode(buf).slice(0, 3000);
+  } catch (e) {
+    console.warn("classify sample failed", f.file_name, e);
+    return "";
+  }
+}
+
+const BILLING_BUCKET_HINTS = ["billing", "charge", "eob", "claim"];
+
+function isValidCard(c: any, modes: { billing: boolean }): boolean {
+  if (!c || typeof c !== "object") return false;
+  if (typeof c.bucket !== "string" || !c.bucket) return false;
+  if (typeof c.title !== "string" || !c.title.trim()) return false;
+  if (typeof c.whatItDoesNotProve !== "string" || !c.whatItDoesNotProve.trim()) return false;
+  if (typeof c.askNext !== "string" || !c.askNext.trim()) return false;
+  if (!modes.billing) {
+    const blob = `${c.title} ${c.whyItMatters || ""} ${c.whatRecordShows || ""}`.toLowerCase();
+    if (BILLING_BUCKET_HINTS.some((h) => blob.includes(h))) return false;
+  }
+  return true;
+}
+
+function validateCards(cards: any[], modes: { billing: boolean }): { ok: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  if (!Array.isArray(cards)) return { ok: false, reasons: ["cards is not an array"] };
+  let missingDisclaimer = 0;
+  let missingAsk = 0;
+  let billingLeak = 0;
+  let missingDocsWithoutAsk = 0;
+  const askTitles = new Set(
+    cards.filter((c) => c?.bucket === "Ask For This Next").map((c) => (c.title || "").toLowerCase())
+  );
+  for (const c of cards) {
+    if (!c?.whatItDoesNotProve || !String(c.whatItDoesNotProve).trim()) missingDisclaimer += 1;
+    if (!c?.askNext || !String(c.askNext).trim()) missingAsk += 1;
+    if (!modes.billing) {
+      const blob = `${c.title || ""} ${c.whyItMatters || ""} ${c.whatRecordShows || ""}`.toLowerCase();
+      if (BILLING_BUCKET_HINTS.some((h) => blob.includes(h))) billingLeak += 1;
+    }
+    if (c?.bucket === "Missing Source Document") {
+      const t = (c.title || "").toLowerCase();
+      if (!askTitles.has(t) && !Array.from(askTitles).some((x) => x.includes(t.slice(0, 16)))) {
+        missingDocsWithoutAsk += 1;
+      }
+    }
+  }
+  if (missingDisclaimer) reasons.push(`${missingDisclaimer} card(s) missing whatItDoesNotProve`);
+  if (missingAsk) reasons.push(`${missingAsk} card(s) missing askNext`);
+  if (billingLeak) reasons.push(`${billingLeak} card(s) contain billing content when billing mode is disabled`);
+  if (missingDocsWithoutAsk) reasons.push(`${missingDocsWithoutAsk} Missing Source Document card(s) without paired Ask For This Next card`);
+  return { ok: reasons.length === 0, reasons };
 }
 
 Deno.serve(async (req) => {
@@ -163,12 +336,75 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: true });
     const files = filesRaw ?? [];
 
+    const worries: string[] = Array.isArray((caseRow as any).worries) ? (caseRow as any).worries : [];
+    const recollection: Record<string, unknown> = (caseRow as any).recollection ?? {};
+
+    let workDoneClassify = 0;
+
+    // --- Phase A: classify any unclassified files (fast, single call per file) ---
+    for (const f of files) {
+      if (workDoneClassify >= 6) break; // cap classifications per run
+      if (f.doc_type) continue; // already known (user-supplied or earlier run)
+      try {
+        await setStatus("processing", `Identifying document: ${f.file_name}`);
+        const sample = await getClassificationSample(admin, f);
+        const content = await callAI(
+          [
+            { role: "system", content: CLASSIFY_SYSTEM },
+            { role: "user", content: `FILE NAME: ${f.file_name}\nFILE TYPE: ${f.file_type || "unknown"}\n\nSAMPLE TEXT (first ~3000 chars):\n${sample}` },
+          ],
+          MODEL_CLASSIFY,
+          true,
+        );
+        const parsed = safeParseJson<{ doc_type?: string; confidence?: number; signals?: string[] }>(content, {});
+        const docType = (DOC_TYPES as readonly string[]).includes(parsed.doc_type || "")
+          ? (parsed.doc_type as DocType)
+          : "unknown";
+        await admin
+          .from("patient_self_help_files")
+          .update({ doc_type: docType, doc_type_source: "auto" })
+          .eq("id", f.id);
+        f.doc_type = docType;
+        workDoneClassify += 1;
+      } catch (e) {
+        console.warn("classify failed", f.file_name, e);
+        await admin.from("patient_self_help_files").update({ doc_type: "unknown", doc_type_source: "auto" }).eq("id", f.id);
+        f.doc_type = "unknown";
+      }
+    }
+
+    // --- Compute analysis modes from classified files ---
+    const docTypes: DocType[] = files.map((f: any) => (f.doc_type as DocType) || "unknown");
+    const modes = {
+      clinical: docTypes.some((d) => (CLINICAL_DOC_TYPES as string[]).includes(d)),
+      billing: docTypes.some((d) => (BILLING_DOC_TYPES as string[]).includes(d)),
+      consent: docTypes.some((d) => (CONSENT_DOC_TYPES as string[]).includes(d)),
+    };
+    const disabledReasons: string[] = [];
+    if (!modes.billing && worries.includes("billing")) {
+      disabledReasons.push("Billing/payment analysis is disabled because no itemized bill, EOB, UB-04, CMS-1500, 837, or charge detail was uploaded.");
+    }
+    if (!modes.clinical) {
+      disabledReasons.push("Clinical reconciliation is limited because no clinical chart, lab, imaging, or discharge summary was detected in this upload.");
+    }
+    if (!modes.consent && (worries.includes("med_before_consent") || worries.includes("procedure_without_consent"))) {
+      disabledReasons.push("Consent review is limited because no consent packet or clinical chart with consent forms was detected.");
+    }
+    const disabledReason = disabledReasons.join(" ");
+    await admin
+      .from("patient_self_help_cases")
+      .update({ analysis_modes: modes, disabled_modes_reason: disabledReason })
+      .eq("id", case_id);
+
     let workDone = 0;
     let moreWork = false;
 
     for (const f of files) {
       if (workDone >= CHUNKS_PER_RUN) { moreWork = true; break; }
       if (f.file_status === "done" || f.file_status === "error") continue;
+
+      const docType = ((f.doc_type as DocType) || "unknown");
+      const chunkSystem = buildChunkSystem({ worries, recollection, docType, modes });
 
       const type = (f.file_type || "").toLowerCase();
       const isPdf = type.includes("pdf") || (f.file_name || "").toLowerCase().endsWith(".pdf");
@@ -226,13 +462,13 @@ Deno.serve(async (req) => {
 
             const content = await callAI(
               [
-                { role: "system", content: CHUNK_SYSTEM },
+                { role: "system", content: chunkSystem },
                 { role: "user", content: userText },
               ],
               MODEL_FAST,
               true,
             );
-            const parsed = safeParseJson<ChunkExtract>(content, { events: [], deviations: [] });
+            const parsed = safeParseJson<ChunkExtract>(content, { events: [], observations: [] });
 
             const newResults = [
               ...(Array.isArray(f.chunk_results) ? f.chunk_results : []),
@@ -269,7 +505,7 @@ Deno.serve(async (req) => {
 
           const content = await callAI(
             [
-              { role: "system", content: CHUNK_SYSTEM + "\n\nThis input is a photograph of a paper medical record, monitor strip, or sign-in sheet. Transcribe everything you can read and then flag anything that appears off." },
+              { role: "system", content: chunkSystem + "\n\nThis input is a photograph of a paper record, monitor strip, or sign-in sheet. Transcribe everything you can read, then return JSON observations." },
               {
                 role: "user",
                 content: [
@@ -281,7 +517,7 @@ Deno.serve(async (req) => {
             MODEL_FAST,
             true,
           );
-          const parsed = safeParseJson<ChunkExtract>(content, { events: [], deviations: [] });
+          const parsed = safeParseJson<ChunkExtract>(content, { events: [], observations: [] });
           await admin
             .from("patient_self_help_files")
             .update({
@@ -301,13 +537,13 @@ Deno.serve(async (req) => {
           const text = new TextDecoder().decode(buf).slice(0, 60000);
           const content = await callAI(
             [
-              { role: "system", content: CHUNK_SYSTEM },
+              { role: "system", content: chunkSystem },
               { role: "user", content: `FILE: ${f.file_name}\n\n${text}` },
             ],
             MODEL_FAST,
             true,
           );
-          const parsed = safeParseJson<ChunkExtract>(content, { events: [], deviations: [] });
+          const parsed = safeParseJson<ChunkExtract>(content, { events: [], observations: [] });
           await admin
             .from("patient_self_help_files")
             .update({
@@ -328,7 +564,7 @@ Deno.serve(async (req) => {
             file_status: "error",
             chunk_results: [
               ...(Array.isArray(f.chunk_results) ? f.chunk_results : []),
-              { chunkLabel: "error", extract: { events: [], deviations: [], notes: `Could not process: ${e instanceof Error ? e.message : String(e)}` } },
+              { chunkLabel: "error", extract: { events: [], observations: [], notes: `Could not process: ${e instanceof Error ? e.message : String(e)}` } },
             ],
           })
           .eq("id", f.id);
@@ -352,21 +588,31 @@ Deno.serve(async (req) => {
 
     const { data: finalFiles } = await admin
       .from("patient_self_help_files")
-      .select("file_name, chunk_results")
+      .select("file_name, chunk_results, doc_type")
       .eq("case_id", case_id);
 
     const allExtracts: Array<{ file: string; chunkLabel: string; extract: unknown }> = [];
+    const docTypeCounts: Record<string, number> = {};
     for (const ff of finalFiles ?? []) {
+      const dt = (ff as any).doc_type || "unknown";
+      docTypeCounts[dt] = (docTypeCounts[dt] || 0) + 1;
       const arr = Array.isArray(ff.chunk_results) ? ff.chunk_results : [];
       for (const c of arr) {
         allExtracts.push({ file: ff.file_name, chunkLabel: (c as any).chunkLabel, extract: (c as any).extract });
       }
     }
 
+    const synthSystem = buildSynthSystem({ worries, modes, disabledReason, docTypeCounts });
+
     const synthUser = JSON.stringify({
       case_title: caseRow.case_title,
       scope: caseRow.scope,
       narrative: caseRow.narrative,
+      worries,
+      recollection,
+      doc_type_counts: docTypeCounts,
+      analysis_modes: modes,
+      disabled_reason: disabledReason,
       extracts: allExtracts,
     }).slice(0, 600000);
 
@@ -374,7 +620,7 @@ Deno.serve(async (req) => {
     try {
       synthRaw = await callAI(
         [
-          { role: "system", content: SYNTH_SYSTEM },
+          { role: "system", content: synthSystem },
           { role: "user", content: synthUser },
         ],
         MODEL_SYNTH,
@@ -384,7 +630,7 @@ Deno.serve(async (req) => {
       console.warn("synth pro failed, retrying with flash", e);
       synthRaw = await callAI(
         [
-          { role: "system", content: SYNTH_SYSTEM },
+          { role: "system", content: synthSystem },
           { role: "user", content: synthUser },
         ],
         MODEL_FAST,
@@ -392,20 +638,53 @@ Deno.serve(async (req) => {
       );
     }
 
-    const results = safeParseJson<Record<string, unknown>>(synthRaw, {
+    let results = safeParseJson<Record<string, any>>(synthRaw, {
       summary: "Report could not be generated.",
-      findings: [],
+      structuredSummary: { supports: "", contains: [], doesNotInclude: [], disabledModes: [], headlineAsks: [] },
+      cards: [],
       timeline: [],
       complaintPacket: { intro: "", sections: [], requestedActions: [] },
       attorneySummary: { caseTheory: "", keyDeviations: [], damagesNarrative: "", recordsCited: [] },
     });
+
+    // Validate cards. Retry once with stricter prompt if any invalid.
+    const validation = validateCards(results.cards || [], modes);
+    if (!validation.ok) {
+      console.warn("card validation failed, retrying", validation.reasons);
+      try {
+        const stricter = await callAI(
+          [
+            { role: "system", content: synthSystem + `\n\nPREVIOUS OUTPUT FAILED VALIDATION:\n- ${validation.reasons.join("\n- ")}\nFIX EVERY CARD. Every card must include a non-empty whatItDoesNotProve. No billing cards if billing=false. Every Missing Source Document card needs a paired Ask For This Next card.` },
+            { role: "user", content: synthUser },
+          ],
+          MODEL_SYNTH,
+          true,
+        );
+        const retried = safeParseJson<Record<string, any>>(stricter, results);
+        const retryValidation = validateCards(retried.cards || [], modes);
+        if (retryValidation.ok || (retried.cards || []).length > 0) {
+          results = retried;
+        }
+      } catch (e) {
+        console.warn("strict retry failed", e);
+      }
+    }
+    // Always drop any invalid cards as a final safety net
+    results.cards = (results.cards || []).filter((c: any) => isValidCard(c, modes));
 
     await admin
       .from("patient_self_help_cases")
       .update({
         status: "complete",
         progress_message: "Review complete",
-        results: { ...results, generatedAt: new Date().toISOString(), chunkCount: allExtracts.length },
+        results: {
+          ...results,
+          analysisModes: modes,
+          disabledModesReason: disabledReason,
+          docTypeCounts,
+          generatedAt: new Date().toISOString(),
+          chunkCount: allExtracts.length,
+        },
       })
       .eq("id", case_id);
 

@@ -2,3 +2,4 @@
 - [HIPAA Compliance](mem://architecture/hipaa-compliance) — PHI access log, ack gate, idle timeout, de-ID utility
 - [Appeal Drafts](mem://features/appeal-drafts) — Auto-generated per-violation appeal drafts with role rationales
 - [Recovery Cockpit](mem://features/recovery-cockpit) — Multi-lens revenue recovery orchestrator with deduped $ rollup
+- [Patient Self-Help](mem://features/patient-self-help) — Records reconciliation module; document-type gating; six-bucket findings; mandatory "what it does NOT prove" disclaimer

@@ -1,69 +1,165 @@
-# OB Fetal Monitoring Audit Module
 
-A new mode-agnostic module that audits labor & delivery cases over extended time windows. It compares the fetal monitor strip against the medications given (Pitocin, Misoprostol/Cervidil) and flags every moment where the nurse or provider **should have stopped or reduced the medication but did not** — with a verbatim timestamp and reason for each flag.
+# Patient Self-Help v2 — Records Reconciliation, Not Malpractice Oracle
 
-This is the all-three-in-one workflow you asked for: same engine output drives the retrospective clinical audit, the malpractice/risk timeline, and the billing audit for continuous fetal monitoring time units.
+Reframe the module around one promise: **"We don't decide if care was wrong. We tell you what the record says, what it doesn't show, what doesn't reconcile, and what to ask for next."**
 
-## What you'll be able to do
+## 1. Pre-analysis intake (replaces free-text narrative as the only input)
 
-1. Open **L&D Fetal Monitoring Audit** from the sidebar.
-2. Drop in any combination of:
-   - A structured strip export (CSV / XML / HL7 from PeriGen, OBIX, Centricity, Philips) — timestamp, FHR bpm, contraction values.
-   - One or more scanned strip images / PDFs — the engine reads the tracing visually, segment by segment, and turns it into the same timeline.
-   - The medication record (MAR) — Pitocin rate changes, Misoprostol doses, mag, terbutaline, with timestamps.
-   - Nursing notes / provider notes.
-3. Click **Run OB Audit**.
-4. See:
-   - A scrollable **timeline** that shows every 10-minute window of the strip alongside what medication was running, what changed, and what was charted.
-   - A **stop-rule violations** panel: each violation has the exact timestamp, the strip finding (e.g. "tachysystole — 7 contractions in 10 min at 14:32"), the medication that should have been held/decreased, the rule that was broken, and the verbatim chart quote (or "no documented action").
-   - A **contraindication ledger**: for every dose of Pitocin or Misoprostol, the engine lists which contraindications were present at the time of administration (active labor, prior C-section, Category III, tachysystole within prior 30 min, etc.) — or explicitly says "none documented."
-   - A printable PDF for legal / peer-review / payer use.
+Three structured questions before any file is analyzed:
 
-## Stop-rules covered in v1
+**Q1. What are you worried happened?** (multi-select chips)
+- Medication before consent
+- Procedure without consent
+- Wrong diagnosis
+- Missing test / missing result
+- "They said X but chart says Y"
+- Billing / charges look wrong
+- I don't know, just check it
+- Other (free text)
 
-**Oxytocin (Pitocin)** — ACOG / AWHONN aligned:
-- Tachysystole (>5 contractions in any 10-min window averaged over 30 min) → reduce or discontinue
-- Category III tracing → discontinue immediately
-- Category II with recurrent late decels, recurrent variable decels, prolonged decel, minimal/absent variability → reduce/discontinue + intrauterine resuscitation
-- Uterine rupture signs (sudden FHR change + loss of station + pain) → discontinue
-- Continued increase in rate despite any of the above
+**Q2. What do you remember?** (optional structured fields)
+- Approximate date/time of the event
+- Who was present
+- What was said to you
+- What you consented to
+- What you were NOT told
+- Any quote you remember (e.g. "I think she just did a membrane sweep")
 
-**Misoprostol / Cervidil**:
-- Redose before the minimum interval (Misoprostol 3–6h, Cervidil 12h)
-- Use after spontaneous labor / regular contractions established
-- Tachysystole within prior monitoring window
-- Documented prior uterine surgery / C-section
+**Q3. What kind of file are you uploading?** (per-file, with auto-detect fallback)
+- Clinical medical record / chart release
+- Itemized bill / EOB / UB-04 / CMS-1500
+- Lab report
+- Imaging report
+- Discharge instructions
+- Consent packet
+- Portal message / screenshot
+- Insurance denial
+- Unknown / mixed
 
-## Technical section (skip if not technical)
+These get stored on the case row and passed into every chunk extraction prompt so the AI looks for what the patient is actually worried about.
 
-### Files
-- `supabase/functions/ob-fetal-audit/index.ts` — main engine. Accepts `{ stripStructured?, stripImages?[], mar?, notes? }`. Two-stage pipeline:
-  - Stage A — normalize: if structured CSV present, parse to `StripWindow[]`; for each image, call multimodal vision model to extract per-window FHR/UC numerics into the same shape.
-  - Stage B — analyze: deterministic stop-rule engine (no LLM) walks the merged timeline, joins MAR events, returns `StopRuleViolation[]` + `ContraindicationCheck[]` + per-window NICHD category.
-- `src/lib/obFetalTypes.ts` — `StripWindow`, `MAREvent`, `StopRuleViolation`, `ContraindicationCheck`, `OBAuditResult`.
-- `src/lib/obFetalParser.ts` — client-side CSV/text parsers for structured strip, MAR, notes (forgiving column matching).
-- `src/lib/obFetalService.ts` — `runOBAudit()` invoker + result caching.
-- `src/lib/exportOBAuditPDF.ts` — printable timeline + violations + contraindication ledger.
-- `src/pages/AppOBFetalAudit.tsx` — route `/app/ob-fetal-audit`.
-- `src/components/ob/StripIngestDropzones.tsx` — 4 dropzones (structured strip, strip images, MAR, notes) + sample-data button.
-- `src/components/ob/StripTimeline.tsx` — visual 10-min-window timeline with med overlay + decel markers.
-- `src/components/ob/StopRuleViolationsPanel.tsx` — grouped by severity with timestamp + verbatim evidence.
-- `src/components/ob/ContraindicationLedger.tsx` — per-dose contraindication check.
-- Sidebar link added under the existing operational/clinical group.
+## 2. Document-type gate (the anti-hallucination guardrail)
 
-### Engine details
-- Window size: 10 minutes (configurable). NICHD Cat I/II/III computed per window.
-- Decel classification: late / variable / prolonged / early via timing offset from contraction peak (structured) or visual cue (image).
-- Tachysystole rule: >5 contractions averaged over a rolling 30-min window.
-- Med join: each MAR Pitocin rate change is annotated with the strip category in the 30 min **before and after** the change. Rate increases during tachysystole or Cat II/III are flagged.
-- Misoprostol redose rule joins dose timestamps and computes elapsed time + contraction status at redose.
+Before deep analysis runs, each file is classified by a fast pass into one of the categories above. The case-level `analysis_modes` flag is then locked:
 
-### What's NOT in v1 (called out in the UI so we don't overpromise)
-- Real-time monitoring (this is retrospective only).
-- Direct HL7 socket ingestion (file upload only).
-- Maternal vitals / mag toxicity rules (next iteration — your "Med scope" answer was Pit + Miso first).
+- **Billing analysis** only enabled if at least one billing artifact is detected.
+- **Clinical reconciliation** only enabled if a clinical record is detected.
+- **Consent review** only enabled if consent docs or clinical record present.
 
-## Out of scope for this change
-- No changes to existing Payer/Provider/Psych modes.
-- No DB schema changes — results stay in-memory for v1 (can be persisted later if you want history).
-- No PHI is sent to vision model if you use the structured strip path; image path runs through the existing de-identification helper before upload.
+If the patient asked about billing but uploaded only a clinical EMR, the UI shows a clear banner:
+
+> "This appears to be a clinical medical record, not a billing claim. Billing/payment analysis is disabled unless you upload an itemized bill, EOB, UB-04, CMS-1500, 837, or charge detail."
+
+No billing finding cards can be generated in that mode. Same logic for the inverse.
+
+## 3. New finding bucket taxonomy
+
+Replace the current severity-only model with six buckets. Every finding card belongs to exactly one:
+
+1. **Looks Routine** — normal admin/forms/meds, expected language
+2. **Needs Clarification** — documented but not enough to verify
+3. **Record Mismatch** — two parts of the chart disagree
+4. **Consent / Patient-Rights Flag** — missing, late, generic, or post-hoc consent
+5. **Missing Source Document** — chart references something not provided
+6. **Ask For This Next** — concrete record request language the patient can send verbatim
+
+## 4. Finding card shape (the trust mechanic)
+
+Every card returned by the synthesizer must have these fields:
+
+```
+{
+  bucket: "Record Mismatch" | "Needs Clarification" | ...,
+  title: "Misoprostol order/admin/consent timing needs reconciliation",
+  whyItMatters: "Medication appears ordered before visible consent completion.",
+  whatRecordShows: "Order at 14:02; consent signed at 15:10; MAR shows no admin in window.",
+  whatItDoesNotProve: "Does not prove medication was given before consent without full eMAR / BCMA scan history.",
+  askNext: "Request complete MAR, BCMA scan log, consent metadata, and audit trail for the induction window.",
+  severity: "high-documentation-issue" | "moderate" | "low" | "informational",
+  sourceFile: "...",
+  sourcePages: [12, 13]
+}
+```
+
+The `whatItDoesNotProve` field is non-optional. If the model omits it, we reject the card and retry. This is the line that keeps the app from sounding like a lawsuit vending machine.
+
+## 5. Plain-language summary section
+
+Replace the current 2-3 sentence summary with a structured recap:
+
+- What the record supports
+- What the record contains (key clinical language found)
+- What the record does NOT include (gaps)
+- What analysis was disabled and why (document-type gate)
+- The headline ask-next list (top 3-5 records to request)
+
+## 6. UI changes (`PatientSelfHelp.tsx`)
+
+- New intake step before upload: the three questions above.
+- Per-file dropdown for document type (defaults to auto-detect, patient can override).
+- Results view grouped by bucket with collapsible cards, color-coded by bucket not severity.
+- Prominent "Ask For This Next" panel at top with copy-to-clipboard for each request line.
+- Banner area for disabled analysis modes.
+- Disclaimer copy updated to the new promise wording.
+
+## 7. PDF export changes (`exportPatientSelfHelpPDFs.ts`)
+
+- Findings PDF reorganized by bucket.
+- New "Records To Request" PDF — just the Ask-Next items formatted as a letter-ready request.
+- Complaint packet and attorney summary stay but pull from the new card shape.
+
+---
+
+## Technical Section
+
+### Schema migration
+
+```sql
+ALTER TABLE public.patient_self_help_cases
+  ADD COLUMN IF NOT EXISTS worries text[] DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS recollection jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS analysis_modes jsonb DEFAULT '{"clinical":false,"billing":false,"consent":false}'::jsonb,
+  ADD COLUMN IF NOT EXISTS disabled_modes_reason text;
+
+ALTER TABLE public.patient_self_help_files
+  ADD COLUMN IF NOT EXISTS doc_type text,
+  ADD COLUMN IF NOT EXISTS doc_type_source text;  -- 'user' | 'auto'
+```
+
+No new GRANTs needed (columns added to existing tables; existing policies cover them).
+
+### Edge function changes
+
+**`patient-self-help-submit`**: accept `worries`, `recollection`, per-file `doc_type` overrides; persist them.
+
+**`patient-self-help-process`**: three changes —
+1. **New first phase** per file: a fast classification call (gemini-2.5-flash-lite) that returns `{ doc_type, confidence, signals }`. Persist to `patient_self_help_files.doc_type` (skip if user overrode). After all files classified, compute `analysis_modes` on the case row.
+2. **Chunk extraction prompt** updated: receives `worries` + `recollection` + `doc_type` + `analysis_modes` so extraction is targeted. Billing extraction is skipped on non-billing docs. New JSON schema for chunk output includes `bucket` hints.
+3. **Synthesis prompt** rewritten around the six-bucket taxonomy and the mandatory `whatItDoesNotProve` field. Validator rejects and retries if any card is missing it.
+
+### Frontend
+
+- New `PatientSelfHelpIntake.tsx` component (the 3 questions).
+- `PatientSelfHelp.tsx` upload step gains per-file doc-type selector.
+- New `FindingCard.tsx` and `BucketSection.tsx` components.
+- New `RecordsToRequestPanel.tsx` with per-line copy buttons.
+- `DisabledModeBanner.tsx` for the gate messaging.
+
+### Validation
+
+After synthesis returns, validator runs server-side:
+- Every card must have non-empty `whatItDoesNotProve` and `askNext`.
+- No billing-bucket cards allowed when `analysis_modes.billing === false`.
+- Cards with `bucket === "Missing Source Document"` must also produce a matching `Ask For This Next` card.
+
+Failures trigger one automatic retry with a stricter system prompt, then fall back to whatever passes.
+
+---
+
+## Out of scope for this pass
+
+- Multi-patient cases / family bulk uploads
+- Long-term storage tier for case re-review months later
+- Direct send to hospital patient relations (still PDF export only)
+
+Approve and I'll build it.
