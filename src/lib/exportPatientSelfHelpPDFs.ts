@@ -244,3 +244,59 @@ export function exportSelfHelpAttorneyPDF(
   disclaimer(ctx);
   ctx.doc.save(filename);
 }
+
+export function exportSelfHelpRecordsChecklistPDF(
+  caseTitle: string | null | undefined,
+  contactName: string | null | undefined,
+  items: Array<{ text: string; checked: boolean }>,
+  filename = 'records-to-request-checklist.pdf',
+) {
+  const generated = new Date().toLocaleString();
+  const ctx = header(caseTitle, 'Records To Request — Checklist', `Prepared ${generated}`);
+  if (contactName) addKeyValue(ctx, 'Patient', contactName);
+
+  addSectionHeader(ctx, 'Checklist');
+  addBody(
+    ctx,
+    'Use this list when contacting the health system\'s records department or patient relations office. ' +
+    'Mark each item as you request it. Checked items below were marked requested before this PDF was generated.',
+  );
+
+  const { doc } = ctx;
+  const boxSize = 11;
+  const lineGap = 6;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const textLeft = ctx.margin + boxSize + 8;
+    const textWidth = ctx.maxWidth - boxSize - 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(`${i + 1}. ${item.text}`, textWidth);
+    const blockHeight = Math.max(boxSize, lines.length * 12) + lineGap;
+    if (ctx.y + blockHeight > ctx.pageHeight - 60) {
+      doc.addPage();
+      ctx.pageNumber++;
+      ctx.y = 44;
+    }
+    // Checkbox
+    doc.setDrawColor(60, 60, 60);
+    doc.setLineWidth(0.8);
+    doc.rect(ctx.margin, ctx.y - boxSize + 2, boxSize, boxSize, 'S');
+    if (item.checked) {
+      doc.setLineWidth(1.4);
+      // Draw a check mark inside the box
+      const x = ctx.margin;
+      const y = ctx.y - boxSize + 2;
+      doc.line(x + 2, y + boxSize * 0.55, x + boxSize * 0.4, y + boxSize - 2);
+      doc.line(x + boxSize * 0.4, y + boxSize - 2, x + boxSize - 1, y + 2);
+      doc.setLineWidth(0.8);
+    }
+    doc.setTextColor(30, 30, 30);
+    doc.text(lines, textLeft, ctx.y);
+    ctx.y += blockHeight;
+  }
+
+  disclaimer(ctx);
+  ctx.doc.save(filename);
+}
