@@ -255,7 +255,30 @@ async function getClassificationSample(admin: any, f: any): Promise<string> {
   }
 }
 
-const BILLING_BUCKET_HINTS = ["billing", "charge", "eob", "claim"];
+// Billing-specific tokens. Use word boundaries so "discharge", "in charge of",
+// "chart", etc. do NOT trip the filter. "Ask For This Next" cards are exempt
+// because they may legitimately reference billing artifacts the patient should
+// request even when no bill was uploaded.
+const BILLING_TOKENS = [
+  /\beob\b/i,
+  /\bub-?04\b/i,
+  /\bcms-?1500\b/i,
+  /\b837\b/i,
+  /\bitemized bill\b/i,
+  /\bcopay\b/i,
+  /\bdeductible\b/i,
+  /\binsurance claim\b/i,
+  /\bbilling code\b/i,
+  /\bbilled amount\b/i,
+  /\$\s?\d/,
+];
+
+function looksLikeBillingFinding(c: any): boolean {
+  if (!c) return false;
+  if (c.bucket === "Ask For This Next") return false;
+  const blob = `${c.title || ""} ${c.whyItMatters || ""} ${c.whatRecordShows || ""}`;
+  return BILLING_TOKENS.some((rx) => rx.test(blob));
+}
 
 function isValidCard(c: any, modes: { billing: boolean }): boolean {
   if (!c || typeof c !== "object") return false;
@@ -263,10 +286,7 @@ function isValidCard(c: any, modes: { billing: boolean }): boolean {
   if (typeof c.title !== "string" || !c.title.trim()) return false;
   if (typeof c.whatItDoesNotProve !== "string" || !c.whatItDoesNotProve.trim()) return false;
   if (typeof c.askNext !== "string" || !c.askNext.trim()) return false;
-  if (!modes.billing) {
-    const blob = `${c.title} ${c.whyItMatters || ""} ${c.whatRecordShows || ""}`.toLowerCase();
-    if (BILLING_BUCKET_HINTS.some((h) => blob.includes(h))) return false;
-  }
+  if (!modes.billing && looksLikeBillingFinding(c)) return false;
   return true;
 }
 
@@ -283,10 +303,7 @@ function validateCards(cards: any[], modes: { billing: boolean }): { ok: boolean
   for (const c of cards) {
     if (!c?.whatItDoesNotProve || !String(c.whatItDoesNotProve).trim()) missingDisclaimer += 1;
     if (!c?.askNext || !String(c.askNext).trim()) missingAsk += 1;
-    if (!modes.billing) {
-      const blob = `${c.title || ""} ${c.whyItMatters || ""} ${c.whatRecordShows || ""}`.toLowerCase();
-      if (BILLING_BUCKET_HINTS.some((h) => blob.includes(h))) billingLeak += 1;
-    }
+    if (!modes.billing && looksLikeBillingFinding(c)) billingLeak += 1;
     if (c?.bucket === "Missing Source Document") {
       const t = (c.title || "").toLowerCase();
       if (!askTitles.has(t) && !Array.from(askTitles).some((x) => x.includes(t.slice(0, 16)))) {
@@ -297,7 +314,9 @@ function validateCards(cards: any[], modes: { billing: boolean }): { ok: boolean
   if (missingDisclaimer) reasons.push(`${missingDisclaimer} card(s) missing whatItDoesNotProve`);
   if (missingAsk) reasons.push(`${missingAsk} card(s) missing askNext`);
   if (billingLeak) reasons.push(`${billingLeak} card(s) contain billing content when billing mode is disabled`);
-  if (missingDocsWithoutAsk) reasons.push(`${missingDocsWithoutAsk} Missing Source Document card(s) without paired Ask For This Next card`);
+  // Note: missingDocsWithoutAsk is intentionally NOT included as a hard
+  // validation failure — title-matching is too brittle and was silently
+  // dropping legitimate cards. The synth prompt still asks for pairing.
   return { ok: reasons.length === 0, reasons };
 }
 
