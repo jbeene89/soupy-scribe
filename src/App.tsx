@@ -51,6 +51,7 @@ import AppReviewerConsole from "./pages/AppReviewerConsole";
 import HipaaPlan from "./pages/HipaaPlan";
 import LawFirms from "./pages/LawFirms";
 import Procurement from "./pages/Procurement";
+import BillIntegrity from "./pages/BillIntegrity";
 import { PHIAcknowledgmentGate } from "@/components/compliance/PHIAcknowledgmentGate";
 import { IdleTimeoutGuard } from "@/components/compliance/IdleTimeoutGuard";
 
@@ -89,6 +90,7 @@ const App = () => (
             <Route path="/hipaa-plan" element={<HipaaPlan />} />
             <Route path="/for-law-firms" element={<LawFirms />} />
             <Route path="/procurement" element={<Procurement />} />
+            <Route path="/bill-integrity" element={<BillIntegrity />} />
 
             {/* Everything else now requires sign-in */}
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />
