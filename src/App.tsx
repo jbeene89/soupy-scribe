@@ -47,6 +47,7 @@ import AppOBFetalValidation from "./pages/AppOBFetalValidation";
 import CodeBayIntake from "./pages/CodeBayIntake";
 import PatientSelfHelp from "./pages/PatientSelfHelp";
 import AppPatientSelfHelpAdmin from "./pages/AppPatientSelfHelpAdmin";
+import AppReviewerConsole from "./pages/AppReviewerConsole";
 import HipaaPlan from "./pages/HipaaPlan";
 import LawFirms from "./pages/LawFirms";
 import Procurement from "./pages/Procurement";
@@ -144,6 +145,7 @@ const App = () => (
               <Route path="ob-fetal-audit" element={<AppOBFetalAudit />} />
               <Route path="ob-fetal-validation" element={<AppOBFetalValidation />} />
               <Route path="patient-self-help" element={<AppPatientSelfHelpAdmin />} />
+              <Route path="patient-self-help/review/:caseId" element={<AppReviewerConsole />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
