@@ -47,6 +47,7 @@ import AppOBFetalValidation from "./pages/AppOBFetalValidation";
 import CodeBayIntake from "./pages/CodeBayIntake";
 import PatientSelfHelp from "./pages/PatientSelfHelp";
 import AppPatientSelfHelpAdmin from "./pages/AppPatientSelfHelpAdmin";
+import HipaaPlan from "./pages/HipaaPlan";
 import { PHIAcknowledgmentGate } from "@/components/compliance/PHIAcknowledgmentGate";
 import { IdleTimeoutGuard } from "@/components/compliance/IdleTimeoutGuard";
 
@@ -82,6 +83,7 @@ const App = () => (
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/code-bay-intake" element={<CodeBayIntake />} />
             <Route path="/patient-self-help" element={<PatientSelfHelp />} />
+            <Route path="/hipaa-plan" element={<HipaaPlan />} />
 
             {/* Everything else now requires sign-in */}
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />
