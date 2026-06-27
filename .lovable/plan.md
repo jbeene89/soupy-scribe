@@ -1,165 +1,109 @@
+## 90-Day Launch Plan — SoupyAudit private review company
 
-# Patient Self-Help v2 — Records Reconciliation, Not Malpractice Oracle
+**Wedge:** Florida malpractice plaintiff firms, sold a page-count-priced records reconciliation memo. SIU and patient-direct stay as funnels, not the lead.
 
-Reframe the module around one promise: **"We don't decide if care was wrong. We tell you what the record says, what it doesn't show, what doesn't reconcile, and what to ask for next."**
+**Team:** You (records analyst, software). Mom (RN + 35yr paralegal + insurance medical-claims specialist, co-founder, signs every memo at the upcharged tier).
 
-## 1. Pre-analysis intake (replaces free-text narrative as the only input)
-
-Three structured questions before any file is analyzed:
-
-**Q1. What are you worried happened?** (multi-select chips)
-- Medication before consent
-- Procedure without consent
-- Wrong diagnosis
-- Missing test / missing result
-- "They said X but chart says Y"
-- Billing / charges look wrong
-- I don't know, just check it
-- Other (free text)
-
-**Q2. What do you remember?** (optional structured fields)
-- Approximate date/time of the event
-- Who was present
-- What was said to you
-- What you consented to
-- What you were NOT told
-- Any quote you remember (e.g. "I think she just did a membrane sweep")
-
-**Q3. What kind of file are you uploading?** (per-file, with auto-detect fallback)
-- Clinical medical record / chart release
-- Itemized bill / EOB / UB-04 / CMS-1500
-- Lab report
-- Imaging report
-- Discharge instructions
-- Consent packet
-- Portal message / screenshot
-- Insurance denial
-- Unknown / mixed
-
-These get stored on the case row and passed into every chunk extraction prompt so the AI looks for what the patient is actually worried about.
-
-## 2. Document-type gate (the anti-hallucination guardrail)
-
-Before deep analysis runs, each file is classified by a fast pass into one of the categories above. The case-level `analysis_modes` flag is then locked:
-
-- **Billing analysis** only enabled if at least one billing artifact is detected.
-- **Clinical reconciliation** only enabled if a clinical record is detected.
-- **Consent review** only enabled if consent docs or clinical record present.
-
-If the patient asked about billing but uploaded only a clinical EMR, the UI shows a clear banner:
-
-> "This appears to be a clinical medical record, not a billing claim. Billing/payment analysis is disabled unless you upload an itemized bill, EOB, UB-04, CMS-1500, 837, or charge detail."
-
-No billing finding cards can be generated in that mode. Same logic for the inverse.
-
-## 3. New finding bucket taxonomy
-
-Replace the current severity-only model with six buckets. Every finding card belongs to exactly one:
-
-1. **Looks Routine** — normal admin/forms/meds, expected language
-2. **Needs Clarification** — documented but not enough to verify
-3. **Record Mismatch** — two parts of the chart disagree
-4. **Consent / Patient-Rights Flag** — missing, late, generic, or post-hoc consent
-5. **Missing Source Document** — chart references something not provided
-6. **Ask For This Next** — concrete record request language the patient can send verbatim
-
-## 4. Finding card shape (the trust mechanic)
-
-Every card returned by the synthesizer must have these fields:
-
-```
-{
-  bucket: "Record Mismatch" | "Needs Clarification" | ...,
-  title: "Misoprostol order/admin/consent timing needs reconciliation",
-  whyItMatters: "Medication appears ordered before visible consent completion.",
-  whatRecordShows: "Order at 14:02; consent signed at 15:10; MAR shows no admin in window.",
-  whatItDoesNotProve: "Does not prove medication was given before consent without full eMAR / BCMA scan history.",
-  askNext: "Request complete MAR, BCMA scan log, consent metadata, and audit trail for the induction window.",
-  severity: "high-documentation-issue" | "moderate" | "low" | "informational",
-  sourceFile: "...",
-  sourcePages: [12, 13]
-}
-```
-
-The `whatItDoesNotProve` field is non-optional. If the model omits it, we reject the card and retry. This is the line that keeps the app from sounding like a lawsuit vending machine.
-
-## 5. Plain-language summary section
-
-Replace the current 2-3 sentence summary with a structured recap:
-
-- What the record supports
-- What the record contains (key clinical language found)
-- What the record does NOT include (gaps)
-- What analysis was disabled and why (document-type gate)
-- The headline ask-next list (top 3-5 records to request)
-
-## 6. UI changes (`PatientSelfHelp.tsx`)
-
-- New intake step before upload: the three questions above.
-- Per-file dropdown for document type (defaults to auto-detect, patient can override).
-- Results view grouped by bucket with collapsible cards, color-coded by bucket not severity.
-- Prominent "Ask For This Next" panel at top with copy-to-clipboard for each request line.
-- Banner area for disabled analysis modes.
-- Disclaimer copy updated to the new promise wording.
-
-## 7. PDF export changes (`exportPatientSelfHelpPDFs.ts`)
-
-- Findings PDF reorganized by bucket.
-- New "Records To Request" PDF — just the Ask-Next items formatted as a letter-ready request.
-- Complaint packet and attorney summary stay but pull from the new card shape.
+**Goal:** 3 paid Florida law-firm clients in 90 days, signed BAA, E&O bound before the first paid memo.
 
 ---
 
-## Technical Section
+## Pricing (revised to your page-count model)
 
-### Schema migration
+Every order starts with an automatic page count on upload. The price tier locks the moment the count finishes. No surprises, no haggling.
 
-```sql
-ALTER TABLE public.patient_self_help_cases
-  ADD COLUMN IF NOT EXISTS worries text[] DEFAULT '{}',
-  ADD COLUMN IF NOT EXISTS recollection jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS analysis_modes jsonb DEFAULT '{"clinical":false,"billing":false,"consent":false}'::jsonb,
-  ADD COLUMN IF NOT EXISTS disabled_modes_reason text;
+| Tier | Page count | AI-only review | + Mom-signed memo | + Rush (72 hr) |
+|---|---|---|---|---|
+| Standard | Under 250 | $400 | $650 | +$200 |
+| Complex | 250–750 | $750 | $1,150 | +$300 |
+| Massive | 751–1,500 | $1,200 | $1,800 | +$500 |
+| Mega | 1,501+ | $1,200 + $1/page over 1,000 | $1,800 + $1.50/page over 1,000 | +$750 |
 
-ALTER TABLE public.patient_self_help_files
-  ADD COLUMN IF NOT EXISTS doc_type text,
-  ADD COLUMN IF NOT EXISTS doc_type_source text;  -- 'user' | 'auto'
-```
+**Every deliverable includes:**
+- Findings PDF (the 6 buckets you already built)
+- Records-to-Request checklist
+- Timeline PDF
+- 15-min handoff call
 
-No new GRANTs needed (columns added to existing tables; existing policies cover them).
+**Mom-signed adds:**
+- Her credentials block on every page
+- A signed cover letter ("Reviewed by [Mom], MSN, paralegal, 35 yrs medical claims")
+- Inline nurse commentary on key findings
+- 30-min handoff call instead of 15
 
-### Edge function changes
+**Rush** = guaranteed turnaround at the listed page tier. Standard turnaround is 5 business days; rush is 72 hrs (excluding weekends).
 
-**`patient-self-help-submit`**: accept `worries`, `recollection`, per-file `doc_type` overrides; persist them.
-
-**`patient-self-help-process`**: three changes —
-1. **New first phase** per file: a fast classification call (gemini-2.5-flash-lite) that returns `{ doc_type, confidence, signals }`. Persist to `patient_self_help_files.doc_type` (skip if user overrode). After all files classified, compute `analysis_modes` on the case row.
-2. **Chunk extraction prompt** updated: receives `worries` + `recollection` + `doc_type` + `analysis_modes` so extraction is targeted. Billing extraction is skipped on non-billing docs. New JSON schema for chunk output includes `bucket` hints.
-3. **Synthesis prompt** rewritten around the six-bucket taxonomy and the mandatory `whatItDoesNotProve` field. Validator rejects and retries if any card is missing it.
-
-### Frontend
-
-- New `PatientSelfHelpIntake.tsx` component (the 3 questions).
-- `PatientSelfHelp.tsx` upload step gains per-file doc-type selector.
-- New `FindingCard.tsx` and `BucketSection.tsx` components.
-- New `RecordsToRequestPanel.tsx` with per-line copy buttons.
-- `DisabledModeBanner.tsx` for the gate messaging.
-
-### Validation
-
-After synthesis returns, validator runs server-side:
-- Every card must have non-empty `whatItDoesNotProve` and `askNext`.
-- No billing-bucket cards allowed when `analysis_modes.billing === false`.
-- Cards with `bucket === "Missing Source Document"` must also produce a matching `Ask For This Next` card.
-
-Failures trigger one automatic retry with a stricter system prompt, then fall back to whatever passes.
+Pricing is on the public `/for-law-firms` page. Firms self-quote. No sales call needed for the first transaction.
 
 ---
 
-## Out of scope for this pass
+## Why malpractice-pre-intake is the lead (not SIU, not patient-direct)
 
-- Multi-patient cases / family bulk uploads
-- Long-term storage tier for case re-review months later
-- Direct send to hospital patient relations (still PDF export only)
+- **Repeat buyers.** Med-mal firms screen many more cases than they file. Your offer makes their paralegal cheaper.
+- **No PHI-from-strangers risk.** The firm has signed patient authorization. You sign a BAA with the firm.
+- **Mom's combo is the pitch.** RN + paralegal + insurance medical-claims = the exact reviewer profile firms already hire ad-hoc.
+- **Short sales cycle.** SIU procurement takes 6–12 months. Firms can sign and pay in a week.
 
-Approve and I'll build it.
+Patient-direct stays free at `/patient-self-help` and becomes a referral funnel: strong cases get a "Want a Florida firm to look at this?" button that hands off to your partner firms with the patient's consent.
+
+SIU/3rd-party gets parked until month 4 when local-only is closer to ready.
+
+---
+
+## What gets built (4 phases over 90 days)
+
+### Phase 1 — Legal & positioning (week 1–2, no code)
+- Florida LLC + EIN.
+- $1–3M E&O / professional liability policy quote (CM&F, Berxi).
+- One-time attorney consult ($500–$1,000) to lock disclaimer language and confirm:
+  - Mom signs as "RN, paralegal," never as expert witness.
+  - You sign as "records analyst," never as auditor of care.
+  - Every memo carries: *"This is a records reconciliation. It is not a legal opinion, a medical opinion, or a Florida statutory certificate of merit."*
+- Sister DBA for the law-firm-facing brand (something cleaner than "SoupyAudit" for legal procurement). SoupyAudit stays the platform.
+
+### Phase 2 — Productize the law-firm offer (week 2–4, code)
+
+App changes I'll ship in one pass when you say go:
+
+1. **New public page `/for-law-firms`** on soupyaudit.com. Hero, the 4-tier price grid above, mom's bio, your bio, disclaimer, "Request access" button. Matches existing dark design system.
+2. **New "Firm portal" mode** added to the existing mode toggle (Payer / Provider / BH / Patient / **Firm**). Reuses the Patient Self-Help backend.
+3. **Firm intake flow:** firm creates an account → signs a click-through BAA → opens a matter (firm name, matter #, patient initials) → uploads records → app auto-counts pages → tier and price lock in → firm picks AI-only vs Mom-signed and optional Rush → confirms → review starts.
+4. **Auto page-counter on upload.** Runs before the analysis pipeline. Drives the price. Shown to the firm before they commit.
+5. **"Mom-signed" workflow in admin:** new queue showing matters waiting for her review. She reads, edits, marks "signed." That flips the export PDFs to include her credentials block and signed cover letter.
+6. **Rush flag** on the matter triggers a turnaround clock and surfaces the matter at the top of the queue.
+7. **"Reviewed by" block + tier label** added to every existing export PDF.
+8. **Public `/security` page** aimed at firm procurement: BAA available, audit log, role-based access, idle timeout, encrypted transport, roadmap to on-prem. Cleaned-up sibling of the internal `/hipaa-plan`.
+9. **Lead-capture form** on `/for-law-firms` writes to a `firm_leads` table you can see in admin.
+
+Payment collection in this phase = manual invoice (you send a PDF invoice; firm pays by check or ACH). Stripe integration is parked until you have 5+ paid matters, so you're not building checkout before product-market fit.
+
+### Phase 3 — Soft launch + 3 design-partner firms (week 4–8)
+- 30 small/mid Florida med-mal plaintiff firms on the outreach list. Mom's network first, cold second.
+- Offer: 3 free Standard-tier AI-only screens to the first 10 firms that sign the BAA. Convert to paid on case #4.
+- Every memo's downstream outcome tracked (opened / declined / settled). This becomes the validation bench for the business.
+
+### Phase 4 — Funnel layers (week 8–12)
+- Patient-direct adds the "Want a firm to look at this?" handoff button.
+- One warm SIU intro through mom's insurance-side network. One pilot conversation, not a sales push.
+- Begin on-prem Docker stack work for the eventual SIU/local-only upsell.
+
+---
+
+## Risks I'm flagging (not technical — these are the real ones)
+
+- **Florida UPL/UPM line.** Memos must reconcile records, not opine on standard of care. Lock the disclaimer language with the attorney consult before the first paid memo.
+- **Florida certificate of merit.** Florida requires a same-specialty expert affidavit. Be explicit with firms: you support that process, you do not satisfy it.
+- **E&O bound before first paid client.** Non-negotiable.
+- **Mom's throughput ceiling.** Roughly 40 mom-signed cases/month at sustainable pace. Build the "hire a second nurse-paralegal" trigger into the month-6 plan.
+- **Page-count gaming.** Some firms will upload a slim subset to hit a lower tier. Mitigation: terms say "if delivered review reveals materially more records exist, tier may be re-priced."
+
+---
+
+## Decisions needed before I start building Phase 2
+
+1. **Sister DBA name** for the law-firm-facing brand, or stick with SoupyAudit?
+2. **Domain:** new `/for-law-firms` page on soupyaudit.com, or a second domain?
+3. **Pricing approved as written above** (with mom-signed uplift and rush), or adjust any number?
+4. **Mom-signed delivery time** — do we promise +2 business days on top of standard turnaround for the mom-signed tier, or hold the same turnaround?
+
+Reply with answers to those four and I'll build Phase 2 in one pass.
