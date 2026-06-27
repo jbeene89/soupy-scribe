@@ -21,6 +21,7 @@ import { IntakeWorries } from '@/components/patient/IntakeWorries';
 import { FindingCard } from '@/components/patient/FindingCard';
 import { RecordsToRequestPanel } from '@/components/patient/RecordsToRequestPanel';
 import { DisabledModeBanner } from '@/components/patient/DisabledModeBanner';
+import { FollowupNotesPanel } from '@/components/patient/FollowupNotesPanel';
 
 type Phase = 'code' | 'worries' | 'intake' | 'uploading' | 'processing' | 'complete' | 'error';
 
@@ -437,6 +438,7 @@ export default function PatientSelfHelp() {
             contactName={contactName}
             contactEmail={contactEmail}
             startOver={startOver}
+            caseId={caseId}
           />
         )}
       </main>
@@ -445,13 +447,14 @@ export default function PatientSelfHelp() {
 }
 
 function CompleteView({
-  results, caseTitle, contactName, contactEmail, startOver,
+  results, caseTitle, contactName, contactEmail, startOver, caseId,
 }: {
   results: SelfHelpResults;
   caseTitle: string;
   contactName: string;
   contactEmail: string;
   startOver: () => void;
+  caseId: string | null;
 }) {
   const s = results.structuredSummary;
   const cards = (results.cards ?? []) as FindingCardType[];
@@ -516,6 +519,8 @@ function CompleteView({
       <DisabledModeBanner reason={results.disabledModesReason || ''} />
 
       <RecordsToRequestPanel asks={allAsks} caseTitle={caseTitle} contactName={contactName} />
+
+      <FollowupNotesPanel caseId={caseId} />
 
       {s && (
         <Card>
