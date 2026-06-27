@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, RefreshCw } from 'lucide-react';
+import { Copy, RefreshCw, ClipboardCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 type Invite = { code: string; label: string | null; max_uses: number; uses_count: number; expires_at: string | null; is_active: boolean; created_at: string };
 type Case = { id: string; case_title: string | null; scope: string | null; status: string; file_count: number; created_at: string; contact_email: string | null; invite_code: string | null };
@@ -136,6 +137,11 @@ export default function AppPatientSelfHelpAdmin() {
                 <span className="text-muted-foreground">{c.file_count} files</span>
                 {c.contact_email && <span className="text-muted-foreground">{c.contact_email}</span>}
                 <span className="ml-auto text-xs text-muted-foreground">{new Date(c.created_at).toLocaleString()}</span>
+                <Button asChild size="sm" variant="outline">
+                  <Link to={`/app/patient-self-help/review/${c.id}`}>
+                    <ClipboardCheck className="h-3 w-3 mr-1" /> Reviewer
+                  </Link>
+                </Button>
               </div>
             ))}
           </div>
